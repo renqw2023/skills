@@ -1,3 +1,9 @@
+---
+name: daily-recap
+description: Generate a daily recap image with your agent holding a posterboard of accomplishments. Cron-driven, weather-aware, customizable to any agent identity.
+metadata: {"clawdbot":{"emoji":"📋","requires":{"skills":["nano-banana-pro"]}}}
+---
+
 # Daily Recap Skill
 
 Generate a personalized daily recap image featuring your agent's avatar holding a posterboard with the day's accomplishments.
