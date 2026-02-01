@@ -1,6 +1,6 @@
 ---
 name: inkjet
-description: "Print text, images, and QR codes to a Bluetooth thermal printer. Use `inkjet print` for output, `inkjet scan` to discover printers."
+description: "Print text, images, and QR codes to a wireless Bluetooth thermal printer from a MacOS device. Use `inkjet print` for output, `inkjet scan` to discover printers."
 homepage: https://github.com/AaronChartier/inkjet
 metadata:
   openclaw:
@@ -161,6 +161,13 @@ echo "Receipt line 1" | inkjet print text -
 # Image Piping
 curl -s "https://raw.githubusercontent.com/AaronChartier/inkjet/main/assets/logo.jpg" | inkjet print image -
 ```
+## Best Practices for Worksheets & Handwriting
+Thermal paper is narrow and low-cost. To make usable worksheets for children or manual notes:
+
+1. **Size for Visibility:** Use `##` (H2 headers) for the main content. Standard text is often too small for children to read/write comfortably.
+2. **Manual Numbering:** Avoid Markdown lists (`1. content`). They auto-indent and reduce horizontal space. Use `## 1) 5 + 2 = ___` instead.
+3. **The "Cheap Paper" Rule:** Use triple newlines (`\n\n\n`) between items. Thermal paper is essentially free; use vertical space to provide actual "writing room."
+4. **Horizontal Rules:** Use `---` at the end of a job to provide a clear tear-off line that doesn't cut off the last problem.
 
 ## Troubleshooting
 
