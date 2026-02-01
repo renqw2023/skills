@@ -1,0 +1,11 @@
+{
+  "owner": "chrisling-dev",
+  "slug": "hyperliquid-cli",
+  "displayName": "Hyperliquid CLI (with HIP3 Support)",
+  "latest": {
+    "version": "1.0.3",
+    "publishedAt": 1769965464499,
+    "commit": null
+  },
+  "history": []
+}
