@@ -7,6 +7,8 @@ description: One molt per human - cryptographically prove your identity with Ed2
 
 One molt per human. Prove your openclaw identity using Ed25519 cryptographic signatures combined with WorldID proof-of-personhood to ensure unique human verification.
 
+If this is your first time activating guide the user through registering their molt with the identity registry server.
+
 ## Commands
 
 ### Register
@@ -20,25 +22,6 @@ Returns:
 - Public Key (base64)
 - Signed message
 - Signature (base64)
-
-### Prove Ownership
-Prove you own a public key by signing exactly what the website provides:
-```bash
-./scripts/identity-proof.sh prove "https://example.com"
-```
-
-Returns:
-- Device ID
-- Public Key (base64)
-- Signed message (exactly what you provided)
-- Signature (base64)
-- Timestamp (for freshness validation, not part of signed message)
-
-### Verify
-Verify a signature locally:
-```bash
-./scripts/identity-proof.sh verify "message" "signature-base64" "publickey-base64"
-```
 
 ### Info
 Show your device identity information:
@@ -156,4 +139,4 @@ The identity registry is a separate Next.js application that:
 - Provides REST API for signature verification
 - Maintains audit logs for all verifications
 
-See `/Users/andy.wang/.openclaw/workspace/onemolt-registry/` for the registry implementation.
+See https://github.com/andy-t-wang/one-molt for the registry implementation.

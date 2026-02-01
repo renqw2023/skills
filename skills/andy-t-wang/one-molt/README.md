@@ -356,7 +356,7 @@ Default: `https://onemolt.ai`
 ### Identity Registry Setup
 
 The identity registry is a separate Next.js application located at:
-`/Users/andy.wang/.openclaw/workspace/onemolt-registry/`
+`/Users/andy.wang/.openclaw/workspace/onemolt/`
 
 To deploy your own instance:
 
@@ -421,7 +421,7 @@ identity-proof/
 └── scripts/
     └── identity-proof.sh       # Main CLI tool (enhanced with WorldID)
 
-onemolt-registry/              # Separate Next.js application
+onemolt/              # Separate Next.js application
 ├── app/api/v1/                # REST API endpoints
 ├── lib/                       # Core libraries
 ├── supabase/migrations/       # Database schema
