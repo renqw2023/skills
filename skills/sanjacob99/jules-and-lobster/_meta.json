@@ -3,9 +3,15 @@
   "slug": "jules-and-lobster",
   "displayName": "Jules and the Lobster",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1769907515627,
-    "commit": "https://github.com/clawdbot/skills/commit/560211532e24109c5e834b6eef4f5e78e48e4e57"
+    "version": "1.0.3",
+    "publishedAt": 1769966909126,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1769907515627,
+      "commit": "https://github.com/clawdbot/skills/commit/560211532e24109c5e834b6eef4f5e78e48e4e57"
+    }
+  ]
 }
