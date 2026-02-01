@@ -3,11 +3,16 @@
   "slug": "hippocampus",
   "displayName": "Hippocampus",
   "latest": {
-    "version": "3.1.1",
-    "publishedAt": 1769896392053,
-    "commit": "https://github.com/clawdbot/skills/commit/1766aa26281d5f0a79eb22702520ca4f09c60a27"
+    "version": "3.2.0",
+    "publishedAt": 1769910275254,
+    "commit": null
   },
   "history": [
+    {
+      "version": "3.1.1",
+      "publishedAt": 1769896392053,
+      "commit": "https://github.com/clawdbot/skills/commit/1766aa26281d5f0a79eb22702520ca4f09c60a27"
+    },
     {
       "version": "3.1.0",
       "publishedAt": 1769896346468,

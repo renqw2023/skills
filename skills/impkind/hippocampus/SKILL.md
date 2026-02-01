@@ -1,10 +1,10 @@
 ---
 name: hippocampus
-description: "Living memory system with importance scoring, time-based decay, and reinforcement. Based on Stanford Generative Agents (Park et al., 2023). Memories strengthen when used, fade when ignored—like a real brain."
+description: "Background memory organ for AI agents. Runs separately from the main agent—encoding, decaying, and reinforcing memories automatically. Just like the real hippocampus in your brain. Based on Stanford Generative Agents (Park et al., 2023)."
 metadata:
   openclaw:
     emoji: "🧠"
-    version: "3.1.0"
+    version: "3.2.0"
     author: "Community"
     repo: "https://github.com/ImpKind/hippocampus-skill"
     requires:
@@ -212,6 +212,19 @@ Auto-capture when you hear:
 - "I prefer...", "I always..."
 - Emotional content (struggles AND wins)
 - Decisions made
+
+## AI Brain Series
+
+This skill is part of the **AI Brain** project — giving AI agents human-like cognitive components.
+
+| Part | Function | Status |
+|------|----------|--------|
+| **hippocampus** | Memory formation, decay, reinforcement | ✅ Live |
+| [amygdala-memory](https://www.clawhub.ai/skills/amygdala-memory) | Emotional processing | ✅ Live |
+| [basal-ganglia-memory](https://www.clawhub.ai/skills/basal-ganglia-memory) | Habit formation | 🚧 Development |
+| [anterior-cingulate-memory](https://www.clawhub.ai/skills/anterior-cingulate-memory) | Conflict detection | 🚧 Development |
+| [insula-memory](https://www.clawhub.ai/skills/insula-memory) | Internal state awareness | 🚧 Development |
+| [vta-memory](https://www.clawhub.ai/skills/vta-memory) | Reward and motivation | 🚧 Development |
 
 ## References
 
