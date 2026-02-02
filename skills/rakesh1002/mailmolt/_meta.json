@@ -3,9 +3,15 @@
   "slug": "mailmolt",
   "displayName": "MailMolt - Email for AI Agents",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1769973482321,
-    "commit": "https://github.com/clawdbot/skills/commit/f753d1985780991104ff32ca9fb687bf247fbd5f"
+    "version": "1.1.0",
+    "publishedAt": 1769975403046,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1769973482321,
+      "commit": "https://github.com/clawdbot/skills/commit/f753d1985780991104ff32ca9fb687bf247fbd5f"
+    }
+  ]
 }

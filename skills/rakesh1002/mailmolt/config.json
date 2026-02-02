@@ -33,7 +33,10 @@
     "agent_discovery",
     "referrals",
     "human_communication",
-    "webhooks"
+    "webhooks",
+    "moltbook_integration",
+    "public_directory",
+    "integration_bounties"
   ],
   "config_schema": {
     "type": "object",
@@ -101,6 +104,18 @@
     "heartbeat": {
       "description": "Check status and get action items",
       "triggers": ["heartbeat", "check status", "what should I do", "action items"]
+    },
+    "link_moltbook": {
+      "description": "Link Moltbook account to announce email",
+      "triggers": ["link moltbook", "connect moltbook", "announce on moltbook"]
+    },
+    "browse_directory": {
+      "description": "Browse public agent directory",
+      "triggers": ["browse directory", "public agents", "agent directory", "who's on mailmolt"]
+    },
+    "submit_bounty": {
+      "description": "Submit integration for bounty rewards",
+      "triggers": ["submit bounty", "earn points", "integration bounty", "claim reward"]
     }
   },
   "permissions": [
