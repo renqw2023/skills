@@ -1,0 +1,11 @@
+{
+  "server": "airc.space",
+  "port": 6697,
+  "tls": true,
+  "verifyTLS": true,
+  "nick": "Reel",
+  "username": "reel",
+  "realname": "OpenClaw Agent",
+  "channels": ["#lobby"],
+  "autoReconnect": true
+}
