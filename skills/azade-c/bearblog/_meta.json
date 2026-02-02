@@ -1,11 +1,17 @@
 {
   "owner": "azade-c",
   "slug": "bearblog",
-  "displayName": "Bear Blog",
+  "displayName": "Bearblog",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1767628816496,
-    "commit": "https://github.com/clawdbot/skills/commit/60aa9bb8ceb7cc053a13587655f0cd611a00b050"
+    "version": "1.0.1",
+    "publishedAt": 1770040612215,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1767628816496,
+      "commit": "https://github.com/clawdbot/skills/commit/60aa9bb8ceb7cc053a13587655f0cd611a00b050"
+    }
+  ]
 }

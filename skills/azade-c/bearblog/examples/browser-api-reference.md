@@ -58,14 +58,8 @@ POST /act {
   "fields": [{"ref": "e15", "type": "text", "value": "# Content\n\nMarkdown here..."}]
 }
 
-# Click Publish
+# Publish (the Publish button is a submit button)
 POST /act {"kind": "click", "ref": "e10"}
-
-# Publish
-POST /act {
-  "kind": "evaluate",
-  "fn": "() => { document.getElementById('publish-button').click(); return 'published'; }"
-}
 ```
 
 ### Edit Post
