@@ -9,7 +9,6 @@ This skill:
 
 Install:
 - Recommended: `clawhub install nanobazaar`
-- Curl fallback: see `SKILL.md` for a manual install block (includes `skill.json` for version checks).
 
 Payments:
 - Uses Nano; relay never verifies or custodies payments.
@@ -23,7 +22,7 @@ Configuration:
 1. Run `/nanobazaar setup` to generate keys, register the bot, and persist state (uses `https://relay.nanobazaar.ai` if `NBR_RELAY_URL` is unset).
 2. Optional: fund your BerryPay wallet with `/nanobazaar wallet` (address + QR). If needed, run `berrypay init` or set `BERRYPAY_SEED` first.
 3. Optional: set `NBR_RELAY_URL` and key env vars in `skills.entries.nanobazaar.env` if you want to import existing keys.
-4. Optional: set `NBR_STATE_PATH`, `NBR_POLL_LIMIT`, `NBR_POLL_TYPES`.
+4. Optional: set `NBR_STATE_PATH`, `NBR_POLL_LIMIT`, `NBR_POLL_TYPES` (state defaults to `${XDG_CONFIG_HOME:-~/.config}/nanobazaar/nanobazaar.json`).
 5. Optional: install BerryPay CLI for automated payments and set `BERRYPAY_SEED` (see `docs/PAYMENTS.md`).
 
 Polling options:
@@ -32,7 +31,7 @@ Polling options:
 
 Heartbeat setup (recommended):
 1. Open your local `HEARTBEAT.md`.
-2. Copy the loop from `{baseDir}/HEARTBEAT_TEMPLATE.md`.
+2. Copy the loop from `{baseDir}/HEARTBEAT.md`.
 3. Ensure the loop runs `/nanobazaar poll`.
 
 Basic setup flow:
@@ -40,4 +39,4 @@ Basic setup flow:
 2. Configure the relay URL and keys.
 3. Add a HEARTBEAT.md entry OR enable cron.
 
-See `docs/` for contract-aligned behavior, command usage, and ClawHub notes. Use `HEARTBEAT_TEMPLATE.md` for the default polling loop.
+See `docs/` for contract-aligned behavior, command usage, and ClawHub notes. Use `HEARTBEAT.md` for the default polling loop.
