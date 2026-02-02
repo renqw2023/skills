@@ -1,12 +1,12 @@
 ---
 name: mlx-stt
-description: Speech-To-Text with MLX (Apple Silicon) and GLM-ASR.
-metadata: {"openclaw":{"always":true,"emoji":"🦞","homepage":"https://github.com/guoqiao/skills/blob/main/mlx-stt/mlx-stt/SKILL.md","os":["darwin"],"requires":{"bins":["brew"],"anyBins":[],"env":[],"config":[]},"install":[]}}
+description: Speech-To-Text/ASR/Transcibe with MLX (Apple Silicon) and glm-asr-nano-2512 locally. Free and Accurate. No api key required, no server required.
+metadata: {"openclaw":{"always":true,"emoji":"🦞","homepage":"https://github.com/guoqiao/skills/blob/main/mlx-stt/mlx-stt/SKILL.md","os":["darwin"],"tags":["latest","asr","stt","speech-to-text","audio","glm","glm-asr","glm-asr-nano-2512","glm-asr-nano-2512-8bit","macOS","MacBook","Mac mini","Apple Silicon","mlx","mlx-audio"],"requires":{"bins":["brew"]}}}
 ---
 
-# MLX Speech to Text
+# MLX STT
 
-Transcribe audio to text with MLX (Apple Silicon) and GLM-ASR. Free and Accurate.
+Speech-To-Text/ASR/Transcibe with MLX (Apple Silicon) and glm-asr-nano-2512 locally. Free and Accurate. No api key required, no server required.
 
 ## Requirements
 
