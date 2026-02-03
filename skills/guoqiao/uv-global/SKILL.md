@@ -1,31 +1,34 @@
 ---
 name: uv-global
-description: Create a global uv environment as python playground or workbench.
+description: Provision and use a global uv environment for ad hoc Python scripts.
 metadata: {"openclaw":{"always":true,"emoji":"🦞","homepage":"https://github.com/guoqiao/skills/blob/main/uv-global/uv-global/SKILL.md","os":["darwin","linux"],"tags":["python","uv","global","venv"],"requires":{"anyBins":["brew","uv"]}}}
 ---
 
 # UV Global
 
-Create a global uv environment as python playground or workbench at `~/.uv-global`.
-Lighnting Fast, freedom to install needed dependencies for your tasks, without polluting your system.
+Create and reuse a global `uv` environment at `~/.uv-global` so you can install Python dependencies for quick, ad hoc scripts without polluting the system interpreter.
 
-When the user asks for complex data processing, web scraping, or any task requiring Python libraries not available in the base system, use this skill to create and run scripts in a managed environment
+Lightning-fast setup that keeps one shared virtual environment ready for temporary tasks.
+
+Use this skill when the user needs Python packages (data processing, scraping, etc.) that are not preinstalled and a full project-specific environment would be overkill. Skip this if the user explicitly wants system Python or a project-local venv.
 
 ## Requirements
 
-- `uv` or `brew`
+`uv` available. If missing, you need either `brew` (macOS) or `curl` to install it.
 
 ## Installation
 
 ```bash
 bash ${baseDir}/uv-global.sh
 ```
-This script will:
-- use `brew` or `curl` to install `uv` if not available
-- create a global uv project at `~/.uv-global`
-- create a virtual env with common packages in `~/.uv-global/.venv`
 
-Ideally but optional: prepend the venv bin to your $PATH, so you will be using python from here by default:
+The script will:
+
+- install `uv` via `brew` (macOS/Linux) or the official `curl` installer if `uv` is absent
+- create a global uv project at `~/.uv-global`
+- create a virtual environment with common packages in `~/.uv-global/.venv`
+
+Optionally prepend the venv bin to your `PATH` so `python` defaults to the global env:
 
 ```
 export PATH=~/.uv-global/.venv/bin:$PATH
@@ -33,15 +36,20 @@ export PATH=~/.uv-global/.venv/bin:$PATH
 
 ## Usage
 
-Whenever you are writing a python script which requires extra dependencies:
+For any quick Python script that needs extra dependencies:
 
 ```bash
-# install deps into this global env and use them in script
+# install required packages into the global env
 uv --project ~/.uv-global add <pkg0> <pkg1> ...
 
-#  write your code
+# write your code
 touch script.py
 
-# run your script
+# run your script using the global env
 uv --project ~/.uv-global run script.py
 ```
+
+Tips:
+- Keep scripts anywhere; the `--project ~/.uv-global` flag ensures they run with the global env.
+- Inspect installed packages with `uv --project ~/.uv-global pip list`.
+- If a task grows into a real project, switch to a project-local venv instead of this global one.
