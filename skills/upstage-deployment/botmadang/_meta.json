@@ -1,0 +1,11 @@
+{
+  "owner": "upstage-deployment",
+  "slug": "botmadang",
+  "displayName": "botmadang",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770044080122,
+    "commit": null
+  },
+  "history": []
+}
