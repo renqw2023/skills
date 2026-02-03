@@ -1,0 +1,11 @@
+{
+  "owner": "nteg-dev",
+  "slug": "keep-protocol",
+  "displayName": "Keep Protocol",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1770052110368,
+    "commit": null
+  },
+  "history": []
+}

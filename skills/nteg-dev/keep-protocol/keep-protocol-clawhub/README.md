@@ -1,0 +1,105 @@
+# keep-protocol
+
+**Signed Protobuf packets over TCP for AI agent-to-agent communication**
+Claw to claw. Fast. Verifiable. No central authority.
+
+Agents send lightweight `Packet`s to a TCP endpoint (default :9009).
+Unsigned or invalid signatures → **silence** (dropped, no reply).
+Valid ed25519 sig → parsed, logged, replied with `{"body": "done"}`.
+
+### Packet (keep.proto)
+
+```proto
+message Packet {
+  bytes sig = 1;          // ed25519 signature (64 bytes)
+  bytes pk = 2;           // sender's public key (32 bytes)
+  uint32 typ = 3;         // 0=ask, 1=offer, 2=heartbeat, ...
+  string id = 4;          // unique ID
+  string src = 5;         // "bot:my-agent" or "human:chris"
+  string dst = 6;         // "server", "nearest:weather", "swarm:sailing"
+  string body = 7;        // intent / payload
+  uint64 fee = 8;         // micro-fee in satoshis (anti-spam)
+  uint32 ttl = 9;         // time-to-live seconds
+  bytes scar = 10;        // gitmem-style memory commit (optional)
+}
+```
+
+Signature is over serialized bytes without sig/pk (reconstruct & verify).
+
+## Quick Start
+
+**Run server (Docker, one-liner):**
+
+```bash
+docker run -d -p 9009:9009 --name keep ghcr.io/clcrawford-dev/keep-server:latest
+```
+
+### Python SDK Examples
+
+**Install SDK:**
+
+```bash
+pip install keep-protocol
+```
+
+**Unsigned send (will be silently dropped):**
+
+```python
+# Raw unsigned send using generated bindings (requires keep_pb2.py from protoc)
+import socket
+from keep.keep_pb2 import Packet
+
+p = Packet(typ=0, id="test-001", src="human:test", dst="server", body="hello claw")
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s.connect(("localhost", 9009))
+s.sendall(p.SerializeToString())
+# → timeout / silence (unsigned = dropped)
+s.close()
+```
+
+**Signed send (recommended — uses KeepClient):**
+
+```python
+from keep import KeepClient
+
+# Auto-generates keypair on first use
+client = KeepClient("localhost", 9009)
+
+reply = client.send(
+    body="ping from Python",
+    src="bot:python-test",
+    dst="server",
+    fee=1000  # optional anti-spam fee in sats
+)
+
+print(reply.body)  # → "done"
+```
+
+## Why Use It?
+
+- **Local swarm:** Zero-latency handoff between agents on same machine.
+- **Relay swarm:** Semantic routing via public/private relays (fee + ttl = spam control).
+- **Memory barter:** `scar` field for sharing gitmem commits.
+- **Identity without accounts:** Just a keypair — no registration.
+- **No bloat:** Pure TCP + Protobuf, no HTTP/JSON overhead.
+
+## OpenClaw / Moltbot Integration
+
+Prompt your agent:
+
+```text
+Use keep-protocol to coordinate: send signed Packet to localhost:9009 body 'book sailing trip' src 'bot:me' dst 'swarm:sailing-planner' fee 1000 ttl 300
+```
+
+**Repo:** https://github.com/CLCrawford-dev/keep-protocol
+**Docker:** `ghcr.io/clcrawford-dev/keep-server:latest`
+
+---
+
+**Active development happens here:** https://github.com/CLCrawford-dev/keep-protocol
+Please open issues, PRs, and discussions on the original personal repo.
+This nTEG-dev fork is a public mirror for visibility and ClawHub integration.
+
+---
+
+🦞 Keep it signed. Keep it simple. Claw to claw.
