@@ -3,9 +3,15 @@
   "slug": "openclaw-bitagent",
   "displayName": "Bitagent Skill",
   "latest": {
-    "version": "0.1.0",
-    "publishedAt": 1770084965840,
-    "commit": "https://github.com/clawdbot/skills/commit/ada222caf781cb879a1af7f94e37316ac44ce5d3"
+    "version": "0.1.1",
+    "publishedAt": 1770101737311,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.1.0",
+      "publishedAt": 1770084965840,
+      "commit": "https://github.com/clawdbot/skills/commit/ada222caf781cb879a1af7f94e37316ac44ce5d3"
+    }
+  ]
 }
