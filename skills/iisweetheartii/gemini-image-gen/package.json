@@ -1,0 +1,19 @@
+{
+  "name": "gemini-image-gen",
+  "version": "1.1.0",
+  "description": "Generate and edit images via Google Gemini API. Supports Gemini native generation, Imagen 3, style presets, and batch generation with HTML gallery. Zero dependencies — pure Python stdlib.",
+  "homepage": "https://github.com/IISweetHeartII/gemini-image-gen",
+  "repository": "https://github.com/IISweetHeartII/gemini-image-gen",
+  "license": "MIT",
+  "author": "IISweetHeartII (Deokhwan Kim)",
+  "keywords": ["image-generation", "gemini", "imagen", "ai-art", "google", "openclaw", "skill", "zero-dependencies", "batch", "gallery", "editing", "style-presets"],
+  "metadata": {
+    "openclaw": {
+      "emoji": "🎨",
+      "category": "creative",
+      "requires": { "bins": ["python3"], "env": ["GEMINI_API_KEY"] },
+      "primaryEnv": "GEMINI_API_KEY",
+      "tags": ["image-generation", "gemini", "imagen", "ai-art", "creative", "editing", "batch", "gallery"]
+    }
+  }
+}
