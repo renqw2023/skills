@@ -1,0 +1,11 @@
+{
+  "owner": "propersama",
+  "slug": "homepod-tts",
+  "displayName": "HomePod TTS",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770179404445,
+    "commit": null
+  },
+  "history": []
+}
