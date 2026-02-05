@@ -1,0 +1,11 @@
+{
+  "owner": "proxyhq",
+  "slug": "proxy-status",
+  "displayName": "Proxy Status",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770216996573,
+    "commit": null
+  },
+  "history": []
+}
