@@ -1,11 +1,17 @@
 {
   "owner": "maurodelazeri",
   "slug": "the-flip",
-  "displayName": "THE FLIP",
+  "displayName": "The Flip",
   "latest": {
-    "version": "1.0.7",
-    "publishedAt": 1770218220341,
-    "commit": "https://github.com/clawdbot/skills/commit/8f480b1205fc9894e3182a9a9d294dc3f87fa2a4"
+    "version": "2.1.2",
+    "publishedAt": 1770245605314,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.7",
+      "publishedAt": 1770218220341,
+      "commit": "https://github.com/clawdbot/skills/commit/8f480b1205fc9894e3182a9a9d294dc3f87fa2a4"
+    }
+  ]
 }
