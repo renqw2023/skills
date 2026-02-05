@@ -3,9 +3,15 @@
   "slug": "vector-memory-hack",
   "displayName": "Vector Memory Hack",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1770288075271,
-    "commit": "https://github.com/clawdbot/skills/commit/c9bf2766067b1d11e712a5940ddb59a295c33c96"
+    "version": "1.0.3",
+    "publishedAt": 1770292895210,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1770288075271,
+      "commit": "https://github.com/clawdbot/skills/commit/c9bf2766067b1d11e712a5940ddb59a295c33c96"
+    }
+  ]
 }
