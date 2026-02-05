@@ -1,0 +1,11 @@
+{
+  "owner": "kunoiiv",
+  "slug": "molt-security-auditor-v3",
+  "displayName": "Molt Security Auditor V3: Protects Creds/Ports/Configs/Vulns + Safe Auto-Fix",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1770235485772,
+    "commit": null
+  },
+  "history": []
+}
