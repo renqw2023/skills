@@ -3,9 +3,15 @@
   "slug": "deploy-on-render",
   "displayName": "render",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1770188479838,
-    "commit": "https://github.com/clawdbot/skills/commit/8daa3646cbb124d162751a446e252bfbeb210ade"
+    "version": "3.0.0",
+    "publishedAt": 1770240273163,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1770188479838,
+      "commit": "https://github.com/clawdbot/skills/commit/8daa3646cbb124d162751a446e252bfbeb210ade"
+    }
+  ]
 }

@@ -1,22 +1,64 @@
 ---
 name: render
-description: Deploy and operate apps on Render. Use when the user wants to deploy, host, or publish an app; create or edit render.yaml Blueprints; add web services, static sites, private services, workers, cron jobs, Postgres, or Key Value (Redis/Valkey); configure env vars, health checks, scaling, preview environments, or projects; validate Blueprints; or get dashboard/API guidance.
+description: Deploy and operate apps on Render (Blueprint + one-click Dashboard deeplink, same flow as Codex render-deploy). Use when the user wants to deploy, host, or publish an app; create or edit render.yaml; add web, static, workers, cron, Postgres, or Key Value; get the Blueprint deeplink to deploy; trigger or verify deploys via API when RENDER_API_KEY is set; connect Render MCP via mcporter for direct service creation; or configure env vars, health checks, scaling, previews, and projects.
 metadata:
-  { "openclaw": { "emoji": "☁️", "homepage": "https://render.com/docs" } }
+  { "openclaw": { "emoji": "☁️", "homepage": "https://render.com/docs", "version": "1.0.0" } }
 ---
 
 # Render Skill
 
-Deploy and manage applications on Render using Blueprints (`render.yaml`), the Dashboard, or the API. This skill covers deployment and platform features: web apps, static sites, workers, cron, Postgres, Key Value, env groups, scaling, previews, and projects.
+Deploy and manage applications on Render using Blueprints (`render.yaml`), the Dashboard, or the API. This skill mirrors the **Codex render-deploy** flow: analyze codebase → generate/validate Blueprint → commit & push → one-click Dashboard deeplink → optional API/mcporter verify or re-deploy.
 
-## When to Use
+## When to Use This Skill
 
-- Deploy, host, or publish an app on Render
+Activate when the user wants to:
+- Deploy, host, or publish an application on Render
 - Create or edit a `render.yaml` Blueprint (new or existing repo)
 - Add web, static site, private, worker, or cron services; Postgres; or Key Value
 - Configure env vars, health checks, scaling, disks, or regions
-- Set up preview environments or projects/environments
-- Validate a Blueprint or get dashboard/API links
+- Set up preview environments or projects
+- Validate a Blueprint or get Dashboard/API links
+
+## Deployment Method Selection
+
+1. **If `RENDER_API_KEY` is set** → Prefer REST API or MCP (fastest; no user click). Use `references/rest-api-deployment.md` for request bodies, or mcporter if configured (see `references/mcp-integration.md`).
+2. **If no API key** → Use Blueprint + deeplink (user commits, pushes, then clicks the deeplink to deploy).
+
+Check for API key:
+
+```bash
+[ -n "$RENDER_API_KEY" ] && echo "RENDER_API_KEY is set" || echo "RENDER_API_KEY is not set"
+```
+
+## Happy Path (New Users)
+
+Before deep analysis, use this short sequence to reduce friction:
+1. Ask whether they want to deploy from a **Git repo** (required for Blueprint and deeplink) or only get guidance. If no Git remote, they must create/push one first.
+2. Ask whether the app needs a database, workers, cron, or other services so you can choose the right Blueprint shape.
+
+Then follow **Deploy to Render** below (Blueprint → push → deeplink → verify).
+
+## Prerequisites Check
+
+1. **Git remote** – Required for Blueprint deploy. Run `git remote -v`; if none, ask the user to create a repo on GitHub/GitLab/Bitbucket, add `origin`, and push.
+2. **Render CLI (optional)** – For local validation: `render blueprints validate render.yaml`. Install: `brew install render` or [Render CLI](https://github.com/render-oss/cli).
+3. **API key (optional)** – For verifying deploys or triggering re-deploys: [Dashboard → API Keys](https://dashboard.render.com/u/*/settings#api-keys). Set `RENDER_API_KEY` in the environment.
+
+## Security Notes
+
+- **Never commit secrets to render.yaml** — always use `sync: false` for API keys, passwords, and tokens; the user fills them in the Dashboard.
+- **Validate before suggesting deployment** — run `render blueprints validate render.yaml` or use the Validate Blueprint API so invalid YAML is never pushed.
+- **Validate user-provided values** — when writing env vars or service names from user input into YAML, sanitize or quote as needed to avoid injection.
+
+## References
+
+- `references/codebase-analysis.md` (detect runtime, build/start commands, env vars)
+- `references/blueprint-spec.md` (root keys, service types, env vars, validation)
+- `references/rest-api-deployment.md` (direct API create service: ownerId, request bodies, type mapping)
+- `references/mcp-integration.md` (Render MCP tools, mcporter usage, supported runtimes/plans/regions)
+- `references/post-deploy-checks.md` (verify deploy status and health via API)
+- `references/troubleshooting-basics.md` (build/startup/runtime failures)
+- `assets/` (example Blueprints: node-express.yaml, python-web.yaml, static-site.yaml, web-with-postgres.yaml)
 
 ## Blueprint Basics
 
@@ -174,6 +216,20 @@ services:
 - **Preview environments:** Root-level `previews.generation: off | manual | automatic`, optional `previews.expireAfterDays`. Per-service `previews.generation`, `previews.numInstances`, `previews.plan`.
 - **Projects/environments:** Root-level `projects` with `environments` (each lists `services`, `databases`, `envVarGroups`). Use for staging/production. Optional `ungrouped` for resources not in any environment.
 
+## Common Deployment Patterns
+
+### Full stack (web + Postgres + Key Value)
+
+Web service with `fromDatabase` for Postgres and `fromService` for Key Value. Add one `databases` entry and one `type: keyvalue` service; reference both from the web service `envVars`. See `assets/web-with-postgres.yaml` for Postgres; add a keyvalue service and `fromService` for Redis URL.
+
+### Microservices (API + worker + cron)
+
+Multiple services in one Blueprint: `type: web` for the API, `type: worker` for a background processor, `type: cron` for scheduled jobs. Share `envVarGroups` or repeat env vars; use `fromDatabase`/`fromService` for shared DB/Redis. All use the same `branch` and `buildCommand`/`startCommand` as appropriate per runtime.
+
+### Preview environments for PRs
+
+Set root-level `previews.generation: automatic` (or `manual`). Optionally `previews.expireAfterDays: 7`. Each PR gets a preview URL; per-service overrides with `previews.generation`, `previews.numInstances`, or `previews.plan` when needed.
+
 ## Plans (Services)
 
 `plan: free | starter | standard | pro | pro plus` (and for web/pserv/worker: `pro max`, `pro ultra`). Omit to keep existing or default to `starter` for new. Free not available for pserv, worker, cron.
@@ -182,7 +238,128 @@ services:
 
 - **Dashboard:** https://dashboard.render.com — New → Blueprint, connect repo, select `render.yaml`.
 - **Key Value:** https://dashboard.render.com/new/redis
-- **API:** https://api-docs.render.com — create/update services, validate Blueprint, etc.
+
+## API Access
+
+To use the Render API from the agent (verify deploys, trigger deploys, list services/logs):
+
+1. **Get an API key:** Dashboard → Account Settings → [API Keys](https://dashboard.render.com/u/*/settings#api-keys).
+2. **Store as env var:** Set `RENDER_API_KEY` in the environment (e.g. `skills.entries.render.env` or process env).
+3. **Authentication:** Use Bearer token: `Authorization: Bearer $RENDER_API_KEY` on all requests.
+4. **API docs:** https://api-docs.render.com — services, deploys, logs, validate Blueprint, etc.
+
+---
+
+# Deploy to Render (same flow as Codex render-deploy skill)
+
+Goal: get the app deployed by generating a Blueprint, then **one-click via Dashboard deeplink**; optionally **trigger or verify via API** when the user has `RENDER_API_KEY`.
+
+## Step 1: Analyze codebase and create render.yaml
+
+- Use `references/codebase-analysis.md` to determine runtime, build/start commands, env vars, and datastores.
+- Add or update `render.yaml` at repo root (see Blueprint sections above and `references/blueprint-spec.md`). Use `sync: false` for secrets. See `assets/` for examples.
+- **Validate** before asking the user to push:
+  - CLI: `render blueprints validate render.yaml` (install: `brew install render` or [Render CLI install](https://github.com/render-oss/cli)).
+  - Or API: POST to [Validate Blueprint](https://api-docs.render.com/reference/validate-blueprint) with the YAML body.
+- Fix any validation errors before proceeding.
+
+## Step 2: Commit and push (required)
+
+Render reads the Blueprint from the **Git remote**. The file must be committed and pushed.
+
+```bash
+git add render.yaml
+git commit -m "Add Render deployment configuration"
+git push origin main
+```
+
+If there is no Git remote, stop and ask the user to create a repo on GitHub/GitLab/Bitbucket, add it as `origin`, and push. Without a pushed repo, the Dashboard deeplink will not work.
+
+## Step 3: Dashboard deeplink (one-click deploy)
+
+Get the repo URL and build the Blueprint deeplink:
+
+```bash
+git remote get-url origin
+```
+
+If the URL is **SSH**, convert to **HTTPS** (Render needs HTTPS for the deeplink):
+
+| SSH | HTTPS |
+|-----|--------|
+| `git@github.com:user/repo.git` | `https://github.com/user/repo` |
+| `git@gitlab.com:user/repo.git` | `https://gitlab.com/user/repo` |
+| `git@bitbucket.org:user/repo.git` | `https://bitbucket.org/user/repo` |
+
+Pattern: replace `git@<host>:` with `https://<host>/`, remove `.git` suffix.
+
+**Deeplink format:**
+```
+https://dashboard.render.com/blueprint/new?repo=<REPO_HTTPS_URL>
+```
+
+Example: `https://dashboard.render.com/blueprint/new?repo=https://github.com/username/my-app`
+
+Give the user this checklist:
+
+1. Confirm `render.yaml` is in the repo at the root (they just pushed it).
+2. **Click the deeplink** to open Render Dashboard.
+3. Complete Git provider OAuth if prompted.
+4. Name the Blueprint (or accept default).
+5. **Fill in secret env vars** (those with `sync: false`).
+6. Review services/databases, then click **Apply** to deploy.
+
+Deployment starts automatically. User can monitor in the Dashboard.
+
+## Step 4: Verify deployment (optional, needs API key)
+
+If the user has set `RENDER_API_KEY` (e.g. in `skills.entries.render.env` or process env), the agent can verify after the user has applied the Blueprint:
+
+- **List services:** `GET https://api.render.com/v1/services` — Header: `Authorization: Bearer $RENDER_API_KEY`. Find the service by name.
+- **List deploys:** `GET https://api.render.com/v1/services/{serviceId}/deploys?limit=1` — Check for `status: "live"` to confirm success.
+- **Logs (if needed):** Render API or Dashboard → service → Logs.
+
+Example (exec tool or curl):
+```bash
+curl -s -H "Authorization: Bearer $RENDER_API_KEY" "https://api.render.com/v1/services" | head -100
+curl -s -H "Authorization: Bearer $RENDER_API_KEY" "https://api.render.com/v1/services/{serviceId}/deploys?limit=1"
+```
+
+For a short checklist and common fixes, use `references/post-deploy-checks.md` and `references/troubleshooting-basics.md`.
+
+## Triggering deploys (re-deploy without push)
+
+- **After repo is connected:** Pushes to the linked branch trigger automatic deploys when auto-deploy is on.
+- **Trigger via API:** With `RENDER_API_KEY`, trigger a new deploy:
+  - **POST** `https://api.render.com/v1/services/{serviceId}/deploys`
+  - Header: `Authorization: Bearer $RENDER_API_KEY`
+  - Optional body: `{ "clearCache": "do_not_clear" }` or `"clear"`
+- **Deploy hook (no API key):** Dashboard → service → Settings → Deploy Hook. User can set that URL as an env var (e.g. `RENDER_DEPLOY_HOOK_URL`); then the agent can run `curl -X POST "$RENDER_DEPLOY_HOOK_URL"` to trigger a deploy.
+
+So: **OpenClaw can deploy** by (1) creating `render.yaml`, (2) having the user push and click the Blueprint deeplink (one-click), and optionally (3) triggering or verifying deploys via API or deploy hook when credentials are available.
+
+## Render from OpenClaw (no native MCP)
+
+OpenClaw does not load MCP servers from config. Use one of:
+
+### Option A: REST API (recommended when API key is set)
+
+Use `RENDER_API_KEY` and the Render REST API (curl/exec): create services, list services, trigger deploys, list deploys, list logs. **Request bodies and endpoints:** `references/rest-api-deployment.md`.
+
+### Option B: MCP via mcporter (if installed)
+
+If the user has **mcporter** and Render configured (URL `https://mcp.render.com/mcp`, Bearer `$RENDER_API_KEY`), the agent can call Render MCP tools directly. **Tool list and example commands:** `references/mcp-integration.md`.
+
+Example:
+
+```bash
+mcporter call render.list_services
+mcporter call render.create_web_service name=my-api runtime=node buildCommand="npm ci" startCommand="npm start" repo=https://github.com/user/repo branch=main plan=free
+```
+
+Workspace must be set first (e.g. user: “Set my Render workspace to MyTeam”). Use `mcporter list render --schema` to see current tools and parameters.
+
+---
 
 ## Checklist for New Deploys
 
@@ -190,7 +367,7 @@ services:
 2. Use `sync: false` for secrets in **service** envVars only; tell user to set them in Dashboard. Never put secrets in env groups.
 3. For Key Value, set `ipAllowList` (required).
 4. Validate: `render blueprints validate render.yaml` or API.
-5. Point user to Dashboard to connect repo and deploy.
+5. User must commit and push, then use the **Blueprint deeplink** (`https://dashboard.render.com/blueprint/new?repo=<HTTPS_REPO_URL>`) to deploy. Optionally verify or re-deploy via API if `RENDER_API_KEY` is set.
 
 ## Rules
 
