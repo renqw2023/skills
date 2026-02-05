@@ -4,7 +4,7 @@ Free prompt injection defense for [OpenClaw](https://github.com/openclaw/opencla
 
 Scans runtime content for injection attempts, analyzes content boundaries, detects hidden instructions, and maintains command allowlists — the input/output boundary defense that other tools miss.
 
-**Looking for active blocking and sanitization?** See [openclaw-bastion-pro](https://github.com/AtlasPA/openclaw-bastion-pro) for runtime content sanitization, auto-quarantine, canary testing, and policy enforcement via hooks.
+**Want automated countermeasures?** Upgrade to Pro — runtime content sanitization, auto-quarantine, canary testing, and policy enforcement via hooks. [Get Pro access](https://github.com/sponsors/AtlasPA).
 
 ## How Bastion Differs from Warden
 
@@ -98,7 +98,7 @@ Run `allowlist` to create the default policy and view it. Edit the JSON file dir
 
 ## Free vs Pro
 
-| Feature | Free | [Pro](https://github.com/AtlasPA/openclaw-bastion-pro) |
+| Feature | Free | [Pro](https://github.com/sponsors/AtlasPA) |
 |---------|------|-----|
 | Injection pattern scanning | Yes | Yes |
 | Boundary analysis | Yes | Yes |
