@@ -1,0 +1,11 @@
+{
+  "owner": "daaab",
+  "slug": "basename-agent",
+  "displayName": "Basename Agent",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770292759569,
+    "commit": null
+  },
+  "history": []
+}
