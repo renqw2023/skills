@@ -1,11 +1,17 @@
 {
   "owner": "iamanorange",
   "slug": "midea-ac",
-  "displayName": "Media",
+  "displayName": "Midea Air Conditioners",
   "latest": {
-    "version": "0.0.2",
-    "publishedAt": 1770234032038,
-    "commit": "https://github.com/clawdbot/skills/commit/0b22683ee7338955a3e62727ab12f1cb94fa62a2"
+    "version": "0.0.3",
+    "publishedAt": 1770285050486,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.0.2",
+      "publishedAt": 1770234032038,
+      "commit": "https://github.com/clawdbot/skills/commit/0b22683ee7338955a3e62727ab12f1cb94fa62a2"
+    }
+  ]
 }
