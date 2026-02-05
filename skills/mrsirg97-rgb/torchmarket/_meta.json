@@ -3,9 +3,15 @@
   "slug": "torchmarket",
   "displayName": "torch.market",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1770248760451,
-    "commit": "https://github.com/clawdbot/skills/commit/467de7e9685b12521d0c2ea8c8fbbd907c7fcdb9"
+    "version": "1.1.0",
+    "publishedAt": 1770328986120,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1770248760451,
+      "commit": "https://github.com/clawdbot/skills/commit/467de7e9685b12521d0c2ea8c8fbbd907c7fcdb9"
+    }
+  ]
 }
