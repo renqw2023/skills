@@ -362,7 +362,7 @@ issues = requests.get(
 - JQL queries must be bounded (e.g., `project=KEY`)
 - Use URL encoding for JQL query parameters
 - Update, Delete, Transition return HTTP 204 on success
-- Agile API requires additional OAuth scopes
+- Agile API requires additional OAuth scopes. If you receive a scope error, contact Maton support at support@maton.ai with the specific operations/APIs you need and your use-case
 - IMPORTANT: When using curl commands, use `curl -g` when URLs contain brackets (`fields[]`, `sort[]`, `records[]`) to disable glob parsing
 - IMPORTANT: When piping curl output to `jq` or other commands, environment variables like `$MATON_API_KEY` may not expand correctly in some shell environments. You may get "Invalid API key" errors when piping.
 

@@ -3,11 +3,16 @@
   "slug": "jira-api",
   "displayName": "Jira",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1770343910306,
-    "commit": "https://github.com/openclaw/skills/commit/1e0efff6acca76d29ed25e27b80e4a3ce0efd7ce"
+    "version": "1.0.3",
+    "publishedAt": 1770380319627,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1770343910306,
+      "commit": "https://github.com/openclaw/skills/commit/1e0efff6acca76d29ed25e27b80e4a3ce0efd7ce"
+    },
     {
       "version": "1.0.1",
       "publishedAt": 1770117621477,
