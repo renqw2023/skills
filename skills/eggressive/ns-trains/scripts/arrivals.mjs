@@ -4,14 +4,15 @@
  * Usage: node arrivals.mjs --station "Station Name"
  */
 
-const API_KEY = process.env.NS_API_KEY;
+import { nsFetch, requireNsSubscriptionKey } from './ns-api.mjs';
+
+const NS_SUBSCRIPTION_KEY = (() => {
+  try { return requireNsSubscriptionKey(); }
+  catch (e) { console.error(`❌ ${e.message}`); process.exit(1); }
+})();
+
 const STATIONS_URL = 'https://gateway.apiportal.ns.nl/reisinformatie-api/api/v2/stations';
 const ARRIVALS_URL = 'https://gateway.apiportal.ns.nl/reisinformatie-api/api/v2/arrivals';
-
-if (!API_KEY) {
-  console.error('❌ NS_API_KEY not set');
-  process.exit(1);
-}
 
 const args = process.argv.slice(2);
 const getArg = (flag) => {
@@ -36,8 +37,8 @@ Examples:
 }
 
 async function getStationCode(name) {
-  const res = await fetch(`${STATIONS_URL}?q=${encodeURIComponent(name)}`, {
-    headers: { 'Ocp-Apim-Subscription-Key': API_KEY }
+  const res = await nsFetch(`${STATIONS_URL}?q=${encodeURIComponent(name)}`, {
+    subscriptionKey: NS_SUBSCRIPTION_KEY,
   });
   const data = await res.json();
   return data.payload?.[0]?.code || null;
@@ -52,8 +53,8 @@ async function getArrivals() {
       process.exit(1);
     }
 
-    const res = await fetch(`${ARRIVALS_URL}?station=${code}&maxJourneys=${limit}`, {
-      headers: { 'Ocp-Apim-Subscription-Key': API_KEY, 'Accept': 'application/json' }
+    const res = await nsFetch(`${ARRIVALS_URL}?station=${code}&maxJourneys=${limit}`, {
+      subscriptionKey: NS_SUBSCRIPTION_KEY,
     });
 
     if (!res.ok) {

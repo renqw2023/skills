@@ -4,14 +4,14 @@
  * Usage: node departures.mjs --station "Station Name"
  */
 
-const API_KEY = process.env.NS_API_KEY;
-const BASE_URL = 'https://gateway.apiportal.ns.nl/reisinformatie-api/api/v2/departures';
+import { nsFetch, requireNsSubscriptionKey } from './ns-api.mjs';
 
-if (!API_KEY) {
-  console.error('❌ NS_API_KEY not set. Export it first:');
-  console.error('   export NS_API_KEY="your-key"');
-  process.exit(1);
-}
+const NS_SUBSCRIPTION_KEY = (() => {
+  try { return requireNsSubscriptionKey(); }
+  catch (e) { console.error(`❌ ${e.message}. Missing subscription key env var; set it and retry.`); process.exit(1); }
+})();
+
+const BASE_URL = 'https://gateway.apiportal.ns.nl/reisinformatie-api/api/v2/departures';
 
 // Parse arguments
 const args = process.argv.slice(2);
@@ -37,20 +37,53 @@ Examples:
   process.exit(1);
 }
 
+function looksLikeStationCode(s) {
+  return /^[A-Z0-9]{3,6}$/.test(s);
+}
+
+async function resolveStationCode(input) {
+  if (looksLikeStationCode(input)) return input;
+
+  // Use stations endpoint to resolve display name -> code
+  const stationsUrl = `https://gateway.apiportal.ns.nl/reisinformatie-api/api/v2/stations?q=${encodeURIComponent(input)}&limit=10`;
+  const res = await nsFetch(stationsUrl, { subscriptionKey: NS_SUBSCRIPTION_KEY });
+
+  if (!res.ok) {
+    const error = await res.text();
+    throw new Error(`Stations lookup failed (${res.status}): ${error}`);
+  }
+
+  const data = await res.json();
+  const stations = data.payload || [];
+  if (stations.length === 0) throw new Error(`Station not found: ${input}`);
+
+  const norm = (s) => (s || '').toString().trim().toLowerCase();
+  const wanted = norm(input);
+
+  const exact = stations.find(s => {
+    const name = s.namen?.lang || s.namen?.middel || s.code;
+    return norm(name) === wanted;
+  });
+
+  return (exact || stations[0]).code;
+}
+
 async function getDepartures() {
+  const stationCode = await resolveStationCode(station);
+  if (stationCode !== station) {
+    console.log(`🔎 Resolved "${station}" → ${stationCode}`);
+  }
+
   const params = new URLSearchParams({
-    station: station,
+    station: stationCode,
     maxJourneys: limit.toString()
   });
 
   const url = `${BASE_URL}?${params}`;
   
   try {
-    const response = await fetch(url, {
-      headers: {
-        'Ocp-Apim-Subscription-Key': API_KEY,
-        'Accept': 'application/json'
-      }
+    const response = await nsFetch(url, {
+      subscriptionKey: NS_SUBSCRIPTION_KEY,
     });
 
     if (!response.ok) {

@@ -4,14 +4,14 @@
  * Usage: node journey.mjs --from "Station A" --to "Station B"
  */
 
-const API_KEY = process.env.NS_API_KEY;
-const BASE_URL = 'https://gateway.apiportal.ns.nl/reisinformatie-api/api/v3/trips';
+import { nsFetch, requireNsSubscriptionKey } from './ns-api.mjs';
 
-if (!API_KEY) {
-  console.error('❌ NS_API_KEY not set. Export it first:');
-  console.error('   export NS_API_KEY="your-key"');
-  process.exit(1);
-}
+const NS_SUBSCRIPTION_KEY = (() => {
+  try { return requireNsSubscriptionKey(); }
+  catch (e) { console.error(`❌ ${e.message}. Missing subscription key env var; set it and retry.`); process.exit(1); }
+})();
+
+const BASE_URL = 'https://gateway.apiportal.ns.nl/reisinformatie-api/api/v3/trips';
 
 // Parse arguments
 const args = process.argv.slice(2);
@@ -51,11 +51,8 @@ async function planJourney() {
   const url = `${BASE_URL}?${params}`;
   
   try {
-    const response = await fetch(url, {
-      headers: {
-        'Ocp-Apim-Subscription-Key': API_KEY,
-        'Accept': 'application/json'
-      }
+    const response = await nsFetch(url, {
+      subscriptionKey: NS_SUBSCRIPTION_KEY,
     });
 
     if (!response.ok) {

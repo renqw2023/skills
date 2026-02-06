@@ -8,7 +8,13 @@
  *   NS_WORK_STATION - Your work station (e.g., "Amsterdam Zuid")
  */
 
-const API_KEY = process.env.NS_API_KEY;
+import { nsFetch, requireNsSubscriptionKey } from './ns-api.mjs';
+
+const NS_SUBSCRIPTION_KEY = (() => {
+  try { return requireNsSubscriptionKey(); }
+  catch (e) { console.error(`❌ ${e.message}`); process.exit(1); }
+})();
+
 const BASE_URL = 'https://gateway.apiportal.ns.nl/reisinformatie-api/api/v3/trips';
 
 // Commute settings from environment
@@ -17,10 +23,7 @@ const COMMUTE = {
   work: process.env.NS_WORK_STATION || ''
 };
 
-if (!API_KEY) {
-  console.error('❌ NS_API_KEY not set');
-  process.exit(1);
-}
+// NS_SUBSCRIPTION_KEY is validated at startup via requireNsSubscriptionKey()
 
 const args = process.argv.slice(2);
 const toWork = args.includes('--to-work') || args.includes('-w') || args.includes('work');
@@ -37,7 +40,7 @@ Directions:
   --to-home, -h, home    Work → Home
 
 Configuration (environment variables):
-  NS_API_KEY        Your NS API subscription key (required)
+  NS_SUBSCRIPTION_KEY        Your NS API subscription key (required)
   NS_HOME_STATION   Your home station (e.g., "Almere Centrum")
   NS_WORK_STATION   Your work station (e.g., "Amsterdam Zuid")
 
@@ -74,8 +77,8 @@ async function planCommute() {
   });
 
   try {
-    const res = await fetch(`${BASE_URL}?${params}`, {
-      headers: { 'Ocp-Apim-Subscription-Key': API_KEY, 'Accept': 'application/json' }
+    const res = await nsFetch(`${BASE_URL}?${params}`, {
+      subscriptionKey: NS_SUBSCRIPTION_KEY,
     });
 
     if (!res.ok) {

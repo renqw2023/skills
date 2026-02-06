@@ -4,13 +4,14 @@
  * Usage: node stations.mjs --search "query"
  */
 
-const API_KEY = process.env.NS_API_KEY;
-const BASE_URL = 'https://gateway.apiportal.ns.nl/reisinformatie-api/api/v2/stations';
+import { nsFetch, requireNsSubscriptionKey } from './ns-api.mjs';
 
-if (!API_KEY) {
-  console.error('❌ NS_API_KEY not set');
-  process.exit(1);
-}
+const NS_SUBSCRIPTION_KEY = (() => {
+  try { return requireNsSubscriptionKey(); }
+  catch (e) { console.error(`❌ ${e.message}`); process.exit(1); }
+})();
+
+const BASE_URL = 'https://gateway.apiportal.ns.nl/reisinformatie-api/api/v2/stations';
 
 const args = process.argv.slice(2);
 const getArg = (flag) => {
@@ -37,8 +38,8 @@ Examples:
 
 async function searchStations() {
   try {
-    const res = await fetch(`${BASE_URL}?q=${encodeURIComponent(query)}&limit=${limit}`, {
-      headers: { 'Ocp-Apim-Subscription-Key': API_KEY, 'Accept': 'application/json' }
+    const res = await nsFetch(`${BASE_URL}?q=${encodeURIComponent(query)}&limit=${limit}`, {
+      subscriptionKey: NS_SUBSCRIPTION_KEY,
     });
 
     if (!res.ok) {
