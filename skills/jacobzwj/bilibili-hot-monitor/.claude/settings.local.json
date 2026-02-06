@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(test:*)",
+      "Bash(python3:*)",
+      "Bash(where:*)",
+      "Bash(python _run_test.py:*)"
+    ]
+  }
+}

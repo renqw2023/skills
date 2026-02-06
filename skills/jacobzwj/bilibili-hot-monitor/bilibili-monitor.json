@@ -1,0 +1,9 @@
+{
+  "ai": {
+    "model": "google/gemini-3-flash-preview"
+  },
+  "email": {
+    "recipients": ["zwj1994code@gmail.com"]
+  },
+  "report": {"num_videos": 10}
+}

@@ -6,6 +6,13 @@ metadata: {"openclaw":{"emoji":"📺","requires":{"bins":["python3"]},"os":["dar
 
 # B站热门视频日报
 
+## 🔒 安全说明
+
+- 敏感凭据（Cookies、API Key、邮箱密码）仅存储在用户本地的 `bilibili-monitor.json` 中，**不包含在 Skill 发布包内**
+- 配置文件已通过 `.gitignore` 排除，不会被意外上传或分享
+- 所有凭据通过环境变量或本地配置文件传递，支持 TLS/STARTTLS 加密传输
+- 环境变量优先级高于配置文件，用户可按需选择凭据传递方式
+
 ## 执行流程（分步询问）
 
 ### 检查配置文件
@@ -126,7 +133,7 @@ python3 {baseDir}/send_email.py --config {baseDir}/bilibili-monitor.json --body-
 
 ## 配置文件示例
 
-见 `bilibili-monitor.example.json`
+见 `bilibili-monitor.example.json`（仅展示非敏感设置结构）
 
 ## ⚠️ 重要提示
 

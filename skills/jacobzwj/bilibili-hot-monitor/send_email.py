@@ -310,9 +310,9 @@ def main():
     if args.html:
         body = markdown_to_html(body)
 
-    # SMTP 配置（优先命令行参数）
-    smtp_email = args.smtp_email or email_config.get('smtp_email')
-    smtp_password = args.smtp_password or email_config.get('smtp_password')
+    # SMTP 配置（优先级：命令行参数 > 环境变量 > 配置文件）
+    smtp_email = args.smtp_email or os.environ.get('SMTP_EMAIL') or email_config.get('smtp_email')
+    smtp_password = args.smtp_password or os.environ.get('SMTP_PASSWORD') or email_config.get('smtp_password')
     
     success = send_email(
         to_emails=to_emails,

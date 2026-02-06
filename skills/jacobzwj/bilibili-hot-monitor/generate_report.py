@@ -13,6 +13,7 @@ import argparse
 import datetime
 import io
 import json
+import os
 import sys
 import time
 from pathlib import Path
@@ -700,8 +701,8 @@ def main():
         print(f"正在读取配置文件: {args.config}")
         config = load_config(args.config)
     
-    # 解析 cookies（优先使用配置文件）
-    cookies_str = args.cookies or config.get('bilibili', {}).get('cookies', '')
+    # 解析 cookies（优先级：命令行参数 > 环境变量 > 配置文件）
+    cookies_str = args.cookies or os.environ.get('BILIBILI_COOKIES', '') or config.get('bilibili', {}).get('cookies', '')
     all_cookies = None
     if cookies_str:
         all_cookies = parse_cookies(cookies_str)
@@ -719,9 +720,9 @@ def main():
         print("错误：必须提供 --config、--cookies 或 --sessdata 参数")
         sys.exit(1)
     
-    # AI 配置（优先使用命令行参数，其次配置文件）
+    # AI 配置（优先级：命令行参数 > 环境变量 > 配置文件）
     ai_config = config.get('ai', {})
-    openrouter_key = args.openrouter_key or ai_config.get('openrouter_key', '')
+    openrouter_key = args.openrouter_key or os.environ.get('OPENROUTER_API_KEY', '') or ai_config.get('openrouter_key', '')
     model = args.model or ai_config.get('model', 'google/gemini-3-flash-preview')
 
     # 创建 API 客户端（传入所有 cookies 以确保完整性）
