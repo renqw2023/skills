@@ -1,6 +1,6 @@
 ---
 name: muse
-description: "AI coding analytics and agent orchestration via the `tribe` CLI. Search sessions, manage knowledge, orchestrate agents with MUSE and CIRCUIT. Deploy your own instance at tribeclaw.com in minutes."
+description: "Give ClawBot access to your team's entire coding history. Muse connects your past sessions, team knowledge, and project context—so ClawBot can actually help design features, mediate team discussions, and work autonomously across your codebase. Deploy at tribeclaw.com."
 metadata:
   moltbot:
     requires:
