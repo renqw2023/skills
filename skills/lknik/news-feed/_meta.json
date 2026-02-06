@@ -1,0 +1,11 @@
+{
+  "owner": "lknik",
+  "slug": "news-feed",
+  "displayName": "Simple news feed reader (RSS)",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770305476388,
+    "commit": null
+  },
+  "history": []
+}
