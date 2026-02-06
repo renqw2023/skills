@@ -1,0 +1,11 @@
+{
+  "owner": "jgm2025",
+  "slug": "linux-patcher",
+  "displayName": "Linux Patcher",
+  "latest": {
+    "version": "3.0.2",
+    "publishedAt": 1770320583384,
+    "commit": null
+  },
+  "history": []
+}
