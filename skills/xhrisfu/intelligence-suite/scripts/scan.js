@@ -15,7 +15,6 @@
 const Parser = require('rss-parser');
 const axios = require('axios');
 const cheerio = require('cheerio');
-const { execSync } = require('child_process');
 
 const parser = new Parser();
 
