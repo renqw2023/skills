@@ -1,5 +1,6 @@
 ---
 name: fal
+version: 1.0.1
 description: Search, explore, and run fal.ai generative AI models (image generation, video, audio, 3D). Use when user wants to generate images, videos, or other media with AI models.
 allowed-tools: Bash(curl *), Bash(jq *), Bash(mkdir *), Read, Write
 argument-hint: "<command> [model_id] [--param value]"
@@ -7,7 +8,7 @@ argument-hint: "<command> [model_id] [--param value]"
 
 # fal.ai Model API Skill
 
-Run 600+ generative AI models on fal.ai.
+Run 1000+ generative AI models on fal.ai.
 
 ## Arguments
 

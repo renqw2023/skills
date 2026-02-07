@@ -1,11 +1,17 @@
 {
   "owner": "apekshik",
   "slug": "fal",
-  "displayName": "fal.ai skill",
+  "displayName": "fal",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1770155840158,
-    "commit": "https://github.com/clawdbot/skills/commit/c2dd893eda0ac2c54d2783b03bd63b8fceb06d2b"
+    "version": "1.0.1",
+    "publishedAt": 1770401688601,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1770155840158,
+      "commit": "https://github.com/clawdbot/skills/commit/c2dd893eda0ac2c54d2783b03bd63b8fceb06d2b"
+    }
+  ]
 }
