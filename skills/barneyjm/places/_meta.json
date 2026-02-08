@@ -3,11 +3,16 @@
   "slug": "places",
   "displayName": "Places",
   "latest": {
-    "version": "0.1.3",
-    "publishedAt": 1770131789104,
-    "commit": "https://github.com/clawdbot/skills/commit/6596ba831385445ddf895e081df1f66ba60bfa9e"
+    "version": "2.0.0",
+    "publishedAt": 1770520167636,
+    "commit": null
   },
   "history": [
+    {
+      "version": "0.1.3",
+      "publishedAt": 1770131789104,
+      "commit": "https://github.com/clawdbot/skills/commit/6596ba831385445ddf895e081df1f66ba60bfa9e"
+    },
     {
       "version": "0.1.1",
       "publishedAt": 1769878091298,
