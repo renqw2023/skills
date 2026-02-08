@@ -1,0 +1,11 @@
+{
+  "owner": "antgly",
+  "slug": "chromecast-with-google-tv",
+  "displayName": "Chromecast With Google Tv",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1770510363131,
+    "commit": null
+  },
+  "history": []
+}
