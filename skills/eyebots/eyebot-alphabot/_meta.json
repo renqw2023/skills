@@ -1,0 +1,11 @@
+{
+  "owner": "eyebots",
+  "slug": "eyebot-alphabot",
+  "displayName": "AlphaBot",
+  "latest": {
+    "version": "1.0.3",
+    "publishedAt": 1770580790510,
+    "commit": null
+  },
+  "history": []
+}

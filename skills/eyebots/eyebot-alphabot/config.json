@@ -1,0 +1,104 @@
+{
+  "agent_id": "alphabot",
+  "name": "AlphaBot",
+  "version": "1.0.0",
+  "description": "Market intelligence, price tracking, and alpha discovery",
+  "enabled": true,
+  "triggers": {
+    "keywords": [
+      "price",
+      "chart",
+      "market",
+      "alpha",
+      "trending",
+      "whale",
+      "alphabot",
+      "price alert",
+      "set alert",
+      "track token",
+      "new launches",
+      "gem finder",
+      "smart money",
+      "hot tokens"
+    ],
+    "commands": ["/price", "/alert", "/trending", "/whale", "/alpha"],
+    "regex_patterns": [
+      "price.*of",
+      "what.*price",
+      "alert.*when",
+      "track.*token",
+      "trending.*token"
+    ]
+  },
+  "pricing": {
+    "payment_wallet": "0x4A9583c6B09154bD88dEE64F5249df0C5EC99Cf9",
+    "accepted_tokens": ["ETH"],
+    "plans": {
+      "trial": {
+        "duration_days": 2,
+        "price_eth": 0.010,
+        "display": "AlphaBot: 0.010 ETH (2-day) | 5 ETH (lifetime)",
+        "features": ["price_check", "basic_alerts", "single_chain"]
+      },
+      "lifetime": {
+        "duration_days": -1,
+        "price_eth": 5.0,
+        "display": "AlphaBot: 0.010 ETH (2-day) | 5 ETH (lifetime)",
+        "features": ["all_chains", "unlimited_alerts", "whale_tracking", "new_launches", "trending", "portfolio"]
+      }
+    }
+  },
+  "chains": {
+    "ethereum": {
+      "chain_id": 1,
+      "enabled": true,
+      "rpc_env": "ETH_RPC_URL"
+    },
+    "base": {
+      "chain_id": 8453,
+      "enabled": true,
+      "rpc_env": "BASE_RPC_URL"
+    },
+    "polygon": {
+      "chain_id": 137,
+      "enabled": true,
+      "rpc_env": "POLYGON_RPC_URL"
+    },
+    "arbitrum": {
+      "chain_id": 42161,
+      "enabled": true,
+      "rpc_env": "ARBITRUM_RPC_URL"
+    }
+  },
+  "data_sources": {
+    "coingecko": {
+      "enabled": true,
+      "api_url": "https://api.coingecko.com/api/v3",
+      "api_key_env": "COINGECKO_API_KEY"
+    },
+    "dexscreener": {
+      "enabled": true,
+      "api_url": "https://api.dexscreener.com/latest"
+    },
+    "defined": {
+      "enabled": true,
+      "api_url": "https://graph.defined.fi/graphql",
+      "api_key_env": "DEFINED_API_KEY"
+    }
+  },
+  "alerts": {
+    "types": ["price_above", "price_below", "percent_change", "whale_move", "new_launch"],
+    "max_alerts_per_user": 50,
+    "check_interval_seconds": 30,
+    "notification_channels": ["telegram", "discord", "webhook"]
+  },
+  "whale_tracking": {
+    "min_usd_value": 50000,
+    "tracked_wallets_limit": 100
+  },
+  "automation": {
+    "cache_prices": true,
+    "cache_ttl_seconds": 10,
+    "rate_limit_per_minute": 60
+  }
+}
