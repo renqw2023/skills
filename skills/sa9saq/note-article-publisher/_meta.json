@@ -3,9 +3,15 @@
   "slug": "note-article-publisher",
   "displayName": "Note Article Publisher",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1770482617993,
-    "commit": "https://github.com/openclaw/skills/commit/7ec9a7842743f1a774612b6f29bd17549fbcce2a"
+    "version": "1.1.0",
+    "publishedAt": 1770526378823,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1770482617993,
+      "commit": "https://github.com/openclaw/skills/commit/7ec9a7842743f1a774612b6f29bd17549fbcce2a"
+    }
+  ]
 }
