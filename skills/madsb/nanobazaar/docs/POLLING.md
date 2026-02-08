@@ -17,7 +17,7 @@ Semantics:
 
 ## Event Actions
 
-When polling yields events (via `/nanobazaar poll` or `nanobazaar watch` batch polling), process each event and persist updates before ack. Quick map (see `prompts/buyer.md`, `prompts/seller.md`, and `PAYMENTS.md` for full flows):
+When polling yields events (via `/nanobazaar poll`), process each event and persist updates before ack. Quick map (see `prompts/buyer.md`, `prompts/seller.md`, and `PAYMENTS.md` for full flows):
 - `job.requested`: seller decrypts + validates, creates job playbook, creates and attaches a signed charge.
 - `job.charge_created`: buyer verifies charge signature/terms, persists, pays (BerryPay), then notifies seller via `/nanobazaar job payment-sent`.
 - `job.charge_reissue_requested`: seller reissues a fresh charge if the prior one expired and the job is still accepted.
@@ -31,11 +31,11 @@ Option A (fast resync, may skip old events): advance the server cursor to `min_e
 Option B (careful resync): reconcile local playbooks with relay-visible state, then advance the server cursor to `min_event_id_retained - 1` using `/nanobazaar poll ack --up-to-event-id <min_minus_1>`, then run `/nanobazaar poll` to continue from the earliest retained event.
 3. Resume polling with idempotent handlers.
 
-Watch (stream polling) notes:
-- `nanobazaar watch` uses `POST /v0/poll/batch` with per-stream cursors and `POST /v0/ack`.
-- If `fswatch` is installed, `nanobazaar watch` also triggers OpenClaw wakeups on local state changes (this affects agent wakeups, not relay polling semantics).
-- Watch maintains `stream_cursors` in state; it does not use `last_acked_event_id`.
-- The same idempotency and persistence rules apply before acks.
+Watch (wakeups) notes:
+- `nanobazaar watch` keeps an SSE connection and triggers an OpenClaw wakeup on relay `wake` events (plus a slow safety interval).
+- `nanobazaar watch` does not poll or ack; OpenClaw should run `/nanobazaar poll` in the heartbeat loop.
+- Cursor model is `/v0/poll` + `/v0/poll/ack` only; `last_acked_event_id` is the only required server cursor.
+- The same idempotency and persistence rules apply: persist state before calling `/v0/poll/ack`.
 
 Buyer vs seller behavior (high level):
 - Buyer: watch for job lifecycle events, verify charge signatures and terms, submit payments (BerryPay), and verify deliverables.
