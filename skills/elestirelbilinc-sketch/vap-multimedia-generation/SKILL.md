@@ -59,7 +59,7 @@ curl -s -X POST https://api.vapagent.com/v3/tasks \
   -d '{"type":"TYPE","params":{"description":"PROMPT"}}'
 ```
 
-Returns `{"task_id":"UUID","status":"pending","estimated_cost":"0.1800"}`.
+Returns `{"task_id":"UUID","status":"pending"}`.
 
 ### Poll Result
 
@@ -78,7 +78,7 @@ Returns `{"status":"completed","result":{"output_url":"https://..."}}` when done
 |-------|------|---------|-------------|
 | `description` | string | required | Image description |
 | `aspect_ratio` | enum | `1:1` | `1:1`, `16:9`, `9:16`, `4:3`, `3:4`, `3:2`, `2:3`, `21:9`, `9:21` |
-| `quality` | enum | `standard` | `standard` ($0.18) or `high` ($0.27) |
+| `quality` | enum | `standard` | `standard` or `high` |
 
 **Tip:** Aspect ratio is auto-detected from prompt text. "a wide landscape photo" → 16:9 automatically.
 
@@ -90,7 +90,7 @@ Returns `{"status":"completed","result":{"output_url":"https://..."}}` when done
 | `duration` | int | `8` | `4`, `6`, or `8` seconds |
 | `aspect_ratio` | enum | `16:9` | `16:9` (landscape) or `9:16` (portrait) |
 | `generate_audio` | bool | `true` | Include audio track |
-| `resolution` | enum | `720p` | `720p` or `1080p` (+33% cost) |
+| `resolution` | enum | `720p` | `720p` or `1080p` |
 | `negative_prompt` | string | `""` | What to avoid |
 
 #### Music (`music` or `music_generation`) — Tier 2+
@@ -100,22 +100,11 @@ Returns `{"status":"completed","result":{"output_url":"https://..."}}` when done
 | `description` | string | required | Music description (genre, mood, instruments) |
 | `duration` | int | `120` | 30-480 seconds |
 | `instrumental` | bool | `false` | No vocals |
-| `audio_format` | enum | `mp3` | `mp3` or `wav` (lossless, +$0.10) |
+| `audio_format` | enum | `mp3` | `mp3` or `wav` (lossless) |
 | `loudness_preset` | enum | `streaming` | `streaming` (-14 LUFS), `apple` (-16 LUFS), `broadcast` (-23 LUFS) |
 | `style` | string | none | Genre/style (max 1000 chars) |
 | `title` | string | none | Song title |
 | `custom_mode` | bool | `false` | Enable custom lyrics + style mode |
-
-### Pricing
-
-| Type | Cost |
-|------|------|
-| Image (standard) | $0.18 |
-| Image (high quality) | $0.27 |
-| Video (720p, 8s, audio) | $4.80 |
-| Video (720p, 8s, no audio) | $2.40 |
-| Music | $0.68 |
-| Music (WAV) | $0.78 |
 
 ### Full Mode Errors
 
@@ -147,14 +136,14 @@ curl -s https://api.vapagent.com/v3/operations/OPERATION_ID \
 
 ### Available Operations
 
-| Operation | Cost | Required Params | Description |
-|-----------|------|-----------------|-------------|
-| `inpaint` | $0.15 | `media_url`, `prompt` | AI editing (optional: `mask_url`) |
-| `ai_edit` | $0.15 | `media_url`, `prompt` | AI-powered image editing with text instructions (optional: `additional_images`) |
-| `background_remove` | $0.10 | `media_url` | Remove background |
-| `upscale` | $0.15 | `media_url` | Enhance resolution (`scale`: 2 or 4) |
-| `video_trim` | $0.05 | `media_url`, `start_time`, `end_time` | Trim video |
-| `video_merge` | $0.05 | `media_urls` (array, min 2) | Merge video clips |
+| Operation | Required Params | Description |
+|-----------|-----------------|-------------|
+| `inpaint` | `media_url`, `prompt` | AI editing (optional: `mask_url`) |
+| `ai_edit` | `media_url`, `prompt` | AI-powered image editing with text instructions (optional: `additional_images`) |
+| `background_remove` | `media_url` | Remove background |
+| `upscale` | `media_url` | Enhance resolution (`scale`: 2 or 4) |
+| `video_trim` | `media_url`, `start_time`, `end_time` | Trim video |
+| `video_merge` | `media_urls` (array, min 2) | Merge video clips |
 
 ---
 
@@ -252,13 +241,13 @@ Returns all assets when complete:
 {"status":"completed","outputs":{"video":"https://...","music":"https://...","thumbnail":"https://..."}}
 ```
 
-| Preset | Includes | Cost |
-|--------|----------|------|
-| `streaming_campaign` | video + music + thumbnail + metadata | $5.90 |
-| `full_production` | video + music + thumbnail + metadata + SEO | $7.90 |
-| `video.basic` | video only | $1.96 |
-| `music.basic` | music only | $0.68 |
-| `image.basic` | image only | $0.18 |
+| Preset | Includes |
+|--------|----------|
+| `streaming_campaign` | video + music + thumbnail + metadata |
+| `full_production` | video + music + thumbnail + metadata + SEO |
+| `video.basic` | video only |
+| `music.basic` | music only |
+| `image.basic` | image only |
 
 ---
 
