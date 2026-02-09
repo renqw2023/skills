@@ -1,27 +1,26 @@
 ---
 name: visibleai-audit
-description: Audit brand visibility across AI search engines (ChatGPT, Perplexity, Gemini). Get a GEO score with actionable recommendations.
-version: 1.0.0
+description: GEO audit API for AI agents. Check brand visibility across ChatGPT, Perplexity, Gemini. Pay $0.99 USDC via x402. No API keys needed.
+version: 1.1.0
 ---
 
 # VisibleAI Audit
 
-Check how visible any brand is across AI search engines. Returns a GEO (Generative Engine Optimization) score with engine-by-engine breakdown and recommendations.
+Check how visible any brand is across AI search engines. Returns a GEO (Generative Engine Optimization) score with full optimization report.
 
-## Usage
-
-Run a GEO audit via the VisibleAI API:
+## Quick Start
 
 ```bash
+# Agent request → returns 402 with payment instructions
 curl -X POST https://visibleai.space/api/v1/audit \
   -H "Content-Type: application/json" \
-  -d '{"brand": "BRAND_NAME", "website": "https://example.com", "industry": "INDUSTRY"}'
-```
+  -d '{"brand": "BRAND_NAME", "industry": "INDUSTRY"}'
 
-Or use the script:
-
-```bash
-python3 scripts/audit.py "Brand Name" --website "https://example.com" --industry "SaaS"
+# Pay 0.99 USDC on Base, then retry with tx hash
+curl -X POST https://visibleai.space/api/v1/audit \
+  -H "Content-Type: application/json" \
+  -H "X-Payment-Tx: 0xYOUR_TX_HASH" \
+  -d '{"brand": "BRAND_NAME", "industry": "INDUSTRY"}'
 ```
 
 ## Parameters
@@ -30,28 +29,50 @@ python3 scripts/audit.py "Brand Name" --website "https://example.com" --industry
 |-------|------|----------|-------------|
 | brand | string | Yes | Brand or company name |
 | website | string | No | Website URL to analyze |
-| industry | string | No | Industry or vertical |
+| industry | string | No | Industry or vertical (default: "general") |
 | competitors | string[] | No | Up to 5 competitor names |
 
 ## Response
 
-Returns JSON with:
+Full optimization report (JSON):
 - `overall_score` (0-100) and letter `grade`
-- Per-engine scores (Gemini, Perplexity)
+- Per-engine scores (Gemini, Perplexity, and more)
 - Category breakdown (discovery, branded, comparison)
 - Site analysis (schema markup, meta tags)
-- Actionable `recommendations`
+- Actionable `recommendations` — specific fixes to improve visibility
 
-## Free Tier
+## Payment
 
-1 audit per day at visibleai.space — no signup needed.
+- **Price:** $0.99 USDC per audit
+- **Network:** Base (chain ID 8453)
+- **Protocol:** x402
+- **Wallet:** `0xB33FF8b810670dFe8117E5936a1d5581A05f350D`
+- **No API keys required** — pay per query, no accounts
 
-## API (Pay-per-query)
+## Payment Flow
 
-$1 per audit via x402 protocol (USDC on Base network). No API keys required.
+1. POST to `/api/v1/audit` → receive 402 with payment details
+2. Send 0.99 USDC to wallet on Base
+3. Retry same request with `X-Payment-Tx: <tx_hash>` header
+4. Receive full audit response
 
-## Learn More
+## MCP Server
+
+Also available as an MCP tool:
+
+```json
+{
+  "visibleai": {
+    "url": "https://visibleai.space/api/mcp"
+  }
+}
+```
+
+Tool: `visibleai_audit(brand, website?, industry?)`
+
+## Links
 
 - Website: https://visibleai.space
 - API Docs: https://visibleai.space/api-docs
-- Courses: https://visibleai.space/courses
+- MCP: https://visibleai.space/api/mcp
+- ClawHub: visibleai-audit
