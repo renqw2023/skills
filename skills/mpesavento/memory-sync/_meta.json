@@ -1,0 +1,11 @@
+{
+  "owner": "mpesavento",
+  "slug": "memory-sync",
+  "displayName": "Automated daily memory backfill for OpenClaw sessions",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1770592876176,
+    "commit": null
+  },
+  "history": []
+}
