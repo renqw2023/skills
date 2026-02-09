@@ -8,6 +8,7 @@ def ai_notes_task_query(api_key: str, task_id: str):
     url = "https://qianfan.baidubce.com/v2/tools/ai_note/query"
     headers = {
         "Authorization": "Bearer %s" % api_key,
+        "X-Appbuilder-From": "openclaw",
         "Content-Type": "application/json"
     }
     params = {
