@@ -1,0 +1,8 @@
+{
+  "name": "eyebot-launchbot",
+  "version": "1.0.0",
+  "description": "Full token launch coordinator",
+  "author": "ILL4NE",
+  "license": "MIT",
+  "keywords": ["eyebot", "launch", "token", "coordinator", "crypto", "a2a"]
+}
