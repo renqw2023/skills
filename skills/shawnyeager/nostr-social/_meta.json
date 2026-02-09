@@ -3,11 +3,16 @@
   "slug": "nostr-social",
   "displayName": "Nostr Social",
   "latest": {
-    "version": "1.1.1",
-    "publishedAt": 1770421459336,
-    "commit": "https://github.com/openclaw/skills/commit/b0c4a1f4429cea55914c66d16b0ff75b4401c944"
+    "version": "1.1.6",
+    "publishedAt": 1770605836578,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.1.1",
+      "publishedAt": 1770421459336,
+      "commit": "https://github.com/openclaw/skills/commit/b0c4a1f4429cea55914c66d16b0ff75b4401c944"
+    },
     {
       "version": "1.0.2",
       "publishedAt": 1770419499809,

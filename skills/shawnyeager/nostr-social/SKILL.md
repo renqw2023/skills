@@ -13,12 +13,10 @@ Self-sovereign Nostr identity + ecash wallet. Complete bootstrap.
 This skill grants these capabilities to the agent:
 
 - **Key generation** — Creates Nostr keypair in `~/.nostr/secret.key`
-- **Wallet control** — Cashu wallet in `~/.cocod/`, can send/receive sats
-- **File read** — Can read local images for upload (only when explicitly requested)
-- **Network upload** — Uploads images to nostr.build (NIP-98 signed)
+- **Wallet creation** — Cashu wallet in `~/.cocod/` (mnemonic in config.json — user backs up)
 - **Nostr posting** — Posts, DMs, zaps as the agent's identity
 
-These are required for the skill's purpose. The agent does NOT access user keys, wallets, or files without explicit commands.
+Agent runs wallet/identity setup silently. User is directed to back up `~/.cocod/config.json` (contains mnemonic). Agent does not read or display the mnemonic. Profile images use URLs only (no local file access).
 
 ## On Install
 
@@ -30,59 +28,47 @@ When skill is installed (user pastes ClawHub link), run this flow:
 # Install dependencies
 bash {SKILL_DIR}/install.sh
 
-# Create wallet FIRST (generates mnemonic)
-cocod init
-# CAPTURE 24-word mnemonic from output
+# Create wallet (mnemonic saved to config file)
+npx cocod init > /dev/null 2>&1
 
-# Create Nostr identity - derives from wallet mnemonic (NIP-06)
-# This ensures ONE mnemonic backs up both wallet AND identity
+# Derive Nostr identity from wallet mnemonic (NIP-06)
 node {SKILL_DIR}/scripts/nostr.js init
 
 # Get identity info
 NPUB=$(node {SKILL_DIR}/scripts/nostr.js whoami | grep npub | awk '{print $2}')
-LN_ADDR=$(cocod npc address)
+LN_ADDR=$(npx cocod npc address)
 
-# Set basic profile (name/about from SOUL.md, Lightning address)
-# Images are set later after asking user
+# Set basic profile
 node {SKILL_DIR}/scripts/nostr.js profile-set '{"name":"<NAME>","about":"<ABOUT>","lud16":"'$LN_ADDR'"}'
 ```
 
-**Note:** Nostr identity is derived from wallet mnemonic using NIP-06. This means:
-- One mnemonic backs up everything (wallet + identity)
-- npubx.cash username works for BOTH Lightning AND NIP-05 verification
-
-### Step 2: Report Results + Backup Prompt
+### Step 2: Report Results + Backup Warning
 
 Reply to user:
 
 ---
 
-⚡ **Your Nostr identity is ready!**
+⚡ **Nostr identity ready!**
 
 **npub:** `npub1...`
-
 **Lightning address:** `npub1...@npubx.cash`
 
-**Profile set** ✓
+---
+
+⚠️ **IMPORTANT: Back up your recovery phrase**
+
+Your 24-word mnemonic is stored in:
+```
+~/.cocod/config.json
+```
+
+This phrase recovers both your Nostr identity AND ecash wallet. Back it up securely and protect this file.
+
+Reply "done" when you've backed it up.
 
 ---
 
-⚠️ **BACKUP THIS NOW** — it won't be shown again.
-
-**Recovery phrase (backs up EVERYTHING):**
-```
-word1 word2 word3 ... word24
-```
-
-This single mnemonic recovers both your Nostr identity AND ecash wallet.
-
-Lose this = lose access forever.
-
-**Reply "saved" when you've backed them up.**
-
----
-
-### Step 3: Wait for "saved"
+### Step 3: Wait for "done"
 
 Do not proceed until user confirms backup.
 
@@ -142,18 +128,14 @@ Tell me what to post, or say "skip".
 
 Suggestion: "Hello Nostr! ⚡"
 
-Tell me what to post, or say "skip".
-
-Suggestion: "Hello Nostr! ⚡"
-
 ---
 
-If user provides text:
+If user provides text (use stdin to avoid shell injection):
 ```bash
-node {SKILL_DIR}/scripts/nostr.js post "<user's message>"
+echo "<user's message>" | node {SKILL_DIR}/scripts/nostr.js post -
 ```
 
-### Step 6: Done
+### Step 7: Done
 
 ---
 
@@ -170,8 +152,9 @@ Try: "check my mentions" or "post <message>"
 
 ### Posting
 ```bash
-node {SKILL_DIR}/scripts/nostr.js post "message"
-node {SKILL_DIR}/scripts/nostr.js reply <note1...> "text"
+# Use stdin for content (prevents shell injection)
+echo "message" | node {SKILL_DIR}/scripts/nostr.js post -
+echo "reply text" | node {SKILL_DIR}/scripts/nostr.js reply <note1...> -
 node {SKILL_DIR}/scripts/nostr.js react <note1...> 🔥
 node {SKILL_DIR}/scripts/nostr.js repost <note1...>
 node {SKILL_DIR}/scripts/nostr.js delete <note1...>
@@ -194,7 +177,7 @@ node {SKILL_DIR}/scripts/nostr.js lookup <nip05>
 
 ### DMs
 ```bash
-node {SKILL_DIR}/scripts/nostr.js dm <npub> "message"
+echo "message" | node {SKILL_DIR}/scripts/nostr.js dm <npub> -
 node {SKILL_DIR}/scripts/nostr.js dms 10
 ```
 
@@ -203,15 +186,15 @@ node {SKILL_DIR}/scripts/nostr.js dms 10
 # Get invoice
 node {SKILL_DIR}/scripts/nostr.js zap <npub> 100 "comment"
 # Pay it
-cocod send bolt11 <invoice>
+npx cocod send bolt11 <invoice>
 ```
 
 ### Wallet
 ```bash
-cocod balance
-cocod receive bolt11 1000    # Create invoice
-cocod send bolt11 <invoice>  # Pay invoice
-cocod npc address            # Lightning address
+npx cocod balance
+npx cocod receive bolt11 1000    # Create invoice
+npx cocod send bolt11 <invoice>  # Pay invoice
+npx cocod npc address            # Lightning address
 ```
 
 ### Profile
@@ -236,34 +219,42 @@ node {SKILL_DIR}/scripts/nostr.js relays add <url>
 node {SKILL_DIR}/scripts/nostr.js relays remove <url>
 ```
 
+### Autoresponse (Heartbeat Integration)
+```bash
+# Get unprocessed mentions from WoT (JSON output)
+node {SKILL_DIR}/scripts/nostr.js pending-mentions [stateFile] [limit]
+
+# Mark mention as responded (after replying)
+node {SKILL_DIR}/scripts/nostr.js mark-responded <note1...> [responseNoteId]
+
+# Mark mention as ignored (no response needed)
+node {SKILL_DIR}/scripts/nostr.js mark-ignored <note1...> [reason]
+
+# Check hourly rate limit (max 10/hr)
+node {SKILL_DIR}/scripts/nostr.js rate-limit
+
+# Show autoresponse state summary
+node {SKILL_DIR}/scripts/nostr.js autoresponse-status
+```
+
+**State file:** `~/.openclaw/workspace/memory/nostr-autoresponse-state.json`
+**WoT source:** Owner's follow list (defined in nostr.js as OWNER_PUBKEY)
+
 ## User Phrases → Actions
 
 | User says | Action |
 |-----------|--------|
-| "post X" | `nostr.js post "X"` |
-| "reply to X with Y" | `nostr.js reply <note> "Y"` |
+| "post X" | `echo "X" \| nostr.js post -` |
+| "reply to X with Y" | `echo "Y" \| nostr.js reply <note> -` |
 | "check mentions" | `nostr.js mentions` |
 | "my feed" | `nostr.js feed` |
 | "follow X" | Lookup if NIP-05 → `nostr.js follow` |
-| "DM X message" | `nostr.js dm <npub> "message"` |
-| "zap X 100 sats" | `nostr.js zap` → `cocod send bolt11` |
-| "balance" | `cocod balance` |
-| "invoice for 1000" | `cocod receive bolt11 1000` |
+| "DM X message" | `echo "message" \| nostr.js dm <npub> -` |
+| "zap X 100 sats" | `nostr.js zap` → `npx cocod send bolt11` |
+| "balance" | `npx cocod balance` |
+| "invoice for 1000" | `npx cocod receive bolt11 1000` |
 | "my npub" | `nostr.js whoami` |
-| "my lightning address" | `cocod npc address` |
-
-## Image Upload
-
-For custom avatar/banner (not robohash):
-
-```bash
-# Upload image to nostr.build (NIP-98 authenticated)
-node {SKILL_DIR}/scripts/nostr.js upload /path/to/image.png
-# → https://image.nostr.build/abc123.png
-
-# Set in profile
-node {SKILL_DIR}/scripts/nostr.js profile-set '{"picture":"https://image.nostr.build/abc123.png"}'
-```
+| "my lightning address" | `npx cocod npc address` |
 
 ## Defaults
 
@@ -272,7 +263,6 @@ node {SKILL_DIR}/scripts/nostr.js profile-set '{"picture":"https://image.nostr.b
 | Mint | `https://mint.minibits.cash/Bitcoin` |
 | Lightning domain | `@npubx.cash` |
 | Avatar fallback | `https://api.dicebear.com/7.x/shapes/png?seed=<npub>` |
-| Image host | `nostr.build` (NIP-98 auth) |
 | Nostr key | `~/.nostr/secret.key` |
 | Wallet data | `~/.cocod/` |
 
@@ -307,4 +297,4 @@ After setup, store for quick reference:
 - **About**: SOUL.md description
 - **Picture**: User-provided URL, or DiceBear fallback
 - **Banner**: User-provided URL, or DiceBear fallback
-- **lud16**: From `cocod npc address`
+- **lud16**: From `npx cocod npc address`
