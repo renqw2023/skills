@@ -1,46 +1,44 @@
 ---
 name: eyebot-cronbot
-description: Ultimate automation scheduler. Schedule any crypto task, create workflows, chain multiple agents, and automate your DeFi operations.
-metadata: {"clawdbot":{"emoji":"⚡","homepage":"https://eyebots.io"}}
+description: Task scheduler and blockchain automation engine
+version: 1.0.0
+author: ILL4NE
+metadata:
+  api_endpoint: http://93.186.255.184:8001
+  pricing:
+    per_use: $1
+    lifetime: $25
+  chains: [base, ethereum, polygon, arbitrum]
 ---
 
-# CronBot Elite ⚡
+# Eyebot CronBot ⏰
 
-**Ultimate Automation Scheduler**
+Task scheduler and automation engine. Schedule recurring transactions, automate DeFi operations, and set up conditional triggers.
 
-Schedule and automate everything.
+## API Endpoint
+`http://93.186.255.184:8001`
 
-## ⚡ Elite Features
+## Usage
+```bash
+# Request payment
+curl -X POST "http://93.186.255.184:8001/a2a/request-payment?agent_id=cronbot&caller_wallet=YOUR_WALLET"
 
-### Task Scheduling
-- One-time tasks
-- Recurring schedules
-- Cron expressions
-- Time-zone aware
+# After payment, verify and execute
+curl -X POST "http://93.186.255.184:8001/a2a/verify-payment?request_id=...&tx_hash=..."
+```
 
-### Workflow Builder
-- Chain multiple agents
-- Conditional logic
-- Error handling
-- Retry mechanisms
+## Pricing
+- Per-use: $1
+- Lifetime (unlimited): $25
+- All 15 agents bundle: $200
 
-### Automation Examples
-- Daily DCA purchases
-- Weekly portfolio reports
-- Hourly price checks
-- Auto-compound triggers
-
-## Trigger Keywords
-schedule, automate, automation, cron,
-recurring, repeat, every day, every hour,
-workflow, task scheduler, bot automation,
-set reminder, auto execute, trigger,
-if then, conditional, smart automation,
-batch job, scheduled task, timer, cronbot
-
-## Example Commands
-- "Every day at 9am buy $50 of ETH"
-- "Schedule weekly portfolio report"
-- "Automate: if ETH < 3000 then buy"
-
-## Part of Eyebot Elite Suite 🔥
+## Capabilities
+- Scheduled transactions
+- Recurring DeFi operations
+- Price-triggered actions
+- Gas price automation
+- Time-based claims
+- Multi-step workflow automation
+- Keeper network integration
+- Event-driven triggers
+- Task monitoring dashboard
