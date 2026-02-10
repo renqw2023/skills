@@ -3,9 +3,15 @@
   "slug": "mission-claw",
   "displayName": "Mission Claw",
   "latest": {
-    "version": "0.1.0",
-    "publishedAt": 1770734484835,
-    "commit": "https://github.com/openclaw/skills/commit/44668c0f7f733da5c833e721105b7474eb195927"
+    "version": "0.1.1",
+    "publishedAt": 1770749030726,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.1.0",
+      "publishedAt": 1770734484835,
+      "commit": "https://github.com/openclaw/skills/commit/44668c0f7f733da5c833e721105b7474eb195927"
+    }
+  ]
 }
