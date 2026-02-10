@@ -9,10 +9,10 @@ Ask for a briefing and get a comprehensive, conversational radio-host-style upda
 - 📻 **Radio-Host Style** — Natural, conversational monologue — not a list of headlines
 - 🔊 **Audio Briefing** — ~10 minute MP3, perfect for your commute
 - 📄 **Formatted Document** — DOCX with sections, key facts, and source links
-- 🌍 **9 Sections** — Weather → Social Pulse → Local → World → Politics → Tech → Sports → Markets → Crypto
+- 🌍 **11 Sections** — Weather → X Trends → Web Trends → World → Politics → Tech → Local → Sports → Markets → Crypto → This Day in History
 - 🌐 **Multi-Language** — English (MLX-Audio Kokoro), Slovak, German, or any macOS voice
 - ⚙️ **Configurable** — Location, language, voice, sections — all in `~/.briefing-room/config.json`
-- 🆓 **100% Free & Local** — Free APIs, local TTS, no subscriptions
+- 🆓 **100% Free** — No subscriptions, API keys, or paid services
 
 ## Quick Start
 
@@ -59,7 +59,10 @@ All settings in `~/.briefing-room/config.json`:
 | `location.longitude` | 17.11 | Weather API longitude |
 | `language` | en | Briefing language |
 | `output.folder` | ~/Documents/Briefing Room | Where briefings are saved |
-| `sections` | all 9 | Which sections to include |
+| `sections` | all 11 | Which sections to include |
+| `host.name` | (auto = agent name) | Radio host name for the briefing |
+| `trends.regions` | us, uk, worldwide | X/Twitter trend regions (getdaytrends.com slugs) |
+| `webtrends.regions` | US, GB, worldwide | Google Trends regions (ISO codes) |
 
 ### Voice Per Language
 
@@ -74,31 +77,39 @@ All settings in `~/.briefing-room/config.json`:
 ```
 
 Add any language — just pick a voice from `say -v '?'` on macOS.
+If you set a language without a voice config, it auto-detects a matching macOS voice.
+
+**Supported out of the box:** English, Slovak, German.
+**Works with any language** macOS supports — French, Spanish, Italian, Japanese, Chinese, etc.
 
 ## Sections
 
 | # | Section | Source |
 |---|---------|--------|
 | 1 | 🌤️ Weather | Open-Meteo API (your location) |
-| 2 | 🐦 Social Pulse | Web search (X/Twitter trends) |
-| 3 | 🏠 Local | Web search (your city) |
+| 2 | 🐦 Trending on X | getdaytrends.com (real-time X/Twitter trends) |
+| 3 | 🔍 Web Trends | Google Trends RSS (what people are searching) |
 | 4 | 🌍 World | Web search |
 | 5 | 🏛️ Politics | Web search |
 | 6 | 💻 Tech & AI | Web search |
-| 7 | ⚽ Sports | Web search |
-| 8 | 📈 Markets | Web search + APIs |
-| 9 | ₿ Crypto | Coinbase API + Web search |
+| 7 | 🏠 Local | Web search (your city) |
+| 8 | ⚽ Sports | Web search |
+| 9 | 📈 Markets | Web search + APIs |
+| 10 | ₿ Crypto | Coinbase API + Web search |
+| 11 | 📜 This Day in History | Agent knowledge (no API needed) |
 
 ## Dependencies
 
 **Required:**
-- macOS with `curl` (built-in)
+- macOS (uses `afplay`, `say`, `curl` — all built-in)
 - OpenClaw with `web_search`
 
-**Recommended:**
+**Recommended (enhance quality):**
 - [MLX-Audio Kokoro](https://github.com/ml-explore/mlx-audio) — fast English TTS on Apple Silicon
 - `pandoc` — DOCX generation (`brew install pandoc`)
 - `ffmpeg` — MP3 conversion (`brew install ffmpeg`)
+
+**No pip packages required** — included scripts use only Python standard library.
 
 **Always available:**
 - Apple `say` — multilingual TTS fallback (built into macOS)

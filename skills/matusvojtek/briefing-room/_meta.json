@@ -3,9 +3,15 @@
   "slug": "briefing-room",
   "displayName": "Briefing Room",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1770687429822,
-    "commit": "https://github.com/openclaw/skills/commit/e4e740df3b9d01b3933b1fdb64d27e00f6179217"
+    "version": "1.0.3",
+    "publishedAt": 1770755698075,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1770687429822,
+      "commit": "https://github.com/openclaw/skills/commit/e4e740df3b9d01b3933b1fdb64d27e00f6179217"
+    }
+  ]
 }

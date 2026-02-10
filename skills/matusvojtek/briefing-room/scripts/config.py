@@ -90,15 +90,37 @@ DEFAULT_CONFIG = {
     # News sections to include (order matters)
     "sections": [
         "weather",
-        "social",       # X/Twitter sentiment
-        "local",        # Local news (based on location.city)
+        "social",       # X/Twitter trends
+        "webtrends",    # Google Trends (web search trends)
         "world",
         "politics",
         "tech",
+        "local",        # Local news (based on location.city)
         "sports",
         "markets",
         "crypto",
+        "history",      # This Day in History
     ],
+
+    # Host personality
+    "host": {
+        "name": "",  # Empty = auto (uses agent's own name). Set to override.
+    },
+
+    # X/Twitter trends settings
+    "trends": {
+        # Comma-separated getdaytrends.com region slugs (empty = worldwide)
+        # Available: united-states, united-kingdom, germany, france, etc.
+        # See full list: https://getdaytrends.com (footer links)
+        "regions": "united-states,united-kingdom,",  # trailing comma = worldwide
+    },
+
+    # Google Trends (Web Trends) settings
+    "webtrends": {
+        # Comma-separated ISO country codes (empty = worldwide)
+        # Examples: US, GB, DE, FR, SK
+        "regions": "US,GB,",  # trailing comma = worldwide
+    },
 
     # Search settings
     "search": {
@@ -156,7 +178,24 @@ def get_value(key: str, default=None):
         return default
 
 
+SAFE_OUTPUT_PREFIXES = [
+    os.path.realpath(os.path.expanduser("~/Documents")),
+    os.path.realpath(os.path.expanduser("~/Desktop")),
+    os.path.realpath(os.path.expanduser("~/Downloads")),
+    os.path.realpath(os.path.expanduser("~/.briefing-room")),
+    os.path.realpath("/tmp"),
+]
+
+def _validate_output_path(path: str) -> bool:
+    """Reject output.folder paths outside safe directories."""
+    expanded = os.path.realpath(os.path.expanduser(path))
+    return any(expanded.startswith(prefix) for prefix in SAFE_OUTPUT_PREFIXES)
+
 def set_value(key: str, value) -> bool:
+    if key == "output.folder" and isinstance(value, str):
+        if not _validate_output_path(value):
+            print(f"Error: output.folder must be under ~/Documents, ~/Desktop, ~/Downloads, ~/.briefing-room, or /tmp", file=sys.stderr)
+            return False
     config = load_config()
     keys = key.split('.')
     target = config
