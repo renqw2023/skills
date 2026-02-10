@@ -1,0 +1,11 @@
+{
+  "owner": "jordymeow",
+  "slug": "wordpress-mcp",
+  "displayName": "WordPress MCP",
+  "latest": {
+    "version": "3.3.3",
+    "publishedAt": 1770715146064,
+    "commit": null
+  },
+  "history": []
+}
