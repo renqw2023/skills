@@ -1,0 +1,11 @@
+{
+  "owner": "getmolty",
+  "slug": "lulu-monitorl",
+  "displayName": "LuLu Monitor",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770674951764,
+    "commit": "https://github.com/openclaw/skills/commit/dc68f79a602550d5d0e4a741f4bbbf8fac4e7e0f"
+  },
+  "history": []
+}

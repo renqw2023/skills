@@ -21,4 +21,5 @@ enable_abstract="${3:-false}"
 
 curl -s -X GET \
   -H "Authorization: Bearer $BAIDU_API_KEY" \
+  -H "X-Appbuilder-From: openclaw" \
   "https://qianfan.baidubce.com/v2/tools/baidu_scholar/search?wd=$WD&pageNum=$pageNum&enable_abstract=$enable_abstract"

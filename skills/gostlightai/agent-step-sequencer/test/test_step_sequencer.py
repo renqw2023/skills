@@ -34,7 +34,7 @@ def load_state(state_path: Path) -> dict:
 
 
 def test_basic_flow_two_steps():
-    """Check invokes runner, step 1 runs, then step 2, then DONE."""
+    """Check invokes runner; with auto-advance, one run_check can complete both steps."""
     with tempfile.TemporaryDirectory() as tmp:
         state_path = Path(tmp) / "state.json"
         state = {
@@ -56,24 +56,14 @@ def test_basic_flow_two_steps():
         env = os.environ.copy()
         env["STEP_AGENT_CMD"] = "echo"
 
-        # Run 1: execute step 1
+        # Run 1: runner does step 1 -> DONE -> invokes check -> advance -> runner step 2 -> DONE -> check -> advance
         run_check(state_path, env)
         s = load_state(state_path)
         assert s["stepRuns"]["step-1"]["status"] == "DONE"
-        assert s["currentStep"] == 0  # check hasn't advanced yet
-
-        # Run 2: advance, execute step 2
-        run_check(state_path, env)
-        s = load_state(state_path)
-        assert s["currentStep"] == 1
         assert s["stepRuns"]["step-2"]["status"] == "DONE"
-
-        # Run 3: advance past step 2, runner no-op
-        run_check(state_path, env)
-        s = load_state(state_path)
         assert s["currentStep"] == 2
 
-        # Run 4: detect all done, set status DONE
+        # Run 2: check sees currentStep >= len(stepQueue), sets status DONE
         run_check(state_path, env)
         s = load_state(state_path)
         assert s["status"] == "DONE"
@@ -137,7 +127,7 @@ def test_retry_stops_at_max_retries():
 
 
 def test_recovery_mid_flow():
-    """State with step 1 DONE, step 2 PENDING -> runner picks up step 2."""
+    """State with step 1 DONE, step 2 PENDING -> one run_check advances and runs step 2."""
     with tempfile.TemporaryDirectory() as tmp:
         state_path = Path(tmp) / "state.json"
         state = {
@@ -161,10 +151,9 @@ def test_recovery_mid_flow():
 
         run_check(state_path, env)
         s = load_state(state_path)
-        assert s["currentStep"] == 1
+        assert s["currentStep"] == 2
         assert s["stepRuns"]["step-2"]["status"] == "DONE"
 
-        run_check(state_path, env)  # advance past step 2
         run_check(state_path, env)  # set status DONE
         s = load_state(state_path)
         assert s["status"] == "DONE"
@@ -213,6 +202,86 @@ def test_step_agent_cmd_blocked():
     print("test_step_agent_cmd_blocked: OK")
 
 
+def run_runner(state_path: Path, env: dict | None = None) -> subprocess.CompletedProcess:
+    env = env or os.environ.copy()
+    return subprocess.run(
+        [sys.executable, str(RUNNER), str(state_path)],
+        cwd=state_path.parent,
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+
+
+def test_required_outputs_missing_fails():
+    """Agent exits 0 but requiredOutputs files missing -> step FAILED."""
+    with tempfile.TemporaryDirectory() as tmp:
+        state_path = Path(tmp) / "state.json"
+        state = {
+            "plan": {
+                "steps": {
+                    "step-1": {
+                        "title": "Produce file",
+                        "instruction": "write out",
+                        "requiredOutputs": ["out.md"],
+                    }
+                }
+            },
+            "stepQueue": ["step-1"],
+            "currentStep": 0,
+            "stepRuns": {},
+            "stepDelayMinutes": 0,
+            "status": "IN_PROGRESS",
+        }
+        with open(state_path, "w") as f:
+            json.dump(state, f, indent=2)
+
+        env = os.environ.copy()
+        env["STEP_AGENT_CMD"] = "echo"  # exits 0 but no out.md
+
+        run_runner(state_path, env)
+        s = load_state(state_path)
+        assert s["stepRuns"]["step-1"]["status"] == "FAILED"
+        assert "Missing required outputs" in s["stepRuns"]["step-1"].get("error", "")
+
+    print("test_required_outputs_missing_fails: OK")
+
+
+def test_required_outputs_present_succeeds():
+    """Agent exits 0 and requiredOutputs exist -> step DONE."""
+    with tempfile.TemporaryDirectory() as tmp:
+        state_path = Path(tmp) / "state.json"
+        (Path(tmp) / "artifacts").mkdir(exist_ok=True)
+        (Path(tmp) / "artifacts" / "report.md").write_text("done")
+        state = {
+            "plan": {
+                "steps": {
+                    "step-1": {
+                        "title": "Produce report",
+                        "instruction": "write report",
+                        "requiredOutputs": ["artifacts/report.md"],
+                    }
+                }
+            },
+            "stepQueue": ["step-1"],
+            "currentStep": 0,
+            "stepRuns": {},
+            "stepDelayMinutes": 0,
+            "status": "IN_PROGRESS",
+        }
+        with open(state_path, "w") as f:
+            json.dump(state, f, indent=2)
+
+        env = os.environ.copy()
+        env["STEP_AGENT_CMD"] = "echo"
+
+        run_runner(state_path, env)
+        s = load_state(state_path)
+        assert s["stepRuns"]["step-1"]["status"] == "DONE"
+
+    print("test_required_outputs_present_succeeds: OK")
+
+
 def test_done_state_does_nothing():
     """status=DONE -> check does nothing."""
     with tempfile.TemporaryDirectory() as tmp:
@@ -243,6 +312,8 @@ def main():
         test_failure_marks_failed,
         test_retry_stops_at_max_retries,
         test_recovery_mid_flow,
+        test_required_outputs_missing_fails,
+        test_required_outputs_present_succeeds,
     ]
     failed = []
     for t in tests:

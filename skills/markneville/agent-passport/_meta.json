@@ -1,0 +1,11 @@
+{
+  "owner": "markneville",
+  "slug": "agent-passport",
+  "displayName": "Agent Passport",
+  "latest": {
+    "version": "2.0.0",
+    "publishedAt": 1770652144282,
+    "commit": "https://github.com/openclaw/skills/commit/bf54517da8c3f7c15480579515fc811482faa53e"
+  },
+  "history": []
+}

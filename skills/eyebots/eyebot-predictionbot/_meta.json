@@ -1,0 +1,32 @@
+{
+  "owner": "eyebots",
+  "slug": "eyebot-predictionbot",
+  "displayName": "Eyebot Predictionbot",
+  "latest": {
+    "version": "1.8.0",
+    "publishedAt": 1770639019162,
+    "commit": "https://github.com/openclaw/skills/commit/4bd70df394a7753b306e9d22ca702b35144294a1"
+  },
+  "history": [
+    {
+      "version": "1.6.0",
+      "publishedAt": 1770637904440,
+      "commit": "https://github.com/openclaw/skills/commit/305887bc3037b5b339dd6861f0a55e714a31c50a"
+    },
+    {
+      "version": "1.2.0",
+      "publishedAt": 1770635914443,
+      "commit": "https://github.com/openclaw/skills/commit/9e45c344547ce2bf452525bfe06fbc3331c2b512"
+    },
+    {
+      "version": "1.1.0",
+      "publishedAt": 1770597902469,
+      "commit": "https://github.com/openclaw/skills/commit/a0e404cf3d5b1abe9b1b36c6474858bba8dabcc8"
+    },
+    {
+      "version": "1.0.1",
+      "publishedAt": 1770581439064,
+      "commit": "https://github.com/openclaw/skills/commit/21b84049641e3cff57f5235de50a91743d414e3d"
+    }
+  ]
+}

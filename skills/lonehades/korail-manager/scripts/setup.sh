@@ -13,7 +13,18 @@ else
 fi
 
 echo "📦 필요한 부품(의존성)을 설치하옵니다..."
-# 가상 환경의 pip 사용
 ./venv/bin/pip install -r requirements.txt
 
-echo "🎉 모든 준비가 완료되었나이다! 이제 'korail-manager'를 즉시 사용하실 수 있사옵니다."
+echo ""
+echo "🎉 모든 준비가 완료되었나이다!"
+echo ""
+echo "📋 사용 가능한 명령:"
+echo "  [KTX]"
+echo "    venv/bin/python scripts/search.py --dep \"서울\" --arr \"부산\" --date \"20260210\""
+echo "    venv/bin/python scripts/watch.py --dep \"서울\" --arr \"부산\" --date \"20260210\" --start-time 9 --end-time 18 --interval 300"
+echo "    venv/bin/python scripts/cancel.py [--date \"20260210\"]"
+echo ""
+echo "  [SRT]"
+echo "    venv/bin/python scripts/srt_search.py --dep \"수서\" --arr \"대전\" --date \"20260210\""
+echo "    venv/bin/python scripts/srt_watch.py --dep \"수서\" --arr \"대전\" --date \"20260210\" --start-time 9 --end-time 18 --interval 300"
+echo "    venv/bin/python scripts/cancel_srt.py [--date \"20260210\"]"

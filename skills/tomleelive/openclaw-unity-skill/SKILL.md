@@ -5,7 +5,21 @@ description: Control Unity Editor via OpenClaw Unity Plugin. Use for Unity game 
 
 # Unity Plugin Skill
 
-Control Unity Editor through 44 built-in tools. Works in both Editor and Play mode.
+## First-Time Setup
+
+If `unity_execute` tool is not available, install the gateway extension:
+
+```bash
+# From skill directory
+./scripts/install-extension.sh
+
+# Restart gateway
+openclaw gateway restart
+```
+
+The extension files are in `extension/` directory.
+
+Control Unity Editor through 52 built-in tools. Works in both Editor and Play mode.
 
 ## Quick Reference
 
@@ -13,8 +27,8 @@ Control Unity Editor through 44 built-in tools. Works in both Editor and Play mo
 
 | Category | Key Tools |
 |----------|-----------|
-| **Scene** | `scene.getActive`, `scene.getData`, `scene.load` |
-| **GameObject** | `gameobject.find`, `gameobject.create`, `gameobject.destroy` |
+| **Scene** | `scene.getActive`, `scene.getData`, `scene.load`, `scene.open` |
+| **GameObject** | `gameobject.find`, `gameobject.create`, `gameobject.destroy`, `gameobject.delete` |
 | **Component** | `component.get`, `component.set`, `component.add` |
 | **Debug** | `debug.hierarchy`, `debug.screenshot`, `console.getLogs` |
 | **Input** | `input.clickUI`, `input.type`, `input.keyPress` |
@@ -62,25 +76,31 @@ unity_execute: editor.recompile         # Request recompilation only
 
 ## Tool Categories
 
-### Console (2 tools)
+### Console (3 tools)
 - `console.getLogs` - Get logs with optional type filter (Log/Warning/Error)
+- `console.getErrors` - Get error/exception logs (with optional warnings)
 - `console.clear` - Clear captured logs
 
-### Scene (4 tools)
+### Scene (5 tools)
 - `scene.list` - List scenes in build settings
 - `scene.getActive` - Get active scene info
 - `scene.getData` - Get full hierarchy data
-- `scene.load` - Load scene by name
+- `scene.load` - Load scene by name (Play mode)
+- `scene.open` - Open scene in Editor mode (EditorSceneManager)
 
-### GameObject (6 tools)
+### GameObject (7 tools)
 - `gameobject.find` - Find by name, tag, or component
 - `gameobject.create` - Create object or primitive (Cube, Sphere, etc.)
 - `gameobject.destroy` - Destroy object
+- `gameobject.delete` - Delete object (alias for destroy)
 - `gameobject.getData` - Get detailed data
 - `gameobject.setActive` - Enable/disable
 - `gameobject.setParent` - Change hierarchy
 
-### Transform (3 tools)
+### Transform (6 tools)
+- `transform.getPosition` - Get world position {x, y, z}
+- `transform.getRotation` - Get Euler rotation {x, y, z}
+- `transform.getScale` - Get local scale {x, y, z}
 - `transform.setPosition` - Set world position {x, y, z}
 - `transform.setRotation` - Set Euler rotation
 - `transform.setScale` - Set local scale

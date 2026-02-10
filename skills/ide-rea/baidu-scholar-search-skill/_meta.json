@@ -1,11 +1,22 @@
 {
   "owner": "ide-rea",
   "slug": "baidu-scholar-search-skill",
-  "displayName": "baidu scholar search",
+  "displayName": "Baidu Scholar Search Skill",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1770488401414,
-    "commit": "https://github.com/openclaw/skills/commit/19e13b214b48b510483d7830831bad7aab3b0655"
+    "version": "1.0.3",
+    "publishedAt": 1770608942489,
+    "commit": "https://github.com/openclaw/skills/commit/870328fd8bc62e9e01bc53e14a67bd37f4d94936"
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1770561134886,
+      "commit": "https://github.com/openclaw/skills/commit/9ef4332f50a0286f3615cc3d5a38e0a905c6dcdf"
+    },
+    {
+      "version": "1.0.0",
+      "publishedAt": 1770488401414,
+      "commit": "https://github.com/openclaw/skills/commit/19e13b214b48b510483d7830831bad7aab3b0655"
+    }
+  ]
 }

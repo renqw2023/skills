@@ -1,0 +1,6 @@
+{
+  "name": "financial-shield",
+  "version": "3.0.4",
+  "description": "Financial Shield (Stay in the Cheap Tier!) Tired of those \"Long Context\" double-billing surprises? I just published Financial Shield to ClawHub! This skill is designed to keep your sessions within the 128k \"cheap\" tier by monitoring your context weight and alerting you before you hit the expensive zone. Key Features: • 📊 Real-time Monitoring: Includes a check_shield.sh script to parse your session_status. • 💰 Cost Control: Pre-configured for the Google Gemini 128k ceiling, but the script is easily editable if your provider (like Anthropic or OpenAI) has different \"cheap\" vs \"expensive\" tiers. • 🕒 Continuous Tracking: Instructions for agents to append (Usage: X/128k) to every message so you're never in the dark. How to get it: openclaw clawhub install financial-shield Note: This was built with Google's API tiers in mind, but you can easily tweak the limit in the script to match your specific provider's billing zones!",
+  "author": "ahuwaramazda"
+}

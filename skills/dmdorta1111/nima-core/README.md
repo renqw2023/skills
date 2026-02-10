@@ -24,28 +24,63 @@ NIMA (Noosphere Integrated Memory Architecture) provides emotion-aware memory, p
 pip install nima-core
 ```
 
-### Auto-Setup (Recommended)
+### OpenClaw Integration (Recommended)
 
-NIMA auto-detects OpenClaw and configures itself:
+One command sets up everything:
 
 ```bash
 nima-core
 ```
 
-This wizard will:
-- ✅ Detect your OpenClaw installation (if present)
-- ✅ Create necessary directories
-- ✅ Save configuration
-- ✅ Show OpenClaw integration steps
+The wizard automatically:
+- ✅ Detects your OpenClaw installation
+- ✅ Creates data directories
+- ✅ Installs hooks via `openclaw hooks install` (bootstrap + recall)
+- ✅ Enables hooks
+- ✅ Adds NIMA instructions to your AGENTS.md
+- ✅ Guides you through dream consolidation setup
 
-### Manual Setup
+After setup, restart OpenClaw:
+
+```bash
+openclaw gateway restart
+```
+
+That's it. Your agent now has persistent memory.
+
+### Manual Hook Install
+
+If you prefer manual control:
+
+```bash
+# Install hooks from nima-core package
+openclaw hooks install /path/to/nima-core
+
+# Enable them
+openclaw hooks enable nima-bootstrap
+openclaw hooks enable nima-recall
+
+# Restart
+openclaw gateway restart
+```
+
+### Standalone (No OpenClaw)
 
 ```python
 from nima_core.config.auto import get_nima_config, setup_paths
 
-config = get_nima_config()  # Auto-detects OpenClaw
+config = get_nima_config()  # Auto-detects environment
 setup_paths(config)         # Creates directories
 ```
+
+### How Memory Capture Works
+
+NIMA hooks into OpenClaw at two points:
+
+1. **Bootstrap** (`agent:bootstrap`) — Injects memory status + relevant memories when sessions start
+2. **Agent-driven capture** — Your agent calls `nima.capture()` or `nima.experience()` during conversations
+
+> **Note:** OpenClaw does not emit per-message hook events. Real-time capture happens through agent instructions (AGENTS.md), heartbeat polling, or the markdown bridge. See [Heartbeat Service](#heartbeat-service) and [Markdown Bridge](#markdown-bridge--bidirectional-memory-sync).
 
 ## Quick Start
 
@@ -68,6 +103,13 @@ memories = nima.recall("weather conversations", top_k=5)
 
 # Explicit capture (bypasses FE gate)
 nima.capture("admin", "System deployed successfully", importance=0.9, memory_type="milestone")
+
+# Capture a synthesized insight (lightweight, 280 char max, no bloat)
+nima.synthesize(
+    "Mercy (eleison) shares root with olive oil (elaion) — healing, not legal pardon.",
+    domain="theology",
+    sparked_by="Melissa",
+)
 
 # Run dream consolidation
 nima.dream(hours=24)
@@ -109,13 +151,14 @@ Input → Embed (384D) → Project (50KD) → Affect → Bind → FE Decision �
 
 ### Feature Flags
 
-All components controlled via environment variables. Defaults are safe (most OFF).
+All cognitive components are **ON by default** (v1.1.0+). Override with environment variables if needed.
 
 ```bash
-# Enable everything at once
-export NIMA_V2_ALL=true
+# Everything is enabled by default — no setup needed!
+# To disable the full cognitive stack:
+export NIMA_V2_ALL=false
 
-# Or enable individually
+# Or disable individually
 export NIMA_V2_AFFECTIVE=true   # Panksepp's 7 affects
 export NIMA_V2_BINDING=true     # VSA circular convolution
 export NIMA_V2_FE=true          # Free Energy consolidation
@@ -167,6 +210,7 @@ nima = NimaCore(
 nima.experience(content, who, importance, **kwargs) → Dict
 nima.recall(query, top_k=5) → List[Dict]
 nima.capture(who, what, importance, memory_type) → bool
+nima.synthesize(insight, domain, sparked_by, importance) → bool
 nima.dream(hours=24) → Dict
 nima.status() → Dict
 nima.introspect() → Dict | None

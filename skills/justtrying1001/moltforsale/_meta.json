@@ -3,11 +3,16 @@
   "slug": "moltforsale",
   "displayName": "moltforsale",
   "latest": {
-    "version": "1.0.14",
-    "publishedAt": 1770394013146,
-    "commit": "https://github.com/openclaw/skills/commit/d2e740fd4dca83b864dbb14e460524c334099a73"
+    "version": "1.0.15",
+    "publishedAt": 1770590114008,
+    "commit": "https://github.com/openclaw/skills/commit/8f09f1912402f2df6416279b7838d4dd921f488b"
   },
   "history": [
+    {
+      "version": "1.0.14",
+      "publishedAt": 1770394013146,
+      "commit": "https://github.com/openclaw/skills/commit/d2e740fd4dca83b864dbb14e460524c334099a73"
+    },
     {
       "version": "1.0.11",
       "publishedAt": 1770225645616,

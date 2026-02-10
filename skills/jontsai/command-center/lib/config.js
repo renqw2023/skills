@@ -15,6 +15,17 @@ const os = require("os");
 const HOME = os.homedir();
 
 /**
+ * Get the OpenClaw profile directory (e.g., ~/.openclaw or ~/.openclaw-skilletz)
+ * This is the canonical source for profile-aware paths.
+ */
+function getOpenClawDir(profile = null) {
+  const effectiveProfile = profile || process.env.OPENCLAW_PROFILE || "";
+  return effectiveProfile
+    ? path.join(HOME, `.openclaw-${effectiveProfile}`)
+    : path.join(HOME, ".openclaw");
+}
+
+/**
  * Auto-detect OpenClaw workspace by checking common locations
  */
 function detectWorkspace() {
@@ -55,12 +66,16 @@ function detectWorkspace() {
 
 /**
  * Try to get workspace from OpenClaw gateway config
+ * Profile-aware: checks ~/.openclaw-{profile}/ first if profile is set
  */
 function getWorkspaceFromGatewayConfig() {
+  const openclawDir = getOpenClawDir();
   const configPaths = [
-    path.join(HOME, ".openclaw", "config.yaml"),
-    path.join(HOME, ".openclaw", "config.json"),
-    path.join(HOME, ".openclaw", "clawdbot.json"),
+    path.join(openclawDir, "config.yaml"),
+    path.join(openclawDir, "config.json"),
+    path.join(openclawDir, "openclaw.json"),
+    path.join(openclawDir, "clawdbot.json"),
+    // Fallback to standard XDG location
     path.join(HOME, ".config", "openclaw", "config.yaml"),
   ];
 
@@ -244,4 +259,4 @@ const CONFIG = loadConfig();
 console.log("[Config] Workspace:", CONFIG.paths.workspace);
 console.log("[Config] Auth mode:", CONFIG.auth.mode);
 
-module.exports = { CONFIG, loadConfig, detectWorkspace, expandPath };
+module.exports = { CONFIG, loadConfig, detectWorkspace, expandPath, getOpenClawDir };

@@ -3,11 +3,16 @@
   "slug": "x-platform-agent-teneo",
   "displayName": "X Platform Agent - powered by Teneo Protocol",
   "latest": {
-    "version": "1.0.9",
-    "publishedAt": 1770448430592,
-    "commit": "https://github.com/openclaw/skills/commit/3b83582ad90a9b72286dda5b03f8194871e185dc"
+    "version": "1.0.13",
+    "publishedAt": 1770643226906,
+    "commit": "https://github.com/openclaw/skills/commit/9af115ae3697e4c09c97e70161b4db643f1bbdde"
   },
   "history": [
+    {
+      "version": "1.0.9",
+      "publishedAt": 1770448430592,
+      "commit": "https://github.com/openclaw/skills/commit/3b83582ad90a9b72286dda5b03f8194871e185dc"
+    },
     {
       "version": "1.0.8",
       "publishedAt": 1770302217457,

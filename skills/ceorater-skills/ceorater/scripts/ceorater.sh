@@ -6,7 +6,6 @@
 #   get <ticker>       Get CEO data for a single company
 #   search <query>     Search companies by name, CEO, sector, or industry
 #   list [limit]       List companies (default limit: 20)
-#   status             Check API health (no auth required)
 #
 # Requires: CEORATER_API_KEY environment variable
 # Get your key at: https://www.ceorater.com/api-docs.html
@@ -29,11 +28,6 @@ api_get() {
     curl -s -H "Authorization: Bearer $CEORATER_API_KEY" \
          -H "Content-Type: application/json" \
          "$1"
-}
-
-# GET request without auth
-api_get_noauth() {
-    curl -s -H "Content-Type: application/json" "$1"
 }
 
 case "${1:-help}" in
@@ -65,10 +59,6 @@ case "${1:-help}" in
         api_get "$BASE_URL/v1/companies?limit=$LIMIT&format=raw"
         ;;
     
-    status)
-        api_get_noauth "$BASE_URL/status"
-        ;;
-    
     help|--help|-h|*)
         echo "CEORater API Helper"
         echo ""
@@ -78,7 +68,6 @@ case "${1:-help}" in
         echo "  get <ticker>     Get CEO data for a company (e.g., get AAPL)"
         echo "  search <query>   Search by name, CEO, sector, industry"
         echo "  list [limit]     List companies (default: 20)"
-        echo "  status           Check API health"
         echo ""
         echo "Environment:"
         echo "  CEORATER_API_KEY  Your API key (required for get/search/list)"

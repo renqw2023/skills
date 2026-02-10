@@ -1,10 +1,12 @@
 ---
 name: mlx-audio-server
-description: A fast, accurate, and fully local OpenAI-compatible API server for speech-to-text and text-to-speech, powered by MLX on Apple Silicon and open-source models.
+description: Local 24x7 OpenAI-compatible API server for STT/TTS, powered by MLX on your Mac.
 metadata: {"openclaw":{"always":true,"emoji":"🦞","homepage":"https://github.com/guoqiao/skills/blob/main/mlx-audio-server/mlx-audio-server/SKILL.md","os":["darwin"],"requires":{"bins":["brew"]}}}
 ---
 
 # MLX Audio Server
+
+Local 24x7 OpenAI-compatible API server for STT/TTS, powered by MLX on your Mac.
 
 [mlx-audio](https://github.com/Blaizzy/mlx-audio): The best audio processing library built on Apple's MLX framework, providing fast and efficient text-to-speech (TTS), speech-to-text (STT), and speech-to-speech (STS) on Apple Silicon.
 

@@ -1,37 +1,24 @@
 ---
 name: relayplane
-description: Intelligent AI model routing proxy. Cut API costs 50-80% with automatic model selection. Haiku for simple tasks, Opus for complex ones.
+description: RelayPlane proxy control - stats, status, diagnostics, telemetry, and dashboard access
 user-invocable: true
-homepage: https://relayplane.com/integrations/openclaw
-version: 1.0.0
-author: RelayPlane
+homepage: https://relayplane.com
+version: 2.1.0
+author: Continuum
 license: MIT
-metadata: { "openclaw": { "emoji": "🚀", "category": "ai-tools", "requires": { "bins": ["node", "curl"] } } }
+metadata: { "openclaw": { "emoji": "🚀", "category": "ai-tools", "requires": { "bins": ["node", "npx"] } } }
 ---
 
-# RelayPlane Proxy
+# RelayPlane
 
-> **100% Local. Zero Cloud. Full Control.**
+**Intelligent AI routing that saves you money.**
 
-Intelligent AI model routing that cuts costs by 50-80% while maintaining quality.
+Route LLM requests through RelayPlane to automatically use the optimal model for each task.
 
----
-
-## ⚠️ IMPORTANT: API Key Users Only
-
-This is for standard API key users (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`).
-
-**MAX subscription users should NOT use this** — MAX already gives unlimited usage, the proxy would just add complexity.
-
----
-
-## ⚠️ Cost Monitoring Required
-
-RelayPlane routes requests to LLM providers using your API keys. **This incurs real costs.**
-
-Set up billing alerts with your providers and use `/relayplane stats` to track usage.
-
----
+> ⚠️ **Cost Monitoring Required**
+>
+> RelayPlane routes requests to LLM providers using your API keys. **This incurs real costs.**
+> Use `/relayplane stats` to track usage and savings.
 
 ## Slash Commands
 
@@ -39,131 +26,87 @@ Set up billing alerts with your providers and use `/relayplane stats` to track u
 |---------|-------------|
 | `/relayplane stats` | Show usage statistics and cost savings |
 | `/relayplane status` | Show proxy health and configuration |
-| `/relayplane switch <mode>` | Change routing mode (auto\|cost\|fast\|quality) |
-| `/relayplane models` | List available routing models |
+| `/relayplane doctor` | Diagnose configuration and connectivity issues |
+| `/relayplane proxy [start\|stop\|status]` | Manage the proxy server |
+| `/relayplane telemetry [on\|off\|status]` | Manage telemetry settings |
+| `/relayplane dashboard` | Get link to cloud dashboard |
+| `/relayplane models` | List available routing modes and aliases |
 
----
+## Usage
 
-## Quick Start (Help Users Set This Up)
+When user invokes `/relayplane <subcommand>`, run:
 
-### 1. Set API keys
 ```bash
-export ANTHROPIC_API_KEY="sk-ant-..."
-export OPENAI_API_KEY="sk-..."  # Optional
+node {baseDir}/relayplane.js <subcommand>
 ```
 
-### 2. Start the proxy
-```bash
-npx @relayplane/proxy --port 3001
-```
+Examples:
+- `/relayplane stats` → `node {baseDir}/relayplane.js stats`
+- `/relayplane doctor` → `node {baseDir}/relayplane.js doctor`
+- `/relayplane proxy start` → `node {baseDir}/relayplane.js proxy start`
+- `/relayplane telemetry off` → `node {baseDir}/relayplane.js telemetry off`
 
-### 3. Point tools to proxy
+## Quick Start
+
 ```bash
+# Install CLI globally
+npm install -g @relayplane/cli @relayplane/proxy
+
+# Check configuration
+relayplane doctor
+
+# Start proxy
+relayplane proxy start
+
+# Point your SDKs to the proxy
 export ANTHROPIC_BASE_URL=http://localhost:3001
 export OPENAI_BASE_URL=http://localhost:3001
-openclaw  # or any tool
+
+# Use routing aliases in your API calls
+# model: "rp:auto"     - Smart routing
+# model: "rp:cost"     - Cheapest model
+# model: "rp:best"     - Best quality
+# model: "rp:fast"     - Fastest response
 ```
 
----
+## Model Routing Aliases
 
-## Routing Modes
+| Alias | Description |
+|-------|-------------|
+| `rp:auto` / `relayplane:auto` | Smart routing based on task complexity |
+| `rp:cost` / `rp:cheap` | Always cheapest model (GPT-4o-mini) |
+| `rp:fast` | Lowest latency (Claude Haiku) |
+| `rp:best` / `rp:quality` | Best quality (Claude Sonnet 4) |
+| `rp:balanced` | Balance of cost and quality |
 
-| Mode | Model Name | Description |
-|------|------------|-------------|
-| Auto | `relayplane:auto` | Smart routing - infers task, picks optimal model |
-| Cost | `relayplane:cost` | Always cheapest (Haiku) - maximum savings |
-| Fast | `relayplane:fast` | Lowest latency models |
-| Quality | `relayplane:quality` | Always best model (Opus) |
+## Telemetry Control
 
----
-
-## Supported Providers
-
-- **Anthropic:** Claude 3.5 Haiku, Sonnet 4, Opus 4.5
-- **OpenAI:** GPT-4o, GPT-4o-mini, o1, o3
-- **Google:** Gemini 2.0 Flash, Gemini Pro
-- **xAI:** Grok models
-- **Moonshot:** v1 (8k, 32k, 128k)
-
----
-
-## How It Works
-
-```
-User's Tool (OpenClaw, Cursor, etc.)
-         │
-         ▼
-    RelayPlane Proxy (localhost:3001)
-    ├── Infers task type (code_review, analysis, etc.)
-    ├── Routes to optimal model (Haiku for simple, Opus for complex)
-    ├── Tracks outcomes for learning
-    └── Streams response back
-         │
-         ▼
-    Provider API (Anthropic, OpenAI, etc.)
-```
-
----
-
-## REST Endpoints
+RelayPlane collects anonymous usage data to improve routing. You can control this:
 
 ```bash
-# Check status
-curl http://localhost:3001/control/status
+relayplane-proxy telemetry status  # Check current setting
+relayplane-proxy telemetry off     # Disable completely
+relayplane-proxy telemetry on      # Re-enable
 
-# Get stats
-curl http://localhost:3001/control/stats
-
-# Enable/disable routing
-curl -X POST http://localhost:3001/control/enable
-curl -X POST http://localhost:3001/control/disable
+# Or run with flags:
+relayplane-proxy --offline   # Disable transmission
+relayplane-proxy --audit     # See what's sent before sending
 ```
 
----
+**What's collected:** Model used, token counts, latency, task type.
+**What's NOT collected:** Prompts, responses, or any message content.
 
-## Configuration
+## Pricing
 
-Config file: `~/.relayplane/config.json` (hot-reloads on save)
+- **Free:** Local-only mode, unlimited requests, no account required
+- **Pro:** $29/month - Cloud dashboard, analytics, team features
+- **Max:** $99/month - Policies, budget controls, 5 team seats
+- **Enterprise:** Custom pricing, SSO, audit logs, self-hosted
 
-```json
-{
-  "enabled": true,
-  "routing": {
-    "mode": "cascade",
-    "cascade": {
-      "models": ["claude-3-haiku-20240307", "claude-3-5-sonnet-20241022", "claude-3-opus-20240229"],
-      "escalateOn": "uncertainty"
-    }
-  }
-}
-```
+Sign up at [relayplane.com/trial](https://relayplane.com/trial)
 
----
+## More Info
 
-## Data Storage
-
-All data local: `~/.relayplane/data.db` (SQLite)
-
----
-
-## Troubleshooting
-
-**Proxy not running?**
-```bash
-npx @relayplane/proxy --port 3001 -v
-```
-
-**Wrong model being used?**
-Check `ANTHROPIC_BASE_URL` is set to `http://localhost:3001`
-
----
-
-## Links
-
-**Website:** https://relayplane.com
-
-**Docs:** https://relayplane.com/integrations/openclaw
-
-**GitHub:** https://github.com/RelayPlane/proxy
-
-**npm:** https://www.npmjs.com/package/@relayplane/proxy
+- [Dashboard](https://relayplane.com/dashboard)
+- [Documentation](https://relayplane.com/docs)
+- [GitHub](https://github.com/RelayPlane)

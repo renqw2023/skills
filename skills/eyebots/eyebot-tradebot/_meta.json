@@ -1,0 +1,32 @@
+{
+  "owner": "eyebots",
+  "slug": "eyebot-tradebot",
+  "displayName": "Eyebot Tradebot",
+  "latest": {
+    "version": "1.8.0",
+    "publishedAt": 1770638976202,
+    "commit": "https://github.com/openclaw/skills/commit/76b2c455564469703d66411b76a809ce3bfc6c2f"
+  },
+  "history": [
+    {
+      "version": "1.6.0",
+      "publishedAt": 1770637855120,
+      "commit": "https://github.com/openclaw/skills/commit/bd99a7baffeca3f26ee6107026f3a5834773de32"
+    },
+    {
+      "version": "1.1.0",
+      "publishedAt": 1770597844513,
+      "commit": "https://github.com/openclaw/skills/commit/2f1e4a8be81c437a5a020b19ef19d1fa13e1f526"
+    },
+    {
+      "version": "1.0.3",
+      "publishedAt": 1770580776115,
+      "commit": "https://github.com/openclaw/skills/commit/0c348f5063ceb1c107ce1e22ff7406d1e771330f"
+    },
+    {
+      "version": "1.0.0",
+      "publishedAt": 1770580155573,
+      "commit": "https://github.com/openclaw/skills/commit/1a7b19b50a1089dd816f6203732e9149b308597b"
+    }
+  ]
+}

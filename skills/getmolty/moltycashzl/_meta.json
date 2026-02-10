@@ -1,0 +1,11 @@
+{
+  "owner": "getmolty",
+  "slug": "moltycashzl",
+  "displayName": "molty.cash x402 Payment Integration",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770675761444,
+    "commit": "https://github.com/openclaw/skills/commit/bc65a8a0d3120f72c5964a47abbc00ecd2d56bd5"
+  },
+  "history": []
+}

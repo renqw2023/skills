@@ -1,0 +1,8 @@
+{
+  "name": "eyebot-auditbot",
+  "version": "1.0.0",
+  "description": "Smart contract security scanner and auditor",
+  "author": "ILL4NE",
+  "license": "MIT",
+  "keywords": ["eyebot", "audit", "security", "smart-contract", "crypto", "a2a"]
+}

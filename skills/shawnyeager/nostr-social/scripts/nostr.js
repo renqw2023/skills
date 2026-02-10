@@ -45,6 +45,38 @@ function bytesToHex(bytes) {
   return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
+// Read content from stdin (for safe message passing without shell injection)
+async function readStdin() {
+  return new Promise((resolve) => {
+    let data = '';
+    process.stdin.setEncoding('utf8');
+    process.stdin.on('readable', () => {
+      let chunk;
+      while ((chunk = process.stdin.read()) !== null) {
+        data += chunk;
+      }
+    });
+    process.stdin.on('end', () => {
+      resolve(data.trim());
+    });
+    // If stdin is a TTY (interactive), return empty immediately
+    if (process.stdin.isTTY) {
+      resolve('');
+    }
+  });
+}
+
+// Get content: from stdin if '-', otherwise from args
+async function getContent(args, joinFrom = 0) {
+  const content = args.slice(joinFrom).join(' ');
+  if (content === '-' || content === '') {
+    const stdinContent = await readStdin();
+    if (stdinContent) return stdinContent;
+    if (content === '-') throw new Error('No content provided via stdin');
+  }
+  return content;
+}
+
 // Config paths
 const NOSTR_DIR = path.join(process.env.HOME, '.nostr');
 const SECRET_KEY_FILE = path.join(NOSTR_DIR, 'secret.key');
@@ -416,6 +448,53 @@ async function mentions(limit = 20) {
     console.log(`${nip19.npubEncode(e.pubkey).slice(0, 16)}... • ${date}`);
     console.log(`  ${preview}`);
     console.log(`  ID: ${nip19.noteEncode(e.id)}\n`);
+  }
+}
+
+// SHOW: display full content of a note
+async function show(noteId) {
+  if (!noteId) {
+    console.log('Usage: show <note1...>');
+    return;
+  }
+  
+  let eventId;
+  try {
+    if (noteId.startsWith('note1')) {
+      const decoded = nip19.decode(noteId);
+      eventId = decoded.data;
+    } else if (noteId.startsWith('nevent1')) {
+      const decoded = nip19.decode(noteId);
+      eventId = decoded.data.id;
+    } else {
+      eventId = noteId; // assume hex
+    }
+  } catch (e) {
+    console.log('Invalid note ID');
+    return;
+  }
+  
+  const event = await pool.get(RELAYS, { ids: [eventId] });
+  
+  if (!event) {
+    console.log('Note not found');
+    return;
+  }
+  
+  const date = new Date(event.created_at * 1000).toLocaleString();
+  const npub = nip19.npubEncode(event.pubkey);
+  
+  console.log(`📝 Note by ${npub}`);
+  console.log(`   ${date}\n`);
+  console.log(event.content);
+  console.log(`\n---`);
+  console.log(`ID: ${nip19.noteEncode(event.id)}`);
+  
+  // Show reply context if it's a reply
+  const replyTag = event.tags.find(t => t[0] === 'e' && t[3] === 'reply');
+  const rootTag = event.tags.find(t => t[0] === 'e' && t[3] === 'root');
+  if (replyTag || rootTag) {
+    console.log(`Reply to: ${nip19.noteEncode(replyTag?.at(1) || rootTag?.at(1))}`);
   }
 }
 
@@ -880,65 +959,235 @@ async function awardBadge(badgeId, recipientPubkey) {
   console.log(`✅ Badge awarded to ${nip19.npubEncode(targetPk)}`);
 }
 
-// UPLOAD: upload image to nostr.build with NIP-98 auth
-async function upload(filePath) {
-  const absolutePath = path.resolve(filePath);
-  if (!fs.existsSync(absolutePath)) {
-    throw new Error(`File not found: ${absolutePath}`);
-  }
-  
-  const fileData = fs.readFileSync(absolutePath);
-  const fileHash = crypto.createHash('sha256').update(fileData).digest('hex');
-  
-  const url = 'https://nostr.build/api/v2/upload/files';
-  
-  // Create NIP-98 auth event (kind 27235)
-  const authEvent = finalizeEvent({
-    kind: 27235,
-    created_at: Math.floor(Date.now() / 1000),
-    tags: [
-      ['u', url],
-      ['method', 'POST'],
-      ['payload', fileHash]
-    ],
-    content: ''
-  }, sk);
-  
-  // Base64 encode the event for Authorization header
-  const authToken = Buffer.from(JSON.stringify(authEvent)).toString('base64');
-  
-  // Upload with NIP-98 auth
-  const formData = new FormData();
-  formData.append('file', new Blob([fileData]), path.basename(absolutePath));
-  
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Authorization': 'Nostr ' + authToken
-    },
-    body: formData
-  });
-  
-  const result = await response.json();
-  
-  if (result.status === 'error') {
-    throw new Error(`Upload failed: ${result.message}`);
-  }
-  
-  // Extract URL from response
-  const imageUrl = result.data?.[0]?.url;
-  if (!imageUrl) {
-    throw new Error('No URL in response');
-  }
-  
-  console.log(`✅ Uploaded: ${imageUrl}`);
-  return imageUrl;
-}
-
 // WHOAMI
 function whoami() {
   console.log(`Pubkey: ${pk}`);
   console.log(`npub: ${nip19.npubEncode(pk)}`);
+}
+
+// ============ AUTORESPONSE STATE MANAGEMENT ============
+
+const DEFAULT_STATE_FILE = path.join(process.env.HOME, '.openclaw/workspace/memory/nostr-autoresponse-state.json');
+
+// Agent's own pubkey for WoT lookup (automatically detected from identity)
+
+function loadAutoResponseState(stateFile = DEFAULT_STATE_FILE) {
+  try {
+    return JSON.parse(fs.readFileSync(stateFile, 'utf8'));
+  } catch {
+    return {
+      version: 1,
+      lastCheck: null,
+      responseCount: { hour: 0, hourStart: null },
+      responded: {},
+      ignored: {}
+    };
+  }
+}
+
+function saveAutoResponseState(state, stateFile = DEFAULT_STATE_FILE) {
+  state.lastCheck = Math.floor(Date.now() / 1000);
+  const dir = path.dirname(stateFile);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+  fs.writeFileSync(stateFile, JSON.stringify(state, null, 2));
+}
+
+// Get WoT (owner's follow list from agent profile)
+async function getWoT() {
+  // Get agent's profile to extract owner's npub
+  const profile = await pool.get(RELAYS, { kinds: [0], authors: [pk] });
+  let ownerPubkey = pk; // fallback to agent if no owner found
+  
+  if (profile?.content) {
+    try {
+      const profileData = JSON.parse(profile.content);
+      // Look for owner's npub in profile (stored during setup)
+      if (profileData.about && profileData.about.includes('nostr:npub1')) {
+        const npubMatch = profileData.about.match(/nostr:(npub1[a-zA-Z0-9]+)/);
+        if (npubMatch) {
+          const { type, data } = nip19.decode(npubMatch[1]);
+          if (type === 'npub') {
+            ownerPubkey = data;
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Error parsing profile for owner pubkey:', e);
+    }
+  }
+  
+  // Get owner's contact list (their follows = our WoT)
+  const contactList = await pool.get(RELAYS, { kinds: [3], authors: [ownerPubkey] });
+  const follows = new Set(contactList?.tags?.filter(t => t[0] === 'p').map(t => t[1]) || []);
+  
+  // Always include owner and agent in WoT
+  follows.add(ownerPubkey);
+  follows.add(pk);
+  
+  return follows;
+}
+
+// Check if content looks like a question or needs response
+function needsResponse(content) {
+  // Skip very short messages (gm, gn, lol, etc.)
+  if (content.trim().length < 5) return false;
+  
+  // Skip if just emojis
+  if (/^[\p{Emoji}\s]+$/u.test(content.trim())) return false;
+  
+  // Question patterns
+  const questionPatterns = [
+    /\?/,
+    /^(what|how|why|when|where|who|can|could|would|should|is|are|do|does|did|will|have|has)/i,
+    /tell me|explain|describe|help|thoughts on/i
+  ];
+  
+  if (questionPatterns.some(p => p.test(content))) return true;
+  
+  // Direct address patterns
+  if (/@nash|nash,|hey nash/i.test(content)) return true;
+  
+  // Default: if it's substantial (>20 chars), consider it for response
+  return content.trim().length > 20;
+}
+
+// PENDING-MENTIONS: Get unprocessed mentions from WoT
+async function pendingMentions(stateFile = DEFAULT_STATE_FILE, limit = 15) {
+  const state = loadAutoResponseState(stateFile);
+  const wot = await getWoT();
+  
+  // Fetch mentions
+  const events = await pool.querySync(RELAYS, { kinds: [1], '#p': [pk], limit: limit * 2 });
+  events.sort((a, b) => b.created_at - a.created_at);
+  
+  // Filter to pending (not responded, not ignored, in WoT)
+  const pending = [];
+  const skipped = { notWoT: 0, alreadyHandled: 0 };
+  
+  for (const e of events.slice(0, limit * 2)) {
+    const noteId = nip19.noteEncode(e.id);
+    
+    // Skip if already handled
+    if (state.responded[noteId] || state.ignored[noteId]) {
+      skipped.alreadyHandled++;
+      continue;
+    }
+    
+    // Skip if not in WoT
+    if (!wot.has(e.pubkey)) {
+      skipped.notWoT++;
+      continue;
+    }
+    
+    // Check if it needs a response
+    const needs = needsResponse(e.content);
+    
+    pending.push({
+      id: e.id,
+      noteId,
+      pubkey: e.pubkey,
+      npub: nip19.npubEncode(e.pubkey),
+      content: e.content,
+      created_at: e.created_at,
+      needsResponse: needs,
+      isQuestion: /\?/.test(e.content)
+    });
+    
+    if (pending.length >= limit) break;
+  }
+  
+  // Output as JSON for easy parsing
+  const output = {
+    pending: pending.length,
+    skipped,
+    wotSize: wot.size,
+    lastCheck: state.lastCheck,
+    mentions: pending
+  };
+  
+  console.log(JSON.stringify(output, null, 2));
+}
+
+// MARK-RESPONDED: Mark a mention as responded
+async function markResponded(noteRef, responseNoteId = null, stateFile = DEFAULT_STATE_FILE) {
+  const noteId = noteRef.startsWith('note1') ? noteRef : nip19.noteEncode(resolveEventId(noteRef));
+  const state = loadAutoResponseState(stateFile);
+  
+  state.responded[noteId] = {
+    at: Math.floor(Date.now() / 1000),
+    responseId: responseNoteId
+  };
+  
+  // Update hourly rate limit counter
+  const now = Math.floor(Date.now() / 1000);
+  const hourAgo = now - 3600;
+  if (!state.responseCount.hourStart || state.responseCount.hourStart < hourAgo) {
+    state.responseCount = { hour: 1, hourStart: now };
+  } else {
+    state.responseCount.hour++;
+  }
+  
+  saveAutoResponseState(state, stateFile);
+  console.log(`✅ Marked responded: ${noteId}`);
+  if (responseNoteId) console.log(`   Response: ${responseNoteId}`);
+}
+
+// MARK-IGNORED: Mark a mention as ignored (no response needed)
+async function markIgnored(noteRef, reason = 'no_response_needed', stateFile = DEFAULT_STATE_FILE) {
+  const noteId = noteRef.startsWith('note1') ? noteRef : nip19.noteEncode(resolveEventId(noteRef));
+  const state = loadAutoResponseState(stateFile);
+  
+  state.ignored[noteId] = {
+    at: Math.floor(Date.now() / 1000),
+    reason
+  };
+  
+  saveAutoResponseState(state, stateFile);
+  console.log(`✅ Marked ignored: ${noteId} (${reason})`);
+}
+
+// RATE-LIMIT-CHECK: Check if we can respond (max 10/hour)
+function checkRateLimit(stateFile = DEFAULT_STATE_FILE) {
+  const state = loadAutoResponseState(stateFile);
+  const now = Math.floor(Date.now() / 1000);
+  const hourAgo = now - 3600;
+  
+  if (!state.responseCount.hourStart || state.responseCount.hourStart < hourAgo) {
+    console.log(JSON.stringify({ allowed: true, remaining: 10 }));
+    return true;
+  }
+  
+  const remaining = 10 - state.responseCount.hour;
+  console.log(JSON.stringify({ allowed: remaining > 0, remaining: Math.max(0, remaining) }));
+  return remaining > 0;
+}
+
+// AUTORESPONSE-STATUS: Show current state summary
+async function autoResponseStatus(stateFile = DEFAULT_STATE_FILE) {
+  const state = loadAutoResponseState(stateFile);
+  const wot = await getWoT();
+  
+  const now = Math.floor(Date.now() / 1000);
+  const hourAgo = now - 3600;
+  
+  let hourlyCount = 0;
+  if (state.responseCount.hourStart && state.responseCount.hourStart >= hourAgo) {
+    hourlyCount = state.responseCount.hour;
+  }
+  
+  const summary = {
+    lastCheck: state.lastCheck ? new Date(state.lastCheck * 1000).toISOString() : null,
+    wotSize: wot.size,
+    responded: Object.keys(state.responded).length,
+    ignored: Object.keys(state.ignored).length,
+    hourlyResponses: hourlyCount,
+    hourlyLimit: 10,
+    canRespond: hourlyCount < 10
+  };
+  
+  console.log(JSON.stringify(summary, null, 2));
 }
 
 // ============ MAIN ============
@@ -967,17 +1216,19 @@ if (!isConfigured() && cmd && cmd !== 'help') {
 
 try {
   switch (cmd) {
-    case 'post': await post(args.join(' ')); break;
-    case 'reply': await reply(args[0], args.slice(1).join(' ')); break;
+    // Content commands support stdin: echo "message" | node nostr.js post -
+    case 'post': await post(await getContent(args)); break;
+    case 'reply': await reply(args[0], await getContent(args, 1)); break;
     case 'follow': await follow(args[0]); break;
     case 'unfollow': await unfollow(args[0]); break;
-    case 'dm': await dm(args[0], args.slice(1).join(' ')); break;
+    case 'dm': await dm(args[0], await getContent(args, 1)); break;
     case 'dms': await readDms(parseInt(args[0]) || 10); break;
-    case 'zap': await zap(args[0], parseInt(args[1]), args.slice(2).join(' ')); break;
+    case 'zap': await zap(args[0], parseInt(args[1]), args.slice(2).join(' ') || ''); break;
     case 'mentions': await mentions(parseInt(args[0]) || 20); break;
+    case 'show': await show(args[0]); break;
     case 'feed': await feed(parseInt(args[0]) || 20); break;
     case 'profile': await profile(args[0], args.slice(1).join(' ')); break;
-    case 'profile-set': await profileSet(args.join(' ')); break;
+    case 'profile-set': await profileSet(await getContent(args)); break;
     case 'lookup': await lookup(args[0]); break;
     case 'react': await react(args[0], args[1] || '🤙'); break;
     case 'repost': await repost(args[0]); break;
@@ -988,7 +1239,11 @@ try {
     case 'unbookmark': await unbookmark(args[0]); break;
     case 'bookmarks': await listBookmarks(); break;
     case 'whoami': whoami(); break;
-    case 'upload': await upload(args[0]); break;
+    case 'pending-mentions': await pendingMentions(args[0] || DEFAULT_STATE_FILE, parseInt(args[1]) || 15); break;
+    case 'mark-responded': await markResponded(args[0], args[1], args[2] || DEFAULT_STATE_FILE); break;
+    case 'mark-ignored': await markIgnored(args[0], args[1] || 'no_response_needed', args[2] || DEFAULT_STATE_FILE); break;
+    case 'rate-limit': checkRateLimit(args[0] || DEFAULT_STATE_FILE); break;
+    case 'autoresponse-status': await autoResponseStatus(args[0] || DEFAULT_STATE_FILE); break;
     case 'relays':
       if (args[0] === 'add') await addRelay(args[1], args[2]);
       else if (args[0] === 'remove') await removeRelay(args[1]);
@@ -996,7 +1251,7 @@ try {
       break;
     case 'channel':
       if (args[0] === 'create') await createChannel(args[1], args[2], args[3]);
-      else if (args[0] === 'post') await channelPost(args[1], args.slice(2).join(' '));
+      else if (args[0] === 'post') await channelPost(args[1], await getContent(args, 2));
       else if (args[0] === 'read') await channelMessages(args[1], parseInt(args[2]) || 20);
       else console.log('Usage: channel <create|post|read> [args]');
       break;
@@ -1017,7 +1272,6 @@ IDENTITY
   whoami                      Show your pubkey/npub
   profile [name] [about]      Get or set profile
   profile-set <json>          Set profile fields (JSON)
-  upload <file>               Upload image, get URL (for profile pics)
 
 SOCIAL
   post <content>              Post a note (kind 1)
@@ -1026,6 +1280,7 @@ SOCIAL
   repost <note1...>           Repost/boost a note
   delete <note1...>           Delete your note
   mentions [limit]            Check mentions
+  show <note1...>             Show full note content
   feed [limit]                View feed from follows
 
 CONNECTIONS
@@ -1061,6 +1316,13 @@ BADGES (NIP-58)
 
 ZAPS (NIP-57)
   zap <npub> <sats> [comment] Create zap invoice
+
+AUTORESPONSE (Heartbeat Integration)
+  pending-mentions [file] [limit]   Get unprocessed WoT mentions (JSON)
+  mark-responded <note> [resp]      Mark mention as responded
+  mark-ignored <note> [reason]      Mark mention as ignored
+  rate-limit [file]                 Check hourly rate limit (10/hr)
+  autoresponse-status [file]        Show autoresponse state summary
 
 WALLET (use cocod)
   cocod init                  Initialize Cashu wallet

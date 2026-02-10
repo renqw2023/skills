@@ -15,6 +15,7 @@ const {
 } = require('./gep/assetStore');
 const { selectGeneAndCapsule, matchPatternToSignals } = require('./gep/selector');
 const { buildGepPrompt } = require('./gep/prompt');
+const { resolveStrategy } = require('./gep/strategy');
 const { extractCapabilityCandidates, renderCandidatesPreview } = require('./gep/candidates');
 const {
   getMemoryAdvice,
@@ -28,6 +29,7 @@ const { readStateForSolidify, writeStateForSolidify } = require('./gep/solidify'
 const { buildMutation, isHighRiskMutationAllowed } = require('./gep/mutation');
 const { selectPersonalityForRun } = require('./gep/personality');
 const { clip, writePromptArtifact, renderSessionsSpawnCall } = require('./gep/bridge');
+const { getEvolutionDir } = require('./gep/paths');
 
 const REPO_ROOT = getRepoRoot();
 
@@ -91,9 +93,17 @@ function formatSessionLog(jsonlContent) {
           content = JSON.stringify(data.message.content);
         }
 
+        // Capture LLM errors from errorMessage field (e.g. "Unsupported MIME type: image/gif")
+        if (data.message.errorMessage) {
+          const errMsg = typeof data.message.errorMessage === 'string'
+            ? data.message.errorMessage
+            : JSON.stringify(data.message.errorMessage);
+          content = `[LLM ERROR] ${errMsg.replace(/\n+/g, ' ').slice(0, 300)}`;
+        }
+
         // Filter: Skip Heartbeats to save noise
         if (content.trim() === 'HEARTBEAT_OK') continue;
-        if (content.includes('NO_REPLY')) continue;
+        if (content.includes('NO_REPLY') && !data.message.errorMessage) continue;
 
         // Clean up newlines for compact reading
         content = content.replace(/\n+/g, ' ').slice(0, 300);
@@ -143,45 +153,50 @@ function readRealSessionLog() {
   try {
     if (!fs.existsSync(AGENT_SESSIONS_DIR)) return '[NO SESSION LOGS FOUND]';
 
-    let files = [];
+    const now = Date.now();
+    const ACTIVE_WINDOW_MS = 24 * 60 * 60 * 1000; // 24 hours
+    const TARGET_BYTES = 120000;
+    const PER_SESSION_BYTES = 20000; // Read tail of each active session
 
-    // Strategy: Node.js native sort (Faster than execSync for <100 files)
-    // Note: performMaintenance() ensures file count stays low (~100 max)
-    files = fs
+    // Find ALL active sessions (modified in last 24h), sorted newest first
+    let files = fs
       .readdirSync(AGENT_SESSIONS_DIR)
-      .filter(f => f.endsWith('.jsonl'))
+      .filter(f => f.endsWith('.jsonl') && !f.includes('.lock'))
       .map(f => {
         try {
-          return { name: f, time: fs.statSync(path.join(AGENT_SESSIONS_DIR, f)).mtime.getTime() };
+          const st = fs.statSync(path.join(AGENT_SESSIONS_DIR, f));
+          return { name: f, time: st.mtime.getTime(), size: st.size };
         } catch (e) {
           return null;
         }
       })
-      .filter(Boolean)
+      .filter(f => f && (now - f.time) < ACTIVE_WINDOW_MS)
       .sort((a, b) => b.time - a.time); // Newest first
 
     if (files.length === 0) return '[NO JSONL FILES]';
 
-    let content = '';
-    const TARGET_BYTES = 100000; // Increased context (was 64000) for smarter evolution
+    // Skip evolver's own sessions to avoid self-reference loops
+    const nonEvolverFiles = files.filter(f => !f.name.startsWith('evolver_hand_'));
+    const activeFiles = nonEvolverFiles.length > 0 ? nonEvolverFiles : files.slice(0, 1);
 
-    // Read the latest file first (efficient tail read)
-    const latestFile = path.join(AGENT_SESSIONS_DIR, files[0].name);
-    content = readRecentLog(latestFile, TARGET_BYTES);
+    // Read from multiple active sessions (up to 6) to get a full picture
+    const maxSessions = Math.min(activeFiles.length, 6);
+    const sections = [];
+    let totalBytes = 0;
 
-    // If content is short (e.g. just started a session), peek at the previous one too
-    if (content.length < TARGET_BYTES && files.length > 1) {
-      const prevFile = path.join(AGENT_SESSIONS_DIR, files[1].name);
-      const needed = TARGET_BYTES - content.length;
-      const prevContent = readRecentLog(prevFile, needed);
-
-      // Format to show continuity
-      content = `\n--- PREVIOUS SESSION (${files[1].name}) ---\n${formatSessionLog(
-        prevContent
-      )}\n\n--- CURRENT SESSION (${files[0].name}) ---\n${formatSessionLog(content)}`;
-    } else {
-      content = formatSessionLog(content);
+    for (let i = 0; i < maxSessions && totalBytes < TARGET_BYTES; i++) {
+      const f = activeFiles[i];
+      const bytesLeft = TARGET_BYTES - totalBytes;
+      const readSize = Math.min(PER_SESSION_BYTES, bytesLeft);
+      const raw = readRecentLog(path.join(AGENT_SESSIONS_DIR, f.name), readSize);
+      const formatted = formatSessionLog(raw);
+      if (formatted.trim()) {
+        sections.push(`--- SESSION (${f.name}) ---\n${formatted}`);
+        totalBytes += formatted.length;
+      }
     }
+
+    let content = sections.join('\n\n');
 
     return content;
   } catch (e) {
@@ -277,26 +292,50 @@ function checkSystemHealth() {
 }
 
 function getMutationDirective(logContent) {
-  // Signal hints derived from recent logs.
+  const strategy = resolveStrategy();
   const errorMatches = logContent.match(/\[ERROR|Error:|Exception:|FAIL|Failed|"isError":true/gi) || [];
   const errorCount = errorMatches.length;
   const isUnstable = errorCount > 2;
-  const recommendedIntent = isUnstable ? 'repair' : 'optimize';
+
+  // Strategy-aware intent recommendation
+  var recommendedIntent;
+  if (strategy.name === 'repair-only') {
+    recommendedIntent = 'repair';
+  } else if (strategy.name === 'innovate' && !isUnstable) {
+    recommendedIntent = 'innovate';
+  } else if (isUnstable && strategy.repair >= 0.3) {
+    recommendedIntent = 'repair';
+  } else if (isUnstable) {
+    recommendedIntent = 'optimize';
+  } else {
+    // Stable system: pick based on strategy weights (highest weight wins)
+    var weights = [
+      { intent: 'innovate', w: strategy.innovate },
+      { intent: 'optimize', w: strategy.optimize },
+      { intent: 'repair', w: strategy.repair },
+    ];
+    weights.sort(function(a, b) { return b.w - a.w; });
+    recommendedIntent = weights[0].intent;
+  }
 
   return `
 [Signal Hints]
 - recent_error_count: ${errorCount}
 - stability: ${isUnstable ? 'unstable' : 'stable'}
+- strategy: ${strategy.label} (${strategy.name})
+- target_allocation: ${Math.round(strategy.innovate * 100)}% innovate / ${Math.round(strategy.optimize * 100)}% optimize / ${Math.round(strategy.repair * 100)}% repair
 - recommended_intent: ${recommendedIntent}
 `;
 }
 
-const STATE_FILE = path.join(MEMORY_DIR, 'evolution_state.json');
-// Fix: Look for MEMORY.md in root first, then memory dir to support both layouts
-const ROOT_MEMORY = path.join(REPO_ROOT, 'MEMORY.md');
+const STATE_FILE = path.join(getEvolutionDir(), 'evolution_state.json');
+// Read MEMORY.md and USER.md from the WORKSPACE root (not the evolver plugin dir).
+// This avoids symlink breakage if the target file is temporarily deleted.
+const WORKSPACE_ROOT = process.env.OPENCLAW_WORKSPACE || path.resolve(REPO_ROOT, '../..');
+const ROOT_MEMORY = path.join(WORKSPACE_ROOT, 'MEMORY.md');
 const DIR_MEMORY = path.join(MEMORY_DIR, 'MEMORY.md');
-const MEMORY_FILE = fs.existsSync(ROOT_MEMORY) ? ROOT_MEMORY : DIR_MEMORY;
-const USER_FILE = path.join(REPO_ROOT, 'USER.md');
+const MEMORY_FILE = fs.existsSync(ROOT_MEMORY) ? ROOT_MEMORY : (fs.existsSync(DIR_MEMORY) ? DIR_MEMORY : ROOT_MEMORY);
+const USER_FILE = path.join(WORKSPACE_ROOT, 'USER.md');
 
 function readMemorySnippet() {
   try {
@@ -569,6 +608,7 @@ async function run() {
     todayLog,
     memorySnippet,
     userSnippet,
+    recentEvents,
   });
 
   const recentErrorMatches = recentMasterLog.match(/\[ERROR|Error:|Exception:|FAIL|Failed|"isError":true/gi) || [];
@@ -739,7 +779,9 @@ async function run() {
     Number(personalityState.creativity) >= 0.75 &&
     stableSuccess &&
     tailAvgScore >= 0.7;
+  const activeStrategy = resolveStrategy();
   const forceInnovation =
+    activeStrategy.name === 'innovate' ||
     String(process.env.FORCE_INNOVATION || process.env.EVOLVE_FORCE_INNOVATION || '').toLowerCase() === 'true';
   const mutationInnovateMode = !!IS_RANDOM_DRIFT || !!innovationPressure || !!forceInnovation;
   const mutationSignals = innovationPressure ? [...(Array.isArray(signals) ? signals : []), 'stable_success_plateau'] : signals;
@@ -884,6 +926,20 @@ async function run() {
     ? 'Review mode: before significant edits, pause and ask the user for confirmation.'
     : 'Review mode: disabled.';
 
+  // Build recent evolution history summary for context injection
+  const recentHistorySummary = (() => {
+    if (!recentEvents || recentEvents.length === 0) return '(no prior evolution events)';
+    const last8 = recentEvents.slice(-8);
+    const lines = last8.map((evt, idx) => {
+      const sigs = Array.isArray(evt.signals) ? evt.signals.slice(0, 3).join(', ') : '?';
+      const gene = Array.isArray(evt.genes_used) && evt.genes_used.length ? evt.genes_used[0] : 'none';
+      const outcome = evt.outcome && evt.outcome.status ? evt.outcome.status : '?';
+      const ts = evt.meta && evt.meta.at ? evt.meta.at : (evt.id || '');
+      return `  ${idx + 1}. [${evt.intent || '?'}] signals=[${sigs}] gene=${gene} outcome=${outcome} @${ts}`;
+    });
+    return lines.join('\n');
+  })();
+
   const context = `
 Runtime state:
 - System health: ${healthReport}
@@ -897,6 +953,10 @@ Notes:
 - ${reviewNote}
 - ${reportingDirective}
 - ${syncDirective}
+
+Recent Evolution History (last 8 cycles -- DO NOT repeat the same intent+signal+gene):
+${recentHistorySummary}
+IMPORTANT: If you see 3+ consecutive "repair" cycles with the same gene, you MUST switch to "innovate" intent.
 
 External candidates (A2A receive zone; staged only, never execute directly):
 ${externalCandidatesPreview}
@@ -951,6 +1011,7 @@ ${mutationDirective}
       `selected_capsule: ${selectedCapsuleId ? String(selectedCapsuleId) : '(none)'}`,
       `mutation_category: ${mutation && mutation.category ? String(mutation.category) : '(none)'}`,
       `force_innovation: ${forceInnovation ? 'true' : 'false'}`,
+      `strategy: ${activeStrategy.label} (${activeStrategy.name})`,
     ].join('\n');
     console.log(`[THOUGHT_PROCESS]\n${thought}\n[/THOUGHT_PROCESS]`);
   }
@@ -969,7 +1030,7 @@ ${mutationDirective}
     let artifact = null;
     try {
       artifact = writePromptArtifact({
-        memoryDir: MEMORY_DIR,
+        memoryDir: getEvolutionDir(),
         cycleId,
         runId,
         prompt,

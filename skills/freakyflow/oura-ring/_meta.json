@@ -1,0 +1,11 @@
+{
+  "owner": "freakyflow",
+  "slug": "oura-ring",
+  "displayName": "Oura Ring",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770608110705,
+    "commit": "https://github.com/openclaw/skills/commit/c1f42acabec1c4b493fed0066c3ebe80aa3e4460"
+  },
+  "history": []
+}

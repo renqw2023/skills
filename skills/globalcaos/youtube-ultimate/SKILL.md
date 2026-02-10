@@ -1,10 +1,10 @@
 ---
 name: youtube
-version: 1.0.1
+version: 1.0.3
 description: |
   The most comprehensive YouTube skill for AI agents. Extract transcripts for FREE (zero API quota!), search with filters, batch video details, read comments, download videos/audio. We analyzed 15+ YouTube tools and built the one that does everything.
 homepage: https://github.com/openclaw/openclaw
-repository: https://github.com/openclaw/openclaw
+repository: https://github.com/globalcaos/clawdbot-moltbot-openclaw
 metadata:
   {
     "openclaw":
@@ -214,3 +214,11 @@ We surveyed the landscape:
 **None combined free transcripts + search + downloads + batch ops.**
 
 Now one does.
+
+---
+
+## Credits
+
+Created by **Oscar Serra** with the help of **Claude** (Anthropic).
+
+*We analyzed 15+ YouTube tools and built the one that does everything.*

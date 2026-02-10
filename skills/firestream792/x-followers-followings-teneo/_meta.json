@@ -3,11 +3,16 @@
   "slug": "x-followers-followings-teneo",
   "displayName": "X Followers & Followings - powered by Teneo Protocol",
   "latest": {
-    "version": "1.0.7",
-    "publishedAt": 1770448428364,
-    "commit": "https://github.com/openclaw/skills/commit/a0767c65af33f3800dd03f6c7cc8cbbd2f907142"
+    "version": "1.0.11",
+    "publishedAt": 1770643224878,
+    "commit": "https://github.com/openclaw/skills/commit/403a6e23dedb48ea728456a096ceef876a15721d"
   },
   "history": [
+    {
+      "version": "1.0.7",
+      "publishedAt": 1770448428364,
+      "commit": "https://github.com/openclaw/skills/commit/a0767c65af33f3800dd03f6c7cc8cbbd2f907142"
+    },
     {
       "version": "1.0.6",
       "publishedAt": 1770302214542,

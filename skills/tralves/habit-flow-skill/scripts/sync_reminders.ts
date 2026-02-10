@@ -90,8 +90,19 @@ program
             const [hour, minute] = time.split(':');
             const cronExpression = `${minute} ${hour} * * *`;
 
-            // Minimal cron message - all logic is in run_reminder.ts
-            const message = `Run the HabitFlow reminder check and deliver the result:\ncd "${SKILL_DIR}" && npx tsx scripts/run_reminder.ts --habit-id ${habit.id}`;
+            // Build the reminder message with completion check
+            const customMessage = habit.reminderSettings.message;
+            const defaultReminderText = `🎯 Reminder: Time for your ${habit.name}\n\nTarget: ${habit.targetCount} ${habit.targetUnit || 'session'}\n\nQuick log: Reply 'done', 'skipped', or 'missed'`;
+            
+            // Message includes a check to skip if habit already completed today
+            const message = `Before sending the reminder, check if the habit was already completed today:
+
+cd "${SKILL_DIR}" && npx tsx scripts/get_stats.ts --habit-id ${habit.id} --period 1 --format json
+
+If "completedDays" is 1 (already completed today), just reply NO_REPLY.
+
+Otherwise, send this reminder in a friendly and brief way:
+${customMessage || defaultReminderText}`;
 
             try {
               // Determine delivery method (priority: habit settings > config > default)
@@ -164,25 +175,36 @@ program
       const config = await loadConfig();
       const results = [];
 
-      // Minimal cron messages - all logic is in run_coaching.ts
       const coachingJobs = [
         {
           name: 'HabitFlow: Daily Coaching Check',
           cron: '0 8 * * *',
           description: 'Daily milestone and risk checks',
-          message: `Run the HabitFlow daily coaching check and deliver the result:\ncd "${SKILL_DIR}" && npx tsx scripts/run_coaching.ts --type daily`
+          message: `Run the HabitFlow daily coaching check:
+
+cd "${SKILL_DIR}" && npx tsx scripts/proactive_coaching.ts --check-milestones --check-risks --format json
+
+Send each message to the user. Display any image attachments.`
         },
         {
           name: 'HabitFlow: Weekly Check-in',
-          cron: '0 19 * * 0',
-          description: 'Weekly progress check-in (Sunday 7pm)',
-          message: `Run the HabitFlow weekly check-in and deliver the result:\ncd "${SKILL_DIR}" && npx tsx scripts/run_coaching.ts --type weekly`
+          cron: '0 8 * * 1',
+          description: 'Weekly progress check-in (Monday 8am)',
+          message: `Run the HabitFlow weekly check-in:
+
+cd "${SKILL_DIR}" && npx tsx scripts/proactive_coaching.ts --weekly-checkin --format json
+
+Send each message to the user. Display any image attachments (trends chart, heatmap).`
         },
         {
           name: 'HabitFlow: Pattern Insights',
           cron: '0 10 * * 3',
           description: 'Mid-week pattern insights (Wednesday 10am)',
-          message: `Run the HabitFlow pattern insights check and deliver the result:\ncd "${SKILL_DIR}" && npx tsx scripts/run_coaching.ts --type insights`
+          message: `Run the HabitFlow pattern insights check:
+
+cd "${SKILL_DIR}" && npx tsx scripts/proactive_coaching.ts --detect-insights --format json
+
+Send each message to the user. Display any image attachments.`
         }
       ];
 

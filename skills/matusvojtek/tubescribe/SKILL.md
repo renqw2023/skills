@@ -14,15 +14,14 @@ Drop a YouTube link → get a beautiful transcript with speaker labels, key quot
 - **No subscription** — runs entirely on your machine
 - **No API keys required** — works out of the box
 - **No data leaves your computer** — your content stays private
-- **No usage limits** — summarize as many videos as you want
 
 ### ✨ Features
 
+- **📄 Transcript with summary and key quotes** — Export as DOCX, HTML, or Markdown
 - **🎯 Smart Speaker Detection** — Automatically identifies participants
 - **🔊 Audio Summaries** — Listen to key points (MP3/WAV)
 - **📝 Clickable Timestamps** — Every quote links directly to that moment in the video
 - **💬 YouTube Comments** — Viewer sentiment analysis and best comments
-- **📄 Transcript with summary and key quotes** — Export as DOCX, HTML, or Markdown
 - **📋 Queue Support** — Send multiple links, they get processed in order
 - **🚀 Non-Blocking Workflow** — Conversation continues while video processes in background
 
@@ -63,11 +62,15 @@ sessions_spawn(
     task=f"""
 ## TubeScribe: Process {youtube_url}
 
+⚠️ CRITICAL: Do NOT install any software.
+No pip, brew, curl, venv, or binary downloads.
+If a tool is missing, STOP and report what's needed.
+
 Run the COMPLETE pipeline — do not stop until all steps are done.
 
 ### Step 1: Extract
 ```bash
-python3 /Users/matusvojtek/.openclaw/workspace/skills/tubescribe/scripts/tubescribe.py "{youtube_url}"
+python3 skills/tubescribe/scripts/tubescribe.py "{youtube_url}"
 ```
 Note the video_id from the output (e.g., "Source: /tmp/tubescribe_ABC123_source.json" → video_id is ABC123).
 
@@ -82,7 +85,7 @@ Write to `/tmp/tubescribe_<video_id>_output.md`:
 
 1. `# **<title>**`
 ---
-2. Video info block (Channel, Date, Duration, clickable URL)
+2. Video info block — Channel, Date, Duration, URL (clickable). Empty line between each field.
 ---
 3. `## **Participants**` — table with bold headers:
    ```
@@ -90,7 +93,7 @@ Write to `/tmp/tubescribe_<video_id>_output.md`:
    |----------|----------|-----------------|
    ```
 ---
-4. `## **Summary**` — 3-5 paragraphs
+4. `## **Summary**` — 3-5 paragraphs of prose
 ---
 5. `## **Key Quotes**` — 5 best with clickable YouTube timestamps. Format each as:
    ```
@@ -124,14 +127,14 @@ pandoc /tmp/tubescribe_<video_id>_output.md -o ~/Documents/TubeScribe/<safe_titl
 ```
 
 ### Step 5: Generate audio
-```bash
-cd ~/.openclaw/tools/kokoro && source .venv/bin/activate
-```
-Then Python: read Summary from markdown, generate with Kokoro (voice=0.6*af_heart+0.4*af_sky), save as MP3 to ~/Documents/TubeScribe/<safe_title>_summary.mp3
+Read `~/.tubescribe/config.json` to check `audio.tts_engine` and `kokoro.path`.
+- If `tts_engine` is `"kokoro"`: activate Kokoro from the configured path, generate with voice blend from config, save as MP3 to the configured output folder.
+- If `tts_engine` is `"builtin"`: use `say` command (macOS) to generate audio.
+- If `audio.enabled` is `false`: skip this step.
 
 ### Step 6: Cleanup
 ```bash
-python3 /Users/matusvojtek/.openclaw/workspace/skills/tubescribe/scripts/tubescribe.py --cleanup <video_id>
+python3 skills/tubescribe/scripts/tubescribe.py --cleanup <video_id>
 ```
 
 ### Step 7: Open folder
@@ -149,8 +152,7 @@ Tell what was created: DOCX name, MP3 name + duration, video stats.
 ```
 
 **After spawning, reply immediately:**
-> 🎬 Processing "[video title if known, or just the URL]" — I'll let you know when it's ready!
-
+> 🎬 TubeScribe is processing - I'll let you know when it's ready!
 Then continue the conversation. The sub-agent notification announces completion.
 
 ## Configuration
@@ -175,7 +177,7 @@ Config file: `~/.tubescribe/config.json`
     "tts_engine": "builtin"
   },
   "kokoro": {
-    "venv_path": "~/.tubescribe/kokoro-env",
+    "path": "~/.openclaw/tools/kokoro",
     "voice_blend": { "af_heart": 0.6, "af_sky": 0.4 },
     "speed": 1.05
   },
@@ -210,7 +212,7 @@ Config file: `~/.tubescribe/config.json`
 ### Kokoro TTS Options (optional)
 | Option | Default | Description |
 |--------|---------|-------------|
-| `kokoro.venv_path` | `~/.tubescribe/kokoro-env` | Python venv with Kokoro installed |
+| `kokoro.path` | `~/.openclaw/tools/kokoro` | Kokoro repo location |
 | `kokoro.voice_blend` | `{af_heart: 0.6, af_sky: 0.4}` | Custom voice mix |
 | `kokoro.speed` | `1.05` | Playback speed (1.0 = normal, 1.05 = 5% faster) |
 

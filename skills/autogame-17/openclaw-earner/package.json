@@ -1,0 +1,14 @@
+{
+  "name": "openclaw-earner",
+  "version": "1.2.0",
+  "description": "Autonomous bounty hunter for AI agents. Earns USDC and tokens across ClawTasks and OpenWork.",
+  "author": "autogame-17",
+  "main": "index.js",
+  "bin": {
+    "openclaw-earner": "index.js"
+  },
+  "dependencies": {
+    "commander": "^14.0.3",
+    "dotenv": "^17.2.3"
+  }
+}

@@ -1,7 +1,7 @@
 ---
 name: zyla-api-hub-skill
 description: Zyla API Hub Skill — Turn your OpenClaw AI agent into a real-world operator. Power it with 10,000+ production-ready APIs from Zyla API Hub — instant access to weather, finance, translation, email validation, geolocation, and more.
-metadata: {"openclaw":{"requires":{"env":["ZYLA_API_KEY"],"bins":["node"]},"primaryEnv":"ZYLA_API_KEY","homepage":"https://zylalabs.com/openclaw/connect"}}
+metadata: {"openclaw":{"requires":{},"primaryEnv":"ZYLA_API_KEY","homepage":"https://zylalabs.com/openclaw/connect"}}
 ---
 
 # Zyla API Hub Skill

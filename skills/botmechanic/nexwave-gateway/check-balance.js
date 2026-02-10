@@ -1,4 +1,4 @@
-import { account } from "./setup-gateway.js";
+import { walletAddress } from "./setup-gateway.js";
 import { GatewayClient } from "./gateway-client.js";
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -12,7 +12,7 @@ const gatewayClient = new GatewayClient();
 console.log("═══════════════════════════════════════════════");
 console.log("  Nexwave Gateway — Balance Check");
 console.log("═══════════════════════════════════════════════");
-console.log(`Account: ${account.address}\n`);
+console.log(`Account: ${walletAddress}\n`);
 
 // Fetch supported chain info
 console.log("📡 Fetching Gateway API info...");
@@ -29,11 +29,12 @@ for (const domain of info.domains) {
 
 // Check unified balance
 console.log("\n💰 Checking unified USDC balance...");
-const { balances } = await gatewayClient.balances("USDC", account.address);
+const { balances } = await gatewayClient.balances("USDC", walletAddress);
 
 let totalBalance = 0;
 for (const balance of balances) {
-  const chainName = GatewayClient.CHAINS[balance.domain] || `Domain ${balance.domain}`;
+  const chainName =
+    GatewayClient.CHAINS[balance.domain] || `Domain ${balance.domain}`;
   const amount = parseFloat(balance.balance);
   totalBalance += amount;
   console.log(`   • ${chainName}: ${balance.balance} USDC`);

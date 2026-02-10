@@ -3,11 +3,16 @@
   "slug": "signalshield-analyst-teneo",
   "displayName": "SignalShield Analyst - powered by Teneo Protocol",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1770302204470,
-    "commit": "https://github.com/clawdbot/skills/commit/1259b67291f4ff1dda3f5cd82df4aceaf611d5f7"
+    "version": "1.0.4",
+    "publishedAt": 1770633114105,
+    "commit": "https://github.com/openclaw/skills/commit/82a907e94dd4395a5165d0fad927220beecf8558"
   },
   "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1770302204470,
+      "commit": "https://github.com/clawdbot/skills/commit/1259b67291f4ff1dda3f5cd82df4aceaf611d5f7"
+    },
     {
       "version": "1.0.1",
       "publishedAt": 1770216656995,

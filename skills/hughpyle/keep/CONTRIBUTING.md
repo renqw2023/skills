@@ -20,9 +20,11 @@ We use [semantic versioning](https://semver.org/):
 
 **Current status:** Pre-1.0 (0.x.y), so minor versions may include breaking changes, but we try to avoid them.
 
-Version is defined in two places (keep in sync):
+Version is defined in four places (keep in sync):
 - `pyproject.toml` → `version = "x.y.z"`
 - `keep/__init__.py` → `__version__ = "x.y.z"`
+- `SKILL.md` frontmatter → `version: x.y.z`
+- `.claude-plugin/plugin.json` → `"version": "x.y.z"`
 
 ## Public API
 
@@ -34,7 +36,7 @@ The following are considered public API — changes require version bumps and de
 - Anything exported in `keep/__init__.py`
 
 **CLI:**
-- All commands (`keep find`, `keep update`, `keep get`, etc.)
+- All commands (`keep find`, `keep put`, `keep get`, etc.)
 - Command-line argument names and behavior
 
 **Not public API** (can change without notice):
@@ -61,9 +63,10 @@ If you must break compatibility:
 Releases are managed by the maintainer. To prepare a release:
 
 ```bash
-# 1. Update version in both places
+# 1. Update version in all three places
 # pyproject.toml: version = "x.y.z"
 # keep/__init__.py: __version__ = "x.y.z"
+# SKILL.md frontmatter: version: x.y.z
 
 # 2. Commit
 git add -A && git commit -m "Release x.y.z"

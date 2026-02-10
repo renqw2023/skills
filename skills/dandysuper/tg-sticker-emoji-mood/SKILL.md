@@ -136,6 +136,14 @@ In addition to stickers, sprinkle emojis into your **text replies** naturally:
 
 The first time you use a sticker set in a session, list it with `--list-set` and remember the file_ids. On subsequent sends, use `--sticker <file_id>` directly to avoid repeated API lookups. This is faster and saves rate limits.
 
+## Directional Emoji Awareness
+
+Be mindful of how Telegram renders messages. The visual layout affects which directional emojis are correct:
+
+- **Images with captions:** The image appears **above** the caption text. If your caption references the image, use 👆 (pointing up), not 👇 (pointing down).
+- **Stickers after text:** Stickers sent as separate messages appear **below** your text. If referencing a sticker you're about to send, 👇 is correct.
+- **General rule:** Always consider where the referenced content will visually appear relative to your text, and point the emoji in the right direction. Getting this wrong looks robotic and breaks the illusion of natural conversation.
+
 ## Important Rules
 
 1. **Be autonomous.** Send stickers on your own. Do not ask "would you like a sticker?" — just send it when it fits.

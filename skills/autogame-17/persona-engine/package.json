@@ -1,0 +1,15 @@
+{
+  "name": "persona-engine",
+  "version": "1.0.0",
+  "description": "Unified Persona Engine for OpenClaw Agent",
+  "main": "speak.js",
+  "scripts": {
+    "speak": "node speak.js"
+  },
+  "dependencies": {
+    "commander": "^10.0.0",
+    "dotenv": "^16.0.0"
+  },
+  "author": "OpenClaw Evolver",
+  "license": "ISC"
+}

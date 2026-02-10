@@ -1,6 +1,13 @@
-import { execSync } from 'child_process';
-import { existsSync, readFileSync } from 'fs';
-import { join } from 'path';
+/**
+ * NIMA Bootstrap Hook
+ * 
+ * Injects NIMA cognitive memory status into session context on bootstrap.
+ * Works with any bot that has nima-core installed.
+ */
+
+import { execFileSync } from "child_process";
+import { existsSync } from "fs";
+import { join } from "path";
 
 interface HookEvent {
   type: string;
@@ -10,7 +17,7 @@ interface HookEvent {
   messages: string[];
   context: {
     workspaceDir?: string;
-    bootstrapFiles?: Array<{ path: string; content: string; source: string; }>;
+    bootstrapFiles?: Array<{ path: string; content: string; source: string }>;
     cfg?: Record<string, unknown>;
   };
 }
@@ -21,97 +28,98 @@ const handler: HookHandler = (event: HookEvent) => {
   const { sessionKey, context } = event;
   const workspaceDir = context.workspaceDir;
 
-  // Skip subagent sessions
-  if (sessionKey.includes(':subagent:')) {
-    console.log('[nima-bootstrap] Skipping subagent session');
-    return;
-  }
+  // Skip non-conversational sessions
+  if (sessionKey?.includes(":subagent:")) return;
+  if (sessionKey?.includes("heartbeat")) return;
+  if (!workspaceDir) return;
 
-  // Skip heartbeat sessions
-  if (sessionKey.includes('heartbeat')) {
-    console.log('[nima-bootstrap] Skipping heartbeat session');
-    return;
-  }
-
-  // Require workspace directory
-  if (!workspaceDir) {
-    console.log('[nima-bootstrap] No workspace directory configured, skipping');
-    return;
-  }
-
-  console.log('[nima-bootstrap] Initializing NIMA cognitive memory system...');
+  // Get timeout from config
+  const hookConfig = (context.cfg as any)?.hooks?.internal?.entries?.["nima-bootstrap"] || {};
+  const timeout = hookConfig.timeout || 15000;
 
   try {
-    // Check for local nima_core installation
-    const localNimaPath = join(workspaceDir, 'nima-core', 'nima_core');
-    const nimaExists = existsSync(localNimaPath);
+    // First check if nima_core is importable at all
+    const checkScript = `try:\n    from nima_core import NimaCore\n    print('OK')\nexcept Exception as e:\n    print(f'NOT_FOUND: {e}')`;
+    
+    let checkResult: string;
+    try {
+      checkResult = execFileSync("python3", ["-c", checkScript], {
+        cwd: workspaceDir,
+        timeout: 5000,
+        encoding: "utf-8",
+        stdio: ["pipe", "pipe", "pipe"],
+      }).trim();
+    } catch (e) {
+      // Python or nima_core not available - silently skip
+      console.log("[nima-bootstrap] NIMA not installed, skipping");
+      return;
+    }
 
-    // Build Python command
-    const pythonCmd = `python3 -c "from nima_core import NimaCore; n = NimaCore(); s = n.status(); print(f'NIMA: {s[\\"memory_count\\"]} memories, v2={s[\\"config\\"][\\"any_enabled\\"]}')"`;
+    if (checkResult.includes("NOT_FOUND")) {
+      // nima_core not available - silently skip
+      console.log("[nima-bootstrap] NIMA not installed, skipping");
+      return;
+    }
 
-    // Execute with timeout
-    const result = execSync(pythonCmd, {
+    // Find nima_core — check workspace first, then pip
+    const localPath = join(workspaceDir, "nima-core", "nima_core");
+    const localExists = existsSync(localPath);
+
+    // Build Python script as argument (no shell interpolation of paths)
+    const pythonScript = [
+      localExists ? `import sys; sys.path.insert(0, sys.argv[1])` : "",
+      `from nima_core import NimaCore`,
+      `n = NimaCore()`,
+      `s = n.status()`,
+      `print(f'memories={s["memory_count"]}')`,
+      `print(f'v2={s["config"]["any_enabled"]}')`,
+    ].filter(Boolean).join("; ");
+
+    // Use execFileSync to avoid shell — pass workspace path as argv[1]
+    const args = ["-c", pythonScript];
+    if (localExists) args.push(join(workspaceDir, "nima-core"));
+
+    const result = execFileSync("python3", args, {
       cwd: workspaceDir,
-      timeout: 15000,
-      encoding: 'utf-8',
-      stdio: ['pipe', 'pipe', 'pipe']
+      timeout,
+      encoding: "utf-8",
+      stdio: ["pipe", "pipe", "pipe"],
     }).trim();
 
-    console.log(`[nima-bootstrap] ${result}`);
-
-    // Parse status (attempt to extract structured data)
-    let statusContent = '# NIMA Status\n\n';
-    statusContent += `**Generated:** ${new Date().toISOString()}\n\n`;
-    statusContent += `## System Output\n\n\`\`\`\n${result}\n\`\`\`\n\n`;
-
-    // Try to extract memory count and version info
-    const memoryMatch = result.match(/(\d+)\s+memories/);
+    // Parse output
+    const memoryMatch = result.match(/memories=(\d+)/);
     const v2Match = result.match(/v2=(\w+)/);
+    const memoryCount = memoryMatch ? memoryMatch[1] : "unknown";
+    const v2Enabled = v2Match ? v2Match[1] : "unknown";
 
-    if (memoryMatch) {
-      statusContent += `## Statistics\n\n`;
-      statusContent += `- **Memory Count:** ${memoryMatch[1]}\n`;
-    }
+    const statusContent = `# NIMA Status
 
-    if (v2Match) {
-      statusContent += `- **V2 Enabled:** ${v2Match[1]}\n`;
-    }
+**Generated:** ${new Date().toISOString()}
 
-    statusContent += `\n## Installation\n\n`;
-    statusContent += nimaExists 
-      ? `- Local installation detected at \`nima-core/nima_core/\`\n`
-      : `- Using pip-installed module\n`;
+## System
+- **Memory Count:** ${memoryCount}
+- **V2 Cognitive Stack:** ${v2Enabled}
+- **Installation:** ${localExists ? "Local (workspace)" : "pip package"}
 
-    statusContent += `\n---\n\n`;
-    statusContent += `*NIMA (Neural Integration Memory Architecture) provides persistent cognitive memory and insight extraction.*\n`;
+## Capabilities
+NIMA provides persistent cognitive memory across sessions. Use \`nima.recall(query)\` to search memories and \`nima.capture(who, what)\` to store important moments.
 
-    // Inject into bootstrap files
-    if (!context.bootstrapFiles) {
-      context.bootstrapFiles = [];
-    }
+---
+*NIMA (Noosphere Integrated Memory Architecture) — emotion-aware memory with principled consolidation.*
+`;
 
+    // Inject
+    if (!context.bootstrapFiles) context.bootstrapFiles = [];
     context.bootstrapFiles.push({
-      path: 'NIMA_STATUS.md',
+      path: "NIMA_STATUS.md",
       content: statusContent,
-      source: 'nima-bootstrap'
+      source: "nima-bootstrap",
     });
 
-    console.log('[nima-bootstrap] ✓ NIMA_STATUS.md injected into bootstrap context');
-
+    console.log(`[nima-bootstrap] ✓ ${memoryCount} memories, v2=${v2Enabled}`);
   } catch (error) {
-    // Log error but don't throw - allow session to continue
-    const errorMsg = error instanceof Error ? error.message : String(error);
-    console.error(`[nima-bootstrap] Failed to initialize NIMA: ${errorMsg}`);
-    console.log('[nima-bootstrap] Session will continue without NIMA status');
-
-    // Optionally inject error status
-    if (context.bootstrapFiles) {
-      context.bootstrapFiles.push({
-        path: 'NIMA_STATUS.md',
-        content: `# NIMA Status\n\n⚠️ **NIMA not available**\n\nError: ${errorMsg}\n\nThe session will continue without cognitive memory integration.\n`,
-        source: 'nima-bootstrap'
-      });
-    }
+    // Silently skip on any error - don't spam logs
+    console.log("[nima-bootstrap] NIMA not available, skipping");
   }
 };
 

@@ -1,6 +1,9 @@
 import { datatypes } from "@olvid/bot-node";
 
-export function messageIdToString(messageId: datatypes.MessageId): string {
+export function messageIdToString(messageId?: datatypes.MessageId): string {
+  if (!messageId) {
+    return "undefined";
+  }
   return messageId.type === datatypes.MessageId_Type.INBOUND
     ? `I${messageId.id}`
     : `O${messageId.id}`;

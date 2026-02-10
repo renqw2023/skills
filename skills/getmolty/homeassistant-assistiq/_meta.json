@@ -1,0 +1,11 @@
+{
+  "owner": "getmolty",
+  "slug": "homeassistant-assistiq",
+  "displayName": "Home Assistant Assist",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770675918717,
+    "commit": "https://github.com/openclaw/skills/commit/59b1a1c1fce9950963de4f43d6f68388e01c91c0"
+  },
+  "history": []
+}

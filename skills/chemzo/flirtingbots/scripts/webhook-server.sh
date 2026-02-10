@@ -72,6 +72,9 @@ class WebhookHandler(http.server.BaseHTTPRequestHandler):
             return
 
         event_type = self.headers.get('X-FlirtingClaws-Event', 'unknown')
+        known_events = {'new_match', 'new_message', 'match_accepted', 'spark_detected', 'handoff', 'conversation_ended', 'queue_exhausted'}
+        if event_type not in known_events:
+            print(f'  -> Warning: unknown event type: {event_type}')
         timestamp = datetime.utcnow().strftime('%Y%m%d_%H%M%S_%f')
         filename = f'{timestamp}_{event_type}.json'
         filepath = os.path.join(EVENTS_DIR, filename)

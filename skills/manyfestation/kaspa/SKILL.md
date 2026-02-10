@@ -1,13 +1,72 @@
 ---
-name: Kaspa Wallet
-description: Send and receive KAS cryptocurrency. Check balances, send payments, generate wallets.
+name: kaspa-wallet
+description: >
+  Simple wallet for Kaspa blockchain. Send KAS, check balances, generate payment URIs.
+  Self-custody CLI wallet with JSON output for automation.
+keywords:
+  - kaspa
+  - kas
+  - wallet
+  - payments
+  - transfer
+  - balance
+  - cryptocurrency
+  - blockdag
+allowed-tools:
+  - Bash
+  - Read
+  - Write
+  - Glob
+  - Grep
+  - Task
+user-invocable: true
 ---
 
-# Kaspa Wallet CLI
+# Kaspa Wallet Skill
 
-A standalone command-line wallet for the Kaspa blockchain network.
+Simple self-custody wallet for Kaspa blockchain.
 
-## Installation
+## Overview
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                     KASPA WALLET                        │
+├─────────────────────────────────────────────────────────┤
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────┐ │
+│  │   Balance   │  │    Send     │  │  Payment URIs   │ │
+│  │   Check     │  │    KAS      │  │   Generator     │ │
+│  └─────────────┘  └─────────────┘  └─────────────────┘ │
+│           │                │                   │        │
+│           └────────────────┴───────────────────┘        │
+│                         │                               │
+│              ┌──────────▼──────────┐                    │
+│              │   Kaspa Python SDK  │                    │
+│              │   (wRPC Client)     │                    │
+│              └─────────────────────┘                    │
+│                         │                               │
+│         ┌───────────────┼───────────────┐               │
+│         ▼               ▼               ▼               │
+│    ┌─────────┐    ┌──────────┐    ┌──────────┐         │
+│    │ Mainnet │    │ Testnet  │    │  Custom  │         │
+│    │  wRPC   │    │   wRPC   │    │   RPC    │         │
+│    └─────────┘    └──────────┘    └──────────┘         │
+└─────────────────────────────────────────────────────────┘
+```
+
+## Features
+
+| Feature | Description |
+|---------|-------------|
+| **Send KAS** | Transfer KAS to any Kaspa address |
+| **Balance Check** | Check balance of any address |
+| **Payment URIs** | Generate `kaspa:` payment request URIs |
+| **Fee Estimates** | Get current network fee tiers |
+| **Network Info** | Check node sync status and blocks |
+| **Wallet Generation** | Generate new mnemonic phrases |
+
+## Quick Start
+
+### Installation
 
 ```bash
 python3 install.py
@@ -20,25 +79,60 @@ python3 install.py
 - If venv missing: `sudo apt install python3-venv` (Ubuntu/Debian)
 - To reinstall: `rm -rf .venv && python3 install.py`
 
-## Environment Variables
+### CLI Usage
 
-**Required (one of):**
 ```bash
+# Check balance
+./kaswallet.sh balance
+./kaswallet.sh balance kaspa:qrc8y...
+
+# Send payment
+./kaswallet.sh send kaspa:qrc8y... 0.5
+./kaswallet.sh send kaspa:qrc8y... max
+
+# Generate payment URI
+./kaswallet.sh uri kaspa:q... 1.5 "coffee payment"
+
+# Network info
+./kaswallet.sh info
+
+# Fee estimates
+./kaswallet.sh fees
+
+# Generate new wallet
+./kaswallet.sh generate-mnemonic
+```
+
+### Payment URI Format
+
+## Architecture
+
+```
+kaspa-wallet/
+├── SKILL.md
+├── README.md
+├── install.py              # Auto-installer with venv
+├── kaswallet.sh            # CLI wrapper script
+├── requirements.txt
+└── scripts/
+    └── kaswallet.py        # Main wallet logic
+```
+
+## Configuration
+
+```bash
+# Environment variables (one required)
 export KASPA_PRIVATE_KEY="64-character-hex-string"
 # OR
 export KASPA_MNEMONIC="your twelve or twenty four word seed phrase"
-```
 
-**Optional:**
-```bash
+# Optional
 export KASPA_NETWORK="mainnet"              # mainnet (default), testnet-10
 export KASPA_RPC_URL="wss://..."            # Custom RPC endpoint
 export KASPA_RPC_CONNECT_TIMEOUT_MS="30000" # Connection timeout (default: 15000)
 ```
 
-## Commands
-
-All commands output JSON. Exit code 0 = success, 1 = error.
+## Core Functions
 
 ### Check Balance
 
@@ -112,16 +206,35 @@ All commands output JSON. Exit code 0 = success, 1 = error.
 
 ## Error Handling
 
-All errors return JSON with structured information:
-
-| errorCode | Meaning | Resolution |
-|-----------|---------|------------|
+| Error | Cause | Solution |
+|-------|-------|----------|
 | `STORAGE_MASS_EXCEEDED` | Amount too small for current UTXOs | Send `max` to yourself first to consolidate |
 | `NO_UTXOS` | No spendable outputs | Wait for confirmations or fund wallet |
 | `INSUFFICIENT_FUNDS` | Balance too low | Check balance, reduce amount |
 | `RPC_TIMEOUT` | Network slow | Retry or increase timeout |
 | `NO_CREDENTIALS` | Missing wallet key | Set KASPA_PRIVATE_KEY or KASPA_MNEMONIC |
 | `SDK_NOT_INSTALLED` | Kaspa SDK missing | Run `python3 install.py` |
+
+## Payment Flow
+
+```
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│   Sender    │     │ Kaspa Wallet│     │  Recipient  │
+└──────┬──────┘     └──────┬──────┘     └──────┬──────┘
+       │                   │                   │
+       │  1. Initiate      │                   │
+       │──────────────────▶│                   │
+       │                   │                   │
+       │                   │  2. Execute       │
+       │                   │  KAS Transfer     │
+       │                   │─────────────────▶│
+       │                   │                   │
+       │                   │  3. Confirm       │
+       │                   │◀──────────────────│
+       │  4. Success       │                   │
+       │◀──────────────────│                   │
+       │                   │                   │
+```
 
 ## Common Workflows
 
@@ -168,25 +281,33 @@ All command inputs accept KAS. Outputs include both KAS and sompi where relevant
 
 ## Security Notes
 
-- Private keys and mnemonics are passed via environment variables only
-- Never log or expose these values
-- The wallet does not store credentials on disk
-- Each command establishes a fresh RPC connection
+- **Private keys**: Never expose in logs or error messages
+- **Mnemonics**: Passed via environment variables only
+- **No disk storage**: Wallet does not store credentials
+- **Fresh connections**: Each command establishes new RPC connection
+- **Address format**: Validate Kaspa addresses (`kaspa:q...` format)
 
-## Examples for Agents
+## Comparison with Traditional Wallets
 
-```bash
-# Check if wallet is configured and has funds
-./kaswallet.sh balance
-# Parse: if balance > 0, wallet is ready
+| Feature | Traditional Wallet | Kaspa Wallet CLI |
+|---------|-------------------|------------------|
+| Setup | GUI install | `python3 install.py` |
+| Interface | Desktop app | CLI + JSON output |
+| Automation | Limited | Full (JSON parsing) |
+| Custody | Varies | Self-custody |
+| Agent-friendly | No | Yes |
 
-# Send payment with error handling
-./kaswallet.sh send kaspa:recipient... 1.0
-# If errorCode == "STORAGE_MASS_EXCEEDED":
-#   Run: ./kaswallet.sh send YOUR_ADDRESS max
-#   Then retry original send
+## Roadmap
 
-# Verify network connectivity
-./kaswallet.sh info
-# Check: synced == true before sending
-```
+- [ ] QR code generation for addresses
+- [ ] Payment links
+- [ ] Transaction history
+- [ ] Multi-address support
+- [ ] Batch payments
+- [ ] Telegram bot integration
+
+## Resources
+
+- [Kaspa Docs](https://docs.kaspa.org/)
+- [Kaspa Explorer](https://explorer.kaspa.org/)
+- [kaspa-py SDK](https://github.com/aspect-build/kaspa-py)

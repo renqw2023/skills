@@ -1,0 +1,11 @@
+{
+  "owner": "glucksberg",
+  "slug": "fork-manager",
+  "displayName": "Fork Manager",
+  "latest": {
+    "version": "1.1.0",
+    "publishedAt": 1770583326366,
+    "commit": "https://github.com/openclaw/skills/commit/75c09ae9867d2ba39c780c8ff066d11ea690e54c"
+  },
+  "history": []
+}

@@ -1,6 +1,6 @@
 ---
 name: openclaw-checkpoint
-description: Backup and restore OpenClaw workspace state across machines using git. Enables disaster recovery by syncing SOUL.md, MEMORY.md, memory files, and configuration to a remote repository. Use when user wants to checkpoint their OpenClaw state, restore on a new machine, migrate between computers, or protect against data loss. Provides commands checkpoint-setup (interactive onboarding), checkpoint, checkpoint-resume, checkpoint-schedule (auto-backup), checkpoint-stop, checkpoint-status, checkpoint-init, and checkpoint-reset.
+description: Backup and restore OpenClaw workspace state across machines using git. Enables disaster recovery by syncing SOUL.md, MEMORY.md, memory files, cron jobs, and configuration to a remote repository. Use when user wants to checkpoint their OpenClaw state, restore on a new machine, migrate between computers, or protect against data loss. Provides commands checkpoint-setup (interactive onboarding), checkpoint-backup, checkpoint-resume, checkpoint-schedule (auto-backup), checkpoint-stop, checkpoint-status, checkpoint-init, and checkpoint-reset. Automatically backs up cron jobs to memory/cron-jobs-backup.json on each checkpoint-backup.
 ---
 
 # OpenClaw Checkpoint Skill
@@ -15,6 +15,7 @@ This skill provides disaster recovery for OpenClaw by syncing your workspace to 
 
 - **Identity**: SOUL.md, IDENTITY.md, USER.md (who you and the assistant are)
 - **Memory**: MEMORY.md and memory/*.md files (conversation history and context)
+- **Cron Jobs**: Scheduled tasks exported to memory/cron-jobs-backup.json (morning briefs, daily syncs, automations)
 - **Configuration**: TOOLS.md, AGENTS.md, HEARTBEAT.md (tool setups and conventions)
 - **Scripts**: Custom tools and automation you've built
 
@@ -22,18 +23,7 @@ This skill provides disaster recovery for OpenClaw by syncing your workspace to 
 
 ## Installation
 
-### Option 1: One-Liner Install (Recommended)
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/AnthonyFrancis/openclaw-checkpoint/main/scripts/install-openclaw-checkpoint.sh | bash
-```
-
-This will:
-- Download and install the skill
-- Add commands to your PATH automatically
-- Offer to run the interactive setup wizard
-
-### Option 2: Manual Install
+### Option 1: Git Clone (Recommended)
 
 ```bash
 # Clone the skill repo
@@ -51,6 +41,14 @@ export PATH="${HOME}/.openclaw/workspace/tools:${PATH}"
 checkpoint-setup
 ```
 
+### Option 2: Quick Install
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/AnthonyFrancis/openclaw-checkpoint/main/scripts/install-openclaw-checkpoint.sh | bash
+```
+
+This runs the install script -- review it first if you prefer to inspect before executing.
+
 ## Commands
 
 ### checkpoint-setup
@@ -65,7 +63,7 @@ checkpoint-setup
 - Sets up SSH authentication (recommended) or Personal Access Token
 - Automatically detects if SSH key is already authorized on GitHub
 - Generates a README.md with recovery instructions and commands
-- Commits ALL workspace files (not just .gitignore)
+- Commits workspace files within `~/.openclaw/workspace` (secrets excluded via .gitignore)
 - Configures automatic backups
 - Tests the backup system
 - Shows final status
@@ -100,17 +98,23 @@ checkpoint-auth
 - Works reliably without password prompts
 - GitHub no longer accepts password authentication for HTTPS
 
-### checkpoint
+### checkpoint-backup
 Save current state to remote repository.
 
 ```bash
-checkpoint
+checkpoint-backup
 ```
 
 **What it does:**
+- Backs up OpenClaw cron jobs to `memory/cron-jobs-backup.json` (requires `openclaw` CLI and running gateway)
 - Commits all changes in ~/.openclaw/workspace
 - Pushes to origin/main
 - Shows commit hash and timestamp
+
+**Cron job backup details:**
+- Runs `openclaw cron list --json` to export all scheduled tasks
+- Strips runtime state, keeps only configuration (name, schedule, target, payload)
+- Non-blocking: if the CLI or gateway is unavailable, checkpoint-backup continues without cron backup
 
 **When to use:**
 - Before switching computers
@@ -174,6 +178,11 @@ checkpoint-resume --force  # Discard local changes, pull remote
   - Verifies access and restores your checkpoint
   - Handles merge/replace options if local files exist
 - **Returning users:** Fetches and pulls latest changes from remote
+
+**After restoring, re-create cron jobs from the backup:**
+```bash
+openclaw cron restore memory/cron-jobs-backup.json
+```
 
 **When to use:**
 - Starting OpenClaw on a new machine
@@ -263,7 +272,7 @@ checkpoint-init
 # 3. Add remote (use SSH, not HTTPS)
 cd ~/.openclaw/workspace
 git remote add origin git@github.com:YOURUSER/openclaw-state.git
-checkpoint
+checkpoint-backup
 ```
 
 ### Setup on Second Machine
@@ -334,7 +343,7 @@ If you prefer manual cron:
 crontab -e
 
 # Add line for hourly backups:
-0 * * * * /Users/$(whoami)/.openclaw/workspace/skills/openclaw-checkpoint/scripts/checkpoint >> ~/.openclaw/logs/checkpoint.log 2>&1
+0 * * * * /Users/$(whoami)/.openclaw/workspace/skills/openclaw-checkpoint/scripts/checkpoint-backup >> ~/.openclaw/logs/checkpoint.log 2>&1
 ```
 
 ## Disaster Recovery Workflow
@@ -360,15 +369,18 @@ cat > ~/.openclaw/workspace/.env.thisweek << 'EOF'
 THISWEEK_API_KEY=your_key_here
 EOF
 
-# 4. Enable automatic backups on this machine
-checkpoint-schedule hourly
-
-# 5. Start OpenClaw
+# 4. Start OpenClaw
 openclaw gateway start
 
-# 6. Verify
+# 5. Restore your cron jobs (scheduled tasks)
+openclaw cron restore ~/.openclaw/workspace/memory/cron-jobs-backup.json
+
+# 6. Enable automatic backups on this machine
+checkpoint-schedule hourly
+
+# 7. Verify
 # Ask assistant: "What were we working on?"
-# Should recall everything up to last checkpoint
+# Should recall everything up to last checkpoint, with all scheduled tasks restored
 ```
 
 ## Security Considerations
@@ -385,6 +397,7 @@ Your backup contains sensitive personal data:
 **What gets backed up:**
 - ✅ Memory files (conversation history)
 - ✅ Identity files (SOUL.md, etc.)
+- ✅ Cron jobs (memory/cron-jobs-backup.json)
 - ✅ Scripts and tools
 - ✅ Configuration
 
@@ -401,17 +414,30 @@ Your backup contains sensitive personal data:
 - Enable 2FA on GitHub account
 - Consider encrypting sensitive notes before adding to memory
 
+### Permissions and Scheduling
+
+This skill uses standard system scheduling to automate backups:
+
+- **macOS**: Creates a launchd plist at `~/Library/LaunchAgents/com.openclaw.checkpoint.plist`
+- **Linux**: Adds a user-level cron job (visible via `crontab -l`)
+
+Auto-backup is **opt-in only** -- it is never enabled unless you explicitly run `checkpoint-schedule`. You can disable it at any time with `checkpoint-stop` or `checkpoint-schedule disable`.
+
+The skill does **not** install any background daemons, system services, or root-level processes. All scheduling runs under your user account.
+
+**File access scope**: The skill only reads and writes within `~/.openclaw/workspace`. It does not access files outside this directory. Sensitive files (.env.*, credentials, OAuth tokens) are excluded from backups via .gitignore.
+
 ## Troubleshooting
 
 ### "Not a git repository" or "'origin' does not appear to be a git repository"
 Running `checkpoint-resume` will now automatically start the interactive restore onboarding flow to help you connect to your backup repository. Alternatively, run `checkpoint-setup` to create a new backup from scratch.
 
 ### "Failed to push checkpoint"
-Another machine pushed changes. Run `checkpoint-resume` first, then `checkpoint`.
+Another machine pushed changes. Run `checkpoint-resume` first, then `checkpoint-backup`.
 
 ### "You have uncommitted changes"
 You have local work that isn't checkpointed. Either:
-- Run `checkpoint` to save it first
+- Run `checkpoint-backup` to save it first
 - Or `checkpoint-resume --force` to discard it
 
 ### Behind remote after resume

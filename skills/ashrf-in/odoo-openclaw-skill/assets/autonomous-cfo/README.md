@@ -34,9 +34,10 @@ AI analysis is routed through **OpenClaw native local agent runtime** (`openclaw
 ## Dependencies
 
 See `requirements.txt`:
-- `python-dotenv`
 - `requests`
 - `matplotlib`
+
+Environment variables are loaded via an internal lightweight `.env` parser (no `python-dotenv` runtime dependency).
 
 ## Notes
 

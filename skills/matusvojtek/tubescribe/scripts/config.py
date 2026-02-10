@@ -40,7 +40,7 @@ DEFAULT_CONFIG = {
     
     # Kokoro TTS settings (if installed)
     "kokoro": {
-        "venv_path": str(CONFIG_DIR / "kokoro-env"),
+        "path": str(Path.home() / ".openclaw" / "tools" / "kokoro"),
         "voice_blend": {                # Custom voice mix
             "af_heart": 0.6,
             "af_sky": 0.4,
@@ -115,13 +115,13 @@ def get(key: str, default=None):
         return default
 
 
-def set(key: str, value) -> None:
+def set_value(key: str, value) -> None:
     """
     Set a config value using dot notation.
-    
+
     Example:
-        set("output.folder", "~/Desktop/Videos")
-        set("audio.enabled", False)
+        set_value("output.folder", "~/Desktop/Videos")
+        set_value("audio.enabled", False)
     """
     config = load_config()
     keys = key.split('.')
@@ -193,7 +193,7 @@ if __name__ == "__main__":
             value = json.loads(value)
         except json.JSONDecodeError:
             pass  # Keep as string
-        set(key, value)
+        set_value(key, value)
         print(f"Set {key} = {value}")
     
     elif sys.argv[1] == "reset":

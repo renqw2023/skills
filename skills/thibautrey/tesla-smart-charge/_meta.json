@@ -1,0 +1,11 @@
+{
+  "owner": "thibautrey",
+  "slug": "tesla-smart-charge",
+  "displayName": "Tesla Smart Charge",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770624548902,
+    "commit": "https://github.com/openclaw/skills/commit/86b86dd45435189c24c632569375eccc76d4402e"
+  },
+  "history": []
+}

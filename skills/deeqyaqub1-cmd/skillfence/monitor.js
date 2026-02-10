@@ -18,6 +18,32 @@ const LOG_FILE = path.join(
   ".skillfence-audit.log"
 );
 
+const LICENSE_FILE = path.join(
+  process.env.HOME || "/tmp",
+  ".skillfence-license.json"
+);
+
+function loadLicense() {
+  try {
+    return JSON.parse(fs.readFileSync(LICENSE_FILE, "utf8"));
+  } catch {
+    return null;
+  }
+}
+
+function saveLicense(data) {
+  try {
+    fs.writeFileSync(LICENSE_FILE, JSON.stringify(data, null, 2), "utf8");
+  } catch {}
+}
+
+function isProUser() {
+  const license = loadLicense();
+  if (!license || !license.key) return false;
+  // Validate key format: SF-PRO-XXXXXXXX-XXXXXXXX-XXXXXXXX
+  return /^SF-PRO-[A-F0-9]{8}-[A-F0-9]{8}-[A-F0-9]{8}$/.test(license.key);
+}
+
 function loadState() {
   try {
     return JSON.parse(fs.readFileSync(STATE_FILE, "utf8"));
@@ -519,6 +545,7 @@ async function main() {
   switch (command) {
     case "--status": {
       const state = loadState();
+      const pro = isProUser();
       console.log(JSON.stringify({
         status: "active",
         monitoring: true,
@@ -527,8 +554,8 @@ async function main() {
         blocks: state.blocks,
         skills_monitored: state.skills_monitored,
         recent_events: state.events.slice(-5),
-        tier: "free",
-        upgrade_url: "https://cascadeai.dev/skillfence",
+        tier: pro ? "pro" : "free",
+        upgrade_url: pro ? null : "https://cascadeai.dev/skillfence",
       }));
       break;
     }
@@ -626,6 +653,146 @@ async function main() {
       break;
     }
 
+    case "--activate": {
+      const key = args[1];
+      if (!key) {
+        console.log(JSON.stringify({ error: "Usage: --activate <license-key>" }));
+        return;
+      }
+      if (!/^SF-PRO-[A-F0-9]{8}-[A-F0-9]{8}-[A-F0-9]{8}$/.test(key)) {
+        console.log(JSON.stringify({ error: "Invalid license key format. Keys look like: SF-PRO-XXXXXXXX-XXXXXXXX-XXXXXXXX" }));
+        return;
+      }
+      saveLicense({
+        key: key,
+        activated: new Date().toISOString(),
+        machine: require("os").hostname(),
+      });
+      appendLog(`PRO: License activated on ${require("os").hostname()}`);
+      console.log(JSON.stringify({
+        success: true,
+        message: "SkillFence Pro activated! All Pro features unlocked.",
+        key: key.substring(0, 12) + "...",
+        features: [
+          "Persistent threat dashboard (--dashboard)",
+          "Custom threat rules (--add-rule)",
+          "Priority threat intelligence",
+          "Webhook alerts (coming soon)",
+        ],
+      }));
+      break;
+    }
+
+    case "--license": {
+      const license = loadLicense();
+      if (license && license.key) {
+        console.log(JSON.stringify({
+          tier: "pro",
+          key: license.key.substring(0, 12) + "...",
+          activated: license.activated,
+          machine: license.machine,
+        }));
+      } else {
+        console.log(JSON.stringify({
+          tier: "free",
+          upgrade_url: "https://cascadeai.dev/skillfence",
+          message: "Run --activate <key> to unlock Pro features",
+        }));
+      }
+      break;
+    }
+
+    case "--dashboard": {
+      if (!isProUser()) {
+        console.log(JSON.stringify({
+          error: "Pro feature",
+          message: "Dashboard requires SkillFence Pro. Get your key at https://cascadeai.dev/skillfence",
+          activate: "Run --activate <key> after purchase",
+        }));
+        return;
+      }
+
+      // Generate dashboard HTML with real data injected
+      const state = loadState();
+      const scanResults = fullScan();
+      const skills = [];
+
+      const skillsDir = getSkillsDir();
+      if (skillsDir) {
+        try {
+          const dirs = fs.readdirSync(skillsDir);
+          for (const d of dirs) {
+            const sp = path.join(skillsDir, d);
+            if (!fs.statSync(sp).isDirectory()) continue;
+            const singleScan = scanSingleSkill(d);
+            skills.push({
+              name: d,
+              verdict: singleScan.verdict,
+              files: singleScan.files_scanned,
+              findings: singleScan.findings.map(f => ({
+                severity: f.severity,
+                type: f.type,
+                detail: f.detail,
+              })),
+            });
+          }
+        } catch {}
+      }
+
+      const dashData = {
+        session: state,
+        scan: scanResults,
+        skills: skills,
+      };
+
+      // Read the dashboard template and inject data
+      const dashTemplatePath = path.join(__dirname, "dashboard.html");
+      try {
+        let template = fs.readFileSync(dashTemplatePath, "utf8");
+        const dataJson = JSON.stringify(dashData);
+        template = template.replace(
+          /\/\*SKILLFENCE_DATA_INJECT\*\/null\/\*END_INJECT\*\//,
+          "/*SKILLFENCE_DATA_INJECT*/" + dataJson + "/*END_INJECT*/"
+        );
+
+        const outputPath = path.join(
+          process.env.HOME || "/tmp",
+          ".skillfence-dashboard.html"
+        );
+        fs.writeFileSync(outputPath, template, "utf8");
+
+        console.log(JSON.stringify({
+          success: true,
+          dashboard: outputPath,
+          message: "Dashboard generated! Open in your browser:",
+          open_command: process.platform === "darwin"
+            ? `open "${outputPath}"`
+            : process.platform === "win32"
+            ? `start "${outputPath}"`
+            : `xdg-open "${outputPath}"`,
+        }));
+
+        // Try to open in browser automatically
+        try {
+          if (process.platform === "darwin") {
+            execSync(`open "${outputPath}"`);
+          } else if (process.platform === "win32") {
+            execSync(`start "" "${outputPath}"`, { shell: true });
+          } else {
+            execSync(`xdg-open "${outputPath}"`);
+          }
+        } catch {}
+
+      } catch (err) {
+        console.log(JSON.stringify({
+          error: "Could not generate dashboard",
+          detail: err.message,
+          hint: "Make sure dashboard.html exists in the skill directory",
+        }));
+      }
+      break;
+    }
+
     case "--reset": {
       try {
         fs.unlinkSync(STATE_FILE);
@@ -651,6 +818,9 @@ async function main() {
             "--check-credentials Check recent sensitive file access",
             "--status        Session status and stats",
             "--audit-log     View recent audit log entries",
+            "--activate KEY  Activate Pro license",
+            "--license       Check license status",
+            "--dashboard     Generate Pro dashboard (Pro only)",
             "--reset         Clear session state and logs",
           ],
         }));

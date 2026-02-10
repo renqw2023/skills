@@ -5,6 +5,16 @@ All notable changes to Mission Control will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.1] - 2026-02-07
+
+### Security
+
+- **Input sanitization in `mc-update.sh`** — Replaced heredoc-based Python interpolation with environment variable passing to prevent shell injection
+- **`sanitize_input()` function** — Blocks backticks and `$` characters in all script arguments
+- **Security documentation** — Added Security section to SKILL.md and README.md documenting the trust model, mitigations, and recommendations
+
+---
+
 ## [2.2.0] - 2026-01-30
 
 ### Added

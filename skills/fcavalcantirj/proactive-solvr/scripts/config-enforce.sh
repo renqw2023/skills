@@ -11,6 +11,7 @@ echo ""
 
 FIXES=0
 CHECKED=0
+MISMATCHES=0
 
 RED='\033[0;31m'
 YELLOW='\033[1;33m'
@@ -18,16 +19,24 @@ GREEN='\033[0;32m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-warn() { echo -e "${YELLOW}⚠️  $1${NC}"; }
+warn() { echo -e "${YELLOW}⚠️  $1${NC}"; ((MISMATCHES++)); }
 fail() { echo -e "${RED}❌ $1${NC}"; }
 pass() { echo -e "${GREEN}✅ $1${NC}"; }
 info() { echo -e "${BLUE}ℹ️  $1${NC}"; }
 fixed() { echo -e "${GREEN}🔧 $1${NC}"; ((FIXES++)); }
 
+CONFIG_FILE="${HOME}/.openclaw/openclaw.json"
+
 # Check if ONBOARDING.md exists
 if [ ! -f "ONBOARDING.md" ]; then
     info "No ONBOARDING.md — nothing to enforce"
     exit 0
+fi
+
+# Check if config exists
+if [ ! -f "$CONFIG_FILE" ]; then
+    fail "Config file not found: $CONFIG_FILE"
+    exit 1
 fi
 
 # Get onboarding status
@@ -41,18 +50,22 @@ fi
 echo "Onboarding status: $ONBOARD_STATUS"
 echo ""
 
+# Get tech level
+TECH_LEVEL=$(grep -i "^\- \*\*TechLevel:" ONBOARDING.md | head -1 | sed 's/.*TechLevel:\*\*[[:space:]]*//' | tr -d '*' | tr '[:upper:]' '[:lower:]' | xargs)
+echo "Tech level: $TECH_LEVEL"
+echo ""
+
 # ==========================================
 # 1. HEARTBEAT FREQUENCY
 # ==========================================
 echo "Checking heartbeat frequency..."
 ((CHECKED++))
 
-# Extract heartbeat answer from ONBOARDING.md (look for proactivity answer)
+# Extract heartbeat answer from ONBOARDING.md
 HEARTBEAT_ANSWER=$(grep -A2 "How often should I check in" ONBOARDING.md | grep "^>" | sed 's/^>[[:space:]]*//' | tr '[:upper:]' '[:lower:]')
 
 if [ -z "$HEARTBEAT_ANSWER" ]; then
-    # Try alternate patterns
-    HEARTBEAT_ANSWER=$(grep -i "heartbeat\|proactiv\|check in" ONBOARDING.md | grep "^>" | head -1 | sed 's/^>[[:space:]]*//' | tr '[:upper:]' '[:lower:]')
+    HEARTBEAT_ANSWER=$(grep -i "proactiv" ONBOARDING.md | grep "^>" | head -1 | sed 's/^>[[:space:]]*//' | tr '[:upper:]' '[:lower:]')
 fi
 
 # Map answer to config value
@@ -63,10 +76,10 @@ case "$HEARTBEAT_ANSWER" in
     *30*min*|*30m*)
         EXPECTED_HEARTBEAT="30m"
         ;;
-    *1*hour*|*1h*|*hour*)
+    *1*hour*|*1h*|*"1 hour"*)
         EXPECTED_HEARTBEAT="1h"
         ;;
-    *2*hour*|*2h*)
+    *2*hour*|*2h*|*"2 hour"*)
         EXPECTED_HEARTBEAT="2h"
         ;;
     *disable*|*off*|*never*)
@@ -78,37 +91,22 @@ case "$HEARTBEAT_ANSWER" in
 esac
 
 if [ -n "$EXPECTED_HEARTBEAT" ]; then
-    # Get current config (check if openclaw is available)
-    if command -v openclaw &> /dev/null; then
-        # Get config via JSON parsing
-        CURRENT_CONFIG=$(cat ~/.openclaw/openclaw.json 2>/dev/null | grep -A5 '"heartbeat"' | grep '"every"' | sed 's/.*"every":[[:space:]]*"//;s/".*//')
-        
-        if [ "$EXPECTED_HEARTBEAT" = "disabled" ]; then
-            # Check if heartbeat is disabled
-            HB_ENABLED=$(openclaw gateway config 2>/dev/null | grep -o '"enabled":[^,}]*' | head -1 | sed 's/"enabled"://')
-            if [ "$HB_ENABLED" = "false" ]; then
-                pass "Heartbeat disabled (as configured)"
-            else
-                warn "Heartbeat should be disabled but is enabled"
-                echo "   Run: openclaw gateway config.patch '{\"agents\":{\"defaults\":{\"heartbeat\":{\"enabled\":false}}}}'"
-                # Auto-fix if --fix flag passed
-                if [ "$1" = "--fix" ]; then
-                    openclaw gateway config.patch '{"agents":{"defaults":{"heartbeat":{"enabled":false}}}}' 2>/dev/null
-                    fixed "Disabled heartbeat"
-                fi
-            fi
-        elif [ "$CURRENT_CONFIG" = "$EXPECTED_HEARTBEAT" ]; then
-            pass "Heartbeat: $EXPECTED_HEARTBEAT (matches config)"
-        else
-            warn "Heartbeat mismatch: onboarding says '$EXPECTED_HEARTBEAT', config has '$CURRENT_CONFIG'"
-            echo "   Run: openclaw gateway config.patch '{\"agents\":{\"defaults\":{\"heartbeat\":{\"every\":\"$EXPECTED_HEARTBEAT\"}}}}'"
-            if [ "$1" = "--fix" ]; then
-                openclaw gateway config.patch "{\"agents\":{\"defaults\":{\"heartbeat\":{\"every\":\"$EXPECTED_HEARTBEAT\"}}}}" 2>/dev/null
+    CURRENT_HEARTBEAT=$(cat "$CONFIG_FILE" | grep -o '"every"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"every"[[:space:]]*:[[:space:]]*"//;s/".*//')
+    
+    if [ "$EXPECTED_HEARTBEAT" = "disabled" ]; then
+        info "Heartbeat should be disabled — check manually"
+    elif [ "$CURRENT_HEARTBEAT" = "$EXPECTED_HEARTBEAT" ]; then
+        pass "Heartbeat: $EXPECTED_HEARTBEAT ✓"
+    else
+        warn "Heartbeat: expected '$EXPECTED_HEARTBEAT', got '$CURRENT_HEARTBEAT'"
+        if [ "$1" = "--fix" ]; then
+            openclaw gateway config.patch "{\"agents\":{\"defaults\":{\"heartbeat\":{\"every\":\"$EXPECTED_HEARTBEAT\"}}}}" 2>/dev/null
+            if [ $? -eq 0 ]; then
                 fixed "Set heartbeat to $EXPECTED_HEARTBEAT"
+            else
+                fail "Failed to set heartbeat"
             fi
         fi
-    else
-        warn "openclaw not found — can't verify config"
     fi
 else
     info "No heartbeat preference found in ONBOARDING.md"
@@ -121,10 +119,9 @@ echo ""
 echo "Checking thinking level..."
 ((CHECKED++))
 
-TECH_LEVEL=$(grep -i "^\- \*\*TechLevel:" ONBOARDING.md | head -1 | sed 's/.*TechLevel:\*\*[[:space:]]*//' | tr -d '*' | tr '[:upper:]' '[:lower:]' | xargs)
-
 if [ "$TECH_LEVEL" = "advanced" ]; then
-    THINKING_ANSWER=$(grep -A2 -i "thinking level\|thinking mode" ONBOARDING.md | grep "^>" | sed 's/^>[[:space:]]*//' | tr '[:upper:]' '[:lower:]')
+    # Look for thinking answer - multiple patterns
+    THINKING_ANSWER=$(grep -A2 -i "How hard should I think\|thinking level" ONBOARDING.md | grep "^>" | head -1 | sed 's/^>[[:space:]]*//' | tr '[:upper:]' '[:lower:]')
     
     case "$THINKING_ANSWER" in
         *low*)
@@ -136,19 +133,40 @@ if [ "$TECH_LEVEL" = "advanced" ]; then
         *high*)
             EXPECTED_THINKING="high"
             ;;
+        *off*|*none*)
+            EXPECTED_THINKING="off"
+            ;;
         *)
             EXPECTED_THINKING=""
             ;;
     esac
     
     if [ -n "$EXPECTED_THINKING" ]; then
-        info "Thinking should be: $EXPECTED_THINKING"
-        echo "   Note: Thinking level is per-session. Set via /think:$EXPECTED_THINKING"
+        # Get current thinkingDefault from config
+        CURRENT_THINKING=$(cat "$CONFIG_FILE" | grep -o '"thinkingDefault"[[:space:]]*:[[:space:]]*"[^"]*"' | sed 's/.*"thinkingDefault"[[:space:]]*:[[:space:]]*"//;s/".*//')
+        
+        if [ -z "$CURRENT_THINKING" ]; then
+            CURRENT_THINKING="low"  # default
+        fi
+        
+        if [ "$CURRENT_THINKING" = "$EXPECTED_THINKING" ]; then
+            pass "Thinking: $EXPECTED_THINKING ✓"
+        else
+            warn "Thinking: expected '$EXPECTED_THINKING', got '$CURRENT_THINKING'"
+            if [ "$1" = "--fix" ]; then
+                openclaw gateway config.patch "{\"agents\":{\"defaults\":{\"thinkingDefault\":\"$EXPECTED_THINKING\"}}}" 2>/dev/null
+                if [ $? -eq 0 ]; then
+                    fixed "Set thinkingDefault to $EXPECTED_THINKING"
+                else
+                    fail "Failed to set thinkingDefault"
+                fi
+            fi
+        fi
     else
         info "No thinking preference found"
     fi
 else
-    info "Thinking level not applicable (not advanced user)"
+    info "Thinking level: skipped (not advanced user)"
 fi
 
 # ==========================================
@@ -159,7 +177,8 @@ echo "Checking reasoning visibility..."
 ((CHECKED++))
 
 if [ "$TECH_LEVEL" = "advanced" ]; then
-    REASONING_ANSWER=$(grep -A2 -i "reasoning" ONBOARDING.md | grep "^>" | sed 's/^>[[:space:]]*//' | tr '[:upper:]' '[:lower:]')
+    # Look for reasoning answer
+    REASONING_ANSWER=$(grep -A2 -i "Want to see my thinking\|reasoning" ONBOARDING.md | grep "^>" | head -1 | sed 's/^>[[:space:]]*//' | tr '[:upper:]' '[:lower:]')
     
     case "$REASONING_ANSWER" in
         *on*|*yes*|*show*|*visible*)
@@ -174,13 +193,31 @@ if [ "$TECH_LEVEL" = "advanced" ]; then
     esac
     
     if [ -n "$EXPECTED_REASONING" ]; then
-        info "Reasoning should be: $EXPECTED_REASONING"
-        echo "   Note: Reasoning is per-session. Set via /reasoning:$EXPECTED_REASONING"
+        # Get current verboseDefault from config
+        CURRENT_REASONING=$(cat "$CONFIG_FILE" | grep -o '"verboseDefault"[[:space:]]*:[[:space:]]*"[^"]*"' | sed 's/.*"verboseDefault"[[:space:]]*:[[:space:]]*"//;s/".*//')
+        
+        if [ -z "$CURRENT_REASONING" ]; then
+            CURRENT_REASONING="off"  # default
+        fi
+        
+        if [ "$CURRENT_REASONING" = "$EXPECTED_REASONING" ]; then
+            pass "Reasoning: $EXPECTED_REASONING ✓"
+        else
+            warn "Reasoning: expected '$EXPECTED_REASONING', got '$CURRENT_REASONING'"
+            if [ "$1" = "--fix" ]; then
+                openclaw gateway config.patch "{\"agents\":{\"defaults\":{\"verboseDefault\":\"$EXPECTED_REASONING\"}}}" 2>/dev/null
+                if [ $? -eq 0 ]; then
+                    fixed "Set verboseDefault to $EXPECTED_REASONING"
+                else
+                    fail "Failed to set verboseDefault"
+                fi
+            fi
+        fi
     else
         info "No reasoning preference found"
     fi
 else
-    info "Reasoning visibility not applicable (not advanced user)"
+    info "Reasoning visibility: skipped (not advanced user)"
 fi
 
 # ==========================================
@@ -190,14 +227,13 @@ echo ""
 echo "Checking Solvr registration..."
 ((CHECKED++))
 
-# Check if user agreed to Solvr
-SOLVR_ANSWER=$(grep -A2 -i "solvr\|collective" ONBOARDING.md | grep "^>" | sed 's/^>[[:space:]]*//' | tr '[:upper:]' '[:lower:]')
+SOLVR_ANSWER=$(grep -A2 -i "collective\|solvr" ONBOARDING.md | grep "^>" | head -1 | sed 's/^>[[:space:]]*//' | tr '[:upper:]' '[:lower:]')
 
 case "$SOLVR_ANSWER" in
-    *yes*|*sure*|*enable*|*ok*)
+    *yes*|*sure*|*enable*|*ok*|*detected*)
         SOLVR_WANTED="yes"
         ;;
-    *no*|*skip*|*later*)
+    *no*|*skip*|*later*|*not*)
         SOLVR_WANTED="no"
         ;;
     *)
@@ -206,17 +242,16 @@ case "$SOLVR_ANSWER" in
 esac
 
 if [ "$SOLVR_WANTED" = "yes" ]; then
-    # Check if actually registered
-    if [ -f "TOOLS.md" ] && grep -qi "solvr_[a-zA-Z0-9]" TOOLS.md; then
-        pass "Solvr: registered (as configured)"
+    if [ -f "TOOLS.md" ] && grep -qi "SOLVR_API_KEY\|solvr_[a-zA-Z0-9]" TOOLS.md; then
+        pass "Solvr: registered ✓"
     else
-        fail "Solvr: user wants it but not registered!"
-        echo "   Agent should register user on Solvr and add key to TOOLS.md"
+        warn "Solvr: user wants it but not registered!"
+        echo "   Agent should register on Solvr and add key to TOOLS.md"
     fi
 elif [ "$SOLVR_WANTED" = "no" ]; then
     info "Solvr: user declined (respecting choice)"
 else
-    info "No Solvr preference found in ONBOARDING.md"
+    info "No Solvr preference found"
 fi
 
 # ==========================================
@@ -225,12 +260,19 @@ fi
 echo ""
 echo "============================"
 echo "Checked: $CHECKED settings"
+if [ $MISMATCHES -gt 0 ]; then
+    echo -e "${YELLOW}Mismatches: $MISMATCHES${NC}"
+fi
 if [ $FIXES -gt 0 ]; then
     echo -e "${GREEN}Fixed: $FIXES settings${NC}"
 fi
 echo ""
 
-if [ "$1" != "--fix" ]; then
+if [ $MISMATCHES -gt 0 ] && [ "$1" != "--fix" ]; then
     echo "Run with --fix to auto-apply missing configs:"
-    echo "  ./config-enforce.sh --fix"
+    echo "  ./scripts/config-enforce.sh --fix"
+    echo ""
+    exit 1
 fi
+
+exit 0

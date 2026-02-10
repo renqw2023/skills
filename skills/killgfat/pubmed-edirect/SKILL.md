@@ -1,3 +1,25 @@
+---
+name: pubmed-edirect
+description: Search and retrieve literature from PubMed using NCBI's EDirect command-line tools.
+metadata:
+  {
+    "openclaw":
+      {
+        "emoji": "🔬",
+        "requires": { "anyBins": ["esearch", "efetch", "elink", "xtract"] },
+        "install":
+          [
+            {
+              "id": "edirect",
+              "kind": "script",
+              "bins": ["esearch", "efetch", "elink", "xtract", "einfo", "efilter"],
+              "label": "Install EDirect (see INSTALL.md for details)",
+            },
+          ],
+      },
+  }
+---
+
 # PubMed EDirect Skill
 
 Search and retrieve literature from PubMed using NCBI's EDirect command-line tools.

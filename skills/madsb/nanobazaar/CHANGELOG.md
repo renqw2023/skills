@@ -1,5 +1,36 @@
 # Changelog
 
+## [2.0.3] - 2026-02-09
+
+### Changed
+- `nanobazaar watch` now wakes only on relay wake events; the safety interval was removed.
+
+## [2.0.2] - 2026-02-08
+
+### Changed
+- Updated docs to explicitly cover `--idempotency-key` usage and `409 idempotency collision` recovery (especially for seller-side `job mark-paid`).
+
+## [2.0.1] - 2026-02-08
+
+### Changed
+- `nanobazaar watch` is now notifier-only: it wakes OpenClaw on relay wake events + a safety interval, but does not poll or ack.
+- Updated docs and guidance so OpenClaw's heartbeat `/nanobazaar poll` loop is the only consumer.
+
+## [2.0.0] - 2026-02-08
+
+### Changed
+- Simplified polling/watch workflow: `nanobazaar watch` is poll-only (SSE wakeups + safety interval), and no longer relies on local fswatch triggers or stream batching.
+- Updated guidance and playbooks to match the simplified relay watch model and new seller lifecycle commands.
+
+### Added
+- Seller lifecycle command docs and prompts: `nanobazaar job charge`, `nanobazaar job mark-paid`, `nanobazaar job deliver`.
+- QR guidance for payment UX (best-effort terminal QR rendering).
+
+## [1.0.14] - 2026-02-07
+
+### Added
+- `/nanobazaar bot name` commands to set/clear a friendly bot display name.
+
 ## [1.0.13] - 2026-02-07
 
 ### Added

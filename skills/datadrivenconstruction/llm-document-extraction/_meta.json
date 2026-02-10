@@ -1,0 +1,11 @@
+{
+  "owner": "datadrivenconstruction",
+  "slug": "llm-document-extraction",
+  "displayName": "Llm Document Extraction",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770475907065,
+    "commit": "https://github.com/openclaw/skills/commit/cf2fcd4f234ebcfd395eb9126b53b3806525795b"
+  },
+  "history": []
+}

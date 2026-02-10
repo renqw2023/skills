@@ -1,0 +1,11 @@
+{
+  "owner": "studio-hakke",
+  "slug": "opencode-acp-control-2",
+  "displayName": "Opencode Acp Control",
+  "latest": {
+    "version": "0.1.0",
+    "publishedAt": 1770640762925,
+    "commit": "https://github.com/openclaw/skills/commit/a3967f2523a3804e657db8f4c0f02288e1a06dfb"
+  },
+  "history": []
+}

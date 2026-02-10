@@ -17,7 +17,7 @@
 framework:
   name: "CIRF - Crypto Interactive Research Framework"
   version: "1.0.0"
-  description: "Interactive crypto deep-research framework with agent-agent and human-agent collaboration for superior research outcomes"
+  description: "Interactive crypto deep-research framework with human-AI collaboration for superior research outcomes"
   organization: "CIRF"
   author:
     name: "Kudō"

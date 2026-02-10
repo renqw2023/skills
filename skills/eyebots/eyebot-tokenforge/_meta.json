@@ -1,0 +1,27 @@
+{
+  "owner": "eyebots",
+  "slug": "eyebot-tokenforge",
+  "displayName": "Eyebot Tokenforge",
+  "latest": {
+    "version": "1.8.0",
+    "publishedAt": 1770638968398,
+    "commit": "https://github.com/openclaw/skills/commit/79f3326b656c96d6d1e33d8b08869fa326562640"
+  },
+  "history": [
+    {
+      "version": "1.4.0",
+      "publishedAt": 1770637533019,
+      "commit": "https://github.com/openclaw/skills/commit/afb92e5c53fb6e9d3b56f5ce9fa59fe9c86dd5cc"
+    },
+    {
+      "version": "1.1.0",
+      "publishedAt": 1770597835807,
+      "commit": "https://github.com/openclaw/skills/commit/893ee88b2daf3c9c7042e1761c3815966c2be450"
+    },
+    {
+      "version": "1.0.3",
+      "publishedAt": 1770580772771,
+      "commit": "https://github.com/openclaw/skills/commit/608f2bcdee0cf9dd84a98a0775585384c2463597"
+    }
+  ]
+}

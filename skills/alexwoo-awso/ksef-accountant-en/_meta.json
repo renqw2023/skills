@@ -1,0 +1,11 @@
+{
+  "owner": "alexwoo-awso",
+  "slug": "ksef-accountant-en",
+  "displayName": "KSeF Autonomous Accountant (English)",
+  "latest": {
+    "version": "2.2.1",
+    "publishedAt": 1770644012917,
+    "commit": "https://github.com/openclaw/skills/commit/7d404a680ead809e4b9288a68f99cecf3e885746"
+  },
+  "history": []
+}

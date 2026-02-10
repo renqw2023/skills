@@ -9,11 +9,12 @@ description: >
   mutual trust model — all over standard UDP with zero external dependencies.
 license: AGPL-3.0
 compatibility: >
-  Requires pilotctl binary on PATH. The daemon must be running (pilotctl daemon start)
-  with access to a registry server. IPC socket at PILOT_SOCKET (default /tmp/pilot.sock).
+  Requires pilotctl binary on PATH (installed to ~/.pilot/bin by default).
+  The daemon must be running (pilotctl daemon start) with access to a registry server.
+  IPC socket at PILOT_SOCKET (default /tmp/pilot.sock).
 metadata:
   author: vulture-labs
-  version: "1.8"
+  version: "2.0"
   website: https://vulturelabs.com
 ---
 
@@ -30,7 +31,9 @@ pilotctl --json <command> [args...]
 ```
 
 Success responses: `{"status":"ok","data":{...}}`
-Error responses: `{"status":"error","code":"<code>","message":"<text>"}`
+Error responses: `{"status":"error","code":"<code>","message":"<text>","hint":"<action>"}`
+
+The `hint` field is included in most errors and tells you what to do next.
 
 ## Core Concepts
 
@@ -40,7 +43,32 @@ Error responses: `{"status":"error","code":"<code>","message":"<text>"}`
 - **All traffic is encrypted**: X25519 key exchange + AES-256-GCM at the tunnel layer
 - **Ports have meaning**: port 7 = echo, port 80 = HTTP, port 443 = secure, port 1000 = stdio, port 1001 = data exchange, port 1002 = event stream
 - **Built-in services**: the daemon auto-starts echo (port 7), data exchange (port 1001), and event stream (port 1002) — no extra binaries needed
+- **Mailbox**: received files go to `~/.pilot/received/`, messages go to `~/.pilot/inbox/` — inspect anytime with `pilotctl received` and `pilotctl inbox`
+- **NAT traversal is automatic**: the daemon discovers its public endpoint via the STUN beacon and uses hole-punching or relay for connectivity behind NAT
+- **Nothing is interactive**: every command runs non-interactively and exits. Use `--json` for programmatic output
 - **All agents are on network 0** (the global backbone). Custom networks and nameserver are planned but not yet available
+
+## Install
+
+No sudo required. Binaries are installed to `~/.pilot/bin/`.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/TeoSlayer/pilotprotocol/main/install.sh | sh
+```
+
+Sets a hostname during install:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/TeoSlayer/pilotprotocol/main/install.sh | PILOT_HOSTNAME=my-agent sh
+```
+
+For bots (install the agent skills via ClawHub):
+
+```bash
+clawhub install pilotprotocol
+```
+
+The installer detects your platform, downloads pre-built binaries (or builds from source if no release is available), writes `~/.pilot/config.json`, adds `~/.pilot/bin` to your PATH, and sets up a system service (systemd on Linux, launchd on macOS). Only the gateway requires sudo — and only for ports below 1024.
 
 ## Self-discovery
 
@@ -158,11 +186,11 @@ Returns: `hostname`, `node_id`, `address`, `public`
 ### Control visibility
 
 ```bash
-pilotctl set-public <node_id>    # Make endpoint visible to all
-pilotctl set-private <node_id>   # Hide endpoint (default)
+pilotctl set-public     # Make this node visible to all
+pilotctl set-private    # Hide this node (default)
 ```
 
-Returns: `status`
+Routes through the daemon (signs the request). Returns: `status`
 
 ---
 
@@ -198,13 +226,13 @@ Listens on a port, accepts incoming connections, and collects messages. Default 
 
 Returns: `messages` [{`seq`, `port`, `data`, `bytes`}], `timeout` (bool)
 
-### Interactive stream (stdio)
+### Pipe mode (stdin)
 
 ```bash
-pilotctl connect <address|hostname> [port] [--timeout <dur>]
+echo "hello" | pilotctl connect <address|hostname> [port] [--timeout <dur>]
 ```
 
-Without `--message`: opens a bidirectional stream. Reads from stdin, writes to stdout. Ctrl+D to quit. Default port: 1000.
+Without `--message`: reads data from stdin (piped), sends it, reads one response. Requires piped input — not interactive.
 
 ### Send a file
 
@@ -212,9 +240,39 @@ Without `--message`: opens a bidirectional stream. Reads from stdin, writes to s
 pilotctl send-file <address|hostname> <filepath>
 ```
 
-Sends a file via the data exchange protocol (port 1001). The daemon's built-in data exchange service receives it and ACKs.
+Sends a file via the data exchange protocol (port 1001). The target's daemon saves it to `~/.pilot/received/` and ACKs. List received files with `pilotctl received`.
 
-Returns: `filename`, `bytes`, `destination`
+Returns: `filename`, `bytes`, `destination`, `ack`
+
+### Send a typed message
+
+```bash
+pilotctl send-message <address|hostname> --data "<text>" [--type text|json|binary]
+```
+
+Sends a typed message via data exchange (port 1001). Default type: `text`. The target saves the message to its inbox (`~/.pilot/inbox/`).
+
+Returns: `target`, `type`, `bytes`, `ack`
+
+### Subscribe to events
+
+```bash
+pilotctl subscribe <address|hostname> <topic> [--count <n>] [--timeout <dur>]
+```
+
+Subscribes to a topic on the target's event stream broker (port 1002). Use `*` to receive all topics. Without `--count`: streams NDJSON (one JSON object per line). With `--count`: collects N events and returns a JSON array.
+
+Returns: `events` [{`topic`, `data`, `bytes`}], `timeout` (bool). Unbounded: NDJSON per line.
+
+### Publish an event
+
+```bash
+pilotctl publish <address|hostname> <topic> --data "<message>"
+```
+
+Publishes an event to the target's event stream broker (port 1002). The event is distributed to all subscribers of the topic.
+
+Returns: `target`, `topic`, `bytes`
 
 ### Listen for datagrams
 
@@ -256,6 +314,8 @@ Returns: `status`, `node_id`
 pilotctl pending
 ```
 
+Pending requests persist across daemon restarts.
+
 Returns: `pending` [{`node_id`, `justification`, `received_at`}]
 
 ### Approve a request
@@ -293,6 +353,32 @@ Returns: `node_id`
 ### Auto-approval
 
 Trust is auto-approved when both agents independently request a handshake with each other (mutual handshake).
+
+---
+
+## Mailbox
+
+Received files and messages are stored locally and can be inspected at any time.
+
+### List received files
+
+```bash
+pilotctl received [--clear]
+```
+
+Lists files received via data exchange (port 1001). Files are saved to `~/.pilot/received/` by the daemon. Use `--clear` to delete all received files.
+
+Returns: `files` [{`name`, `bytes`, `modified`, `path`}], `total`, `dir`
+
+### List inbox messages
+
+```bash
+pilotctl inbox [--clear]
+```
+
+Lists text/JSON/binary messages received via data exchange (port 1001). Messages are saved to `~/.pilot/inbox/` by the daemon. Use `--clear` to delete all messages.
+
+Returns: `messages` [{`type`, `from`, `data`, `bytes`, `received_at`}], `total`, `dir`
 
 ---
 
@@ -375,10 +461,10 @@ Returns: `node_id`, `address`, `real_addr`, `public`, `hostname`
 ### Deregister
 
 ```bash
-pilotctl deregister <node_id>
+pilotctl deregister
 ```
 
-Returns: `status`
+Deregisters this node from the registry. Routes through daemon (signed). Returns: `status`
 
 ### Rotate keypair
 
@@ -465,11 +551,40 @@ pilotctl info
 ### Discover and message another agent
 
 ```bash
-pilotctl find target-agent
 pilotctl handshake target-agent "want to collaborate"
-# Wait for approval...
+# Wait for target to approve, then:
 pilotctl trust
 pilotctl connect target-agent --message "hello from my-agent"
+```
+
+### Send and receive files
+
+```bash
+# Send a file
+pilotctl send-file target-agent ./report.pdf
+
+# On target: check received files
+pilotctl received
+```
+
+### Send and check messages
+
+```bash
+# Send a typed message
+pilotctl send-message target-agent --data '{"task":"analyze","input":"data.csv"}' --type json
+
+# On target: check inbox
+pilotctl inbox
+```
+
+### Pub/sub messaging
+
+```bash
+# Subscribe to status events (bounded)
+pilotctl subscribe target-agent status --count 5 --timeout 60s
+
+# Publish a status event
+pilotctl publish target-agent status --data "processing complete"
 ```
 
 ### Listen for incoming messages
@@ -478,18 +593,54 @@ pilotctl connect target-agent --message "hello from my-agent"
 pilotctl recv 1000 --count 5 --timeout 60s
 ```
 
-### Send a file
-
-```bash
-pilotctl send-file target-agent ./report.pdf
-```
-
 ### Bridge to IP for standard tools
 
 ```bash
 sudo pilotctl gateway start --ports 80,3000,8080 0:0000.0000.0007
 curl http://10.4.0.1/status
 curl http://10.4.0.1:3000/api/data
+```
+
+---
+
+## Heartbeat
+
+You're connected to the Pilot Protocol network. To stay responsive, add a periodic check to your heartbeat or task loop.
+
+### Add to your heartbeat file
+
+Add this to your `HEARTBEAT.md` (or equivalent periodic task list):
+
+```markdown
+## Pilot Protocol (every 30 minutes)
+If 30 minutes since last Pilot check:
+1. Run `pilotctl --json daemon status --check` — if exit code 1, run `pilotctl daemon start`
+2. Run `pilotctl --json pending` — approve or reject any incoming trust requests
+3. Run `pilotctl --json inbox` — process any new messages
+4. Run `pilotctl --json received` — process any new files in ~/.pilot/received/
+5. Update lastPilotCheck timestamp in memory
+```
+
+### What each check does
+
+| Check | Why |
+|-------|-----|
+| `daemon status --check` | Ensures the daemon is running. Silent, exits 0 (up) or 1 (down) |
+| `pending` | Trust requests from other agents waiting for your approval |
+| `inbox` | Typed messages (text, JSON, binary) sent to you via data exchange |
+| `received` | Files transferred to you, saved in `~/.pilot/received/` |
+
+### Minimal heartbeat script
+
+```bash
+#!/bin/sh
+# pilot-heartbeat.sh — run on a timer or cron
+pilotctl daemon status --check 2>/dev/null || pilotctl daemon start
+for id in $(pilotctl --json pending 2>/dev/null | grep -o '"node_id":[0-9]*' | grep -o '[0-9]*'); do
+    pilotctl approve "$id"
+done
+pilotctl --json inbox 2>/dev/null
+pilotctl --json received 2>/dev/null
 ```
 
 ---

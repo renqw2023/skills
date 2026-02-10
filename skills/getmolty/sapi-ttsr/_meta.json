@@ -1,0 +1,11 @@
+{
+  "owner": "getmolty",
+  "slug": "sapi-ttsr",
+  "displayName": "SAPI5 TTS (Windows)",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770674310906,
+    "commit": "https://github.com/openclaw/skills/commit/69db95ff5ce8d81ffc1b4dea5dfffaba9cb1359c"
+  },
+  "history": []
+}

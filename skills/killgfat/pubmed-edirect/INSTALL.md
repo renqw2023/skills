@@ -8,26 +8,42 @@
 
 **Important:** This skill uses **local installation only** – no Docker or containers required. All tools run directly on your system.
 
+**Security Advisory:** Always verify the source of any installation script. The official NCBI EDirect installer is hosted at `ftp.ncbi.nlm.nih.gov`. When using automated installation, download the script to a file first and review it if desired, rather than piping directly to your shell. This protects against potential supply-chain attacks or compromised mirrors.
+
 ## Installation Methods
 
-### Method 1: Standard Installation (Recommended)
+### Method 1: Secure Automated Installation
 
-Run the following command in a terminal:
+We recommend downloading the installer script first for review before execution:
 
 ```bash
-sh -c "$(curl -fsSL https://ftp.ncbi.nlm.nih.gov/entrez/entrezdirect/install-edirect.sh)"
+# Download the installer script
+curl -fsSL https://ftp.ncbi.nlm.nih.gov/entrez/entrezdirect/install-edirect.sh -o install-edirect.sh
+
+# Optional: Review the script for transparency
+less install-edirect.sh  # or open in your editor
+
+# Make it executable
+chmod +x install-edirect.sh
+
+# Run the installer
+./install-edirect.sh
 ```
 
-Or using wget:
+Alternatively, using wget:
 
 ```bash
-sh -c "$(wget -q https://ftp.ncbi.nlm.nih.gov/entrez/entrezdirect/install-edirect.sh -O -)"
+wget -q https://ftp.ncbi.nlm.nih.gov/entrez/entrezdirect/install-edirect.sh -O install-edirect.sh
+chmod +x install-edirect.sh
+./install-edirect.sh
 ```
 
 This script will:
-1. Download EDirect scripts and programs
+1. Download EDirect scripts and programs from the official NCBI repository
 2. Create an `edirect` folder in your home directory
 3. Add the directory to your PATH
+
+**Security Note:** Avoid piping remote scripts directly to your shell (e.g., `sh -c "curl | bash"`). Downloading first allows you to verify the content before execution, following best security practices.
 
 ### Method 2: Manual Installation (Alternative)
 
@@ -39,7 +55,7 @@ mkdir -p ~/edirect
 cd ~/edirect
 
 # Download and extract the package
-curl -O ftp://ftp.ncbi.nlm.nih.gov/entrez/entrezdirect/edirect.tar.gz
+curl -O https://ftp.ncbi.nlm.nih.gov/entrez/entrezdirect/edirect.tar.gz
 tar -xzf edirect.tar.gz
 
 # Add to PATH
@@ -149,14 +165,28 @@ export https_proxy="http://proxy.example.com:8080"
 ```
 
 #### 5. SSL Certificate Issues
-```bash
-# Update CA certificates
-sudo apt-get update ca-certificates  # Ubuntu/Debian
-sudo yum update ca-certificates      # CentOS/RHEL
+If you encounter SSL certificate errors, update your system's CA certificates:
 
-# Or disable SSL verification (not recommended)
-export PERL_LWP_SSL_VERIFY_HOSTNAME=0
+```bash
+# Ubuntu/Debian
+sudo apt-get update
+sudo apt-get install ca-certificates
+
+# CentOS/RHEL
+sudo yum update ca-certificates
+
+# macOS
+brew install ca-certificates
 ```
+
+Also ensure your system time is correct:
+```bash
+date  # check system time
+# If incorrect, sync with NTP
+sudo ntpdate pool.ntp.org  # or use timedatectl
+```
+
+**Important:** Never disable SSL verification by setting PERL_LWP_SSL_VERIFY_HOSTNAME=0 in production or when handling sensitive data. This weakens security and exposes you to man-in-the-middle attacks.
 
 ## Performance Tuning
 

@@ -14,6 +14,16 @@
         "Set a reminder to submit report by Friday"
       ]
     },
+    "repeat": {
+      "labels": {
+        "daily": "Daily",
+        "weekly": "Every {day}",
+        "monthly": "Monthly on {date}",
+        "yearly": "Yearly on {month}/{date}"
+      },
+      "days": ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+      "months": ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+    },
     "responses": {
       "added": "Added '{title}' reminder{due_text}.",
       "added_no_due": " without a due date",
@@ -39,6 +49,16 @@
         "오늘 오후 3시에 전화하기 미리알림 만들어줘",
         "이번 주 금요일까지 보고서 제출 미리알림 넣어줘"
       ]
+    },
+    "repeat": {
+      "labels": {
+        "daily": "매일",
+        "weekly": "매주 {day}",
+        "monthly": "매월 {date}일",
+        "yearly": "매년 {month}월 {date}일"
+      },
+      "days": ["일요일", "월요일", "화요일", "수요일", "목요일", "금요일", "토요일"],
+      "months": ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"]
     },
     "responses": {
       "added": "'{title}' 미리알림을 추가했어요{due_text}.",
@@ -66,6 +86,16 @@
         "金曜日までにレポート提出のリマインダーを設定して"
       ]
     },
+    "repeat": {
+      "labels": {
+        "daily": "毎日",
+        "weekly": "毎週{day}",
+        "monthly": "毎月{date}日",
+        "yearly": "毎年{month}月{date}日"
+      },
+      "days": ["日曜日", "月曜日", "火曜日", "水曜日", "木曜日", "金曜日", "土曜日"],
+      "months": ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"]
+    },
     "responses": {
       "added": "「{title}」リマインダーを追加しました{due_text}。",
       "added_no_due": "（期限なし）",
@@ -91,6 +121,16 @@
         "创建今天下午3点打电话的提醒",
         "设置周五前提交报告的提醒"
       ]
+    },
+    "repeat": {
+      "labels": {
+        "daily": "每天",
+        "weekly": "每周{day}",
+        "monthly": "每月{date}日",
+        "yearly": "每年{month}月{date}日"
+      },
+      "days": ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"],
+      "months": ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"]
     },
     "responses": {
       "added": "已添加「{title}」提醒{due_text}。",

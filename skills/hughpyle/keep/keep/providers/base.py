@@ -148,6 +148,77 @@ class EmbeddingProvider(Protocol):
 # Summarization
 # -----------------------------------------------------------------------------
 
+# Shared system prompt for all LLM-based summarization providers
+SUMMARIZATION_SYSTEM_PROMPT = """Summarize this document in under 200 words.
+
+Begin with the subject or topic directly - do not start with meta-phrases like "This document describes..." or "The main purpose is...".
+
+Good: Start with the name of the subject, then say what it is.
+Bad: "This document describes..." or "The main purpose is..."
+
+Include what it does, key features, and why someone might find it useful."""
+
+
+def build_summarization_prompt(content: str, context: str | None = None) -> str:
+    """
+    Build the summarization prompt, optionally including context.
+
+    When context is provided (as topic keywords), it gives the LLM
+    thematic context without leaking specific phrases from other summaries.
+
+    Args:
+        content: The document content to summarize
+        context: Optional context from related items (summaries of similar items)
+
+    Returns:
+        The complete prompt string for the LLM
+    """
+    if context:
+        return f"""Summarize this document in under 200 words.
+
+This document is part of a collection about: {context}
+
+Summarize only the document itself.
+
+Begin with the subject or topic directly - do not start with meta-phrases like "This document describes..." or "The main purpose is...".
+
+Include what it does, key features, and why someone might find it useful.
+
+Document:
+{content}"""
+    else:
+        return content
+
+
+def strip_summary_preamble(text: str) -> str:
+    """
+    Remove common LLM preambles from summaries.
+
+    Many models add introductory phrases despite instructions not to.
+    This post-processes the output to strip them.
+    """
+    import re
+    preambles = [
+        r"^here is a summary[^:]*[:.]\s*",
+        r"^here is a concise summary[^:]*:\s*",
+        r"^here is the summary[^:]*:\s*",
+        r"^here's a summary[^:]*:\s*",
+        r"^summary:\s*",
+        r"^the document describes\s+",
+        r"^this document describes\s+",
+        r"^the document covers\s+",
+        r"^this document covers\s+",
+        r"^the main purpose or topic of this document is\s+",
+        r"^the main purpose of this document is\s+",
+        r"^the purpose of this document is\s+",
+        r"^this is a document (about|describing|that)\s+",
+    ]
+    result = text
+    for pattern in preambles:
+        result = re.sub(pattern, "", result, flags=re.IGNORECASE)
+    return result
+
+
 @runtime_checkable
 class SummarizationProvider(Protocol):
     """
@@ -174,14 +245,21 @@ class SummarizationProvider(Protocol):
                 return response.choices[0].message.content
     """
     
-    def summarize(self, content: str, *, max_length: int = 500) -> str:
+    def summarize(
+        self,
+        content: str,
+        *,
+        max_length: int = 500,
+        context: str | None = None,
+    ) -> str:
         """
         Generate a summary of the content.
-        
+
         Args:
             content: The full document content
             max_length: Approximate maximum length in characters
-            
+            context: Optional context from related items (for contextual summarization)
+
         Returns:
             A concise summary of the content
         """

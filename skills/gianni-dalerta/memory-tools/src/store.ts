@@ -1,11 +1,11 @@
 /**
  * Hybrid Memory Store
  *
- * SQLite for metadata (fast queries, debuggable)
+ * SQLite (via sql.js/WASM) for metadata (fast queries, debuggable, no native deps)
  * LanceDB for vectors (semantic search)
  */
 
-import Database from 'better-sqlite3';
+import initSqlJs, { type Database as SqlJsDatabase, type SqlValue } from 'sql.js';
 import * as lancedb from '@lancedb/lancedb';
 import { randomUUID } from 'node:crypto';
 import * as fs from 'node:fs';
@@ -24,13 +24,15 @@ import { EmbeddingProvider } from './embeddings.js';
 const VECTOR_TABLE = 'memory_vectors';
 
 export class MemoryStore {
-  private db: Database.Database;
+  private db: SqlJsDatabase | null = null;
   private vectorDb: lancedb.Connection | null = null;
   private vectorTable: lancedb.Table | null = null;
   private embeddings: EmbeddingProvider;
   private vectorDim: number;
   private dbPath: string;
+  private dbFilePath: string;
   private initPromise: Promise<void> | null = null;
+  private sqliteInitPromise: Promise<void> | null = null;
 
   constructor(
     dbPath: string,
@@ -40,20 +42,51 @@ export class MemoryStore {
     this.dbPath = dbPath;
     this.embeddings = embeddings;
     this.vectorDim = vectorDim;
+    this.dbFilePath = path.join(dbPath, 'memory.db');
 
     // Ensure directory exists
     if (!fs.existsSync(dbPath)) {
       fs.mkdirSync(dbPath, { recursive: true });
     }
-
-    // Initialize SQLite
-    this.db = new Database(path.join(dbPath, 'memory.db'));
-    this.db.pragma('journal_mode = WAL');
-    this.initSqlite();
   }
 
-  private initSqlite(): void {
-    this.db.exec(`
+  /**
+   * Initialize the database. Call this before using sync methods.
+   * Async methods will auto-initialize, but this is useful for tests
+   * or when you need to use sync methods without calling async ones first.
+   */
+  async init(): Promise<void> {
+    await this.ensureSqlite();
+  }
+
+  /**
+   * Ensure SQLite is initialized (lazy async init for sql.js WASM)
+   */
+  private async ensureSqlite(): Promise<SqlJsDatabase> {
+    if (this.db) return this.db;
+    if (this.sqliteInitPromise) {
+      await this.sqliteInitPromise;
+      return this.db!;
+    }
+
+    this.sqliteInitPromise = this.initSqlite();
+    await this.sqliteInitPromise;
+    return this.db!;
+  }
+
+  private async initSqlite(): Promise<void> {
+    const SQL = await initSqlJs();
+
+    // Load existing database if it exists
+    if (fs.existsSync(this.dbFilePath)) {
+      const buffer = fs.readFileSync(this.dbFilePath);
+      this.db = new SQL.Database(buffer);
+    } else {
+      this.db = new SQL.Database();
+    }
+
+    // Create schema
+    this.db.run(`
       CREATE TABLE IF NOT EXISTS memories (
         id TEXT PRIMARY KEY,
         content TEXT NOT NULL,
@@ -70,14 +103,25 @@ export class MemoryStore {
         supersedes TEXT,
         deleted_at INTEGER,
         delete_reason TEXT
-      );
-
-      CREATE INDEX IF NOT EXISTS idx_memories_category ON memories(category);
-      CREATE INDEX IF NOT EXISTS idx_memories_confidence ON memories(confidence);
-      CREATE INDEX IF NOT EXISTS idx_memories_importance ON memories(importance);
-      CREATE INDEX IF NOT EXISTS idx_memories_created ON memories(created_at);
-      CREATE INDEX IF NOT EXISTS idx_memories_deleted ON memories(deleted_at);
+      )
     `);
+
+    this.db.run(`CREATE INDEX IF NOT EXISTS idx_memories_category ON memories(category)`);
+    this.db.run(`CREATE INDEX IF NOT EXISTS idx_memories_confidence ON memories(confidence)`);
+    this.db.run(`CREATE INDEX IF NOT EXISTS idx_memories_importance ON memories(importance)`);
+    this.db.run(`CREATE INDEX IF NOT EXISTS idx_memories_created ON memories(created_at)`);
+    this.db.run(`CREATE INDEX IF NOT EXISTS idx_memories_deleted ON memories(deleted_at)`);
+
+    this.save();
+  }
+
+  /**
+   * Persist database to disk
+   */
+  private save(): void {
+    if (!this.db) return;
+    const data = this.db.export();
+    fs.writeFileSync(this.dbFilePath, Buffer.from(data));
   }
 
   private async ensureVectorDb(): Promise<void> {
@@ -108,6 +152,7 @@ export class MemoryStore {
   }
 
   async create(input: CreateMemoryInput): Promise<Memory> {
+    const db = await this.ensureSqlite();
     await this.ensureVectorDb();
 
     const id = randomUUID();
@@ -124,15 +169,13 @@ export class MemoryStore {
     }]);
 
     // Store metadata in SQLite
-    const stmt = this.db.prepare(`
+    db.run(`
       INSERT INTO memories (
         id, content, category, confidence, importance,
         created_at, updated_at, last_accessed_at, decay_days,
         source_channel, source_message_id, tags
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-
-    stmt.run(
+    `, [
       id,
       input.content,
       input.category,
@@ -145,13 +188,31 @@ export class MemoryStore {
       input.sourceChannel ?? null,
       input.sourceMessageId ?? null,
       JSON.stringify(input.tags ?? [])
-    );
+    ]);
 
-    return this.get(id)!;
+    this.save();
+    return (await this.getAsync(id))!;
   }
 
+  /**
+   * Async version of get for internal use
+   */
+  private async getAsync(id: string): Promise<Memory | null> {
+    const db = await this.ensureSqlite();
+    return this.getFromDb(db, id);
+  }
+
+  /**
+   * Sync get - requires ensureSqlite() to have been called first
+   */
   get(id: string): Memory | null {
-    // Support both full UUID and short ID (first 8 chars)
+    if (!this.db) {
+      throw new Error('Database not initialized. Call an async method first or use getAsync().');
+    }
+    return this.getFromDb(this.db, id);
+  }
+
+  private getFromDb(db: SqlJsDatabase, id: string): Memory | null {
     let query = 'SELECT * FROM memories WHERE id = ?';
     let param: string = id;
 
@@ -160,16 +221,25 @@ export class MemoryStore {
       param = `${id}%`;
     }
 
-    const row = this.db.prepare(query).get(param) as Record<string, unknown> | undefined;
-    if (!row) return null;
+    const stmt = db.prepare(query);
+    stmt.bind([param]);
+
+    if (!stmt.step()) {
+      stmt.free();
+      return null;
+    }
+
+    const row = stmt.getAsObject() as Record<string, unknown>;
+    stmt.free();
     return this.rowToMemory(row);
   }
 
   async update(id: string, updates: UpdateMemoryInput): Promise<Memory> {
+    const db = await this.ensureSqlite();
     await this.ensureVectorDb();
 
     const sets: string[] = ['updated_at = ?'];
-    const params: unknown[] = [Date.now()];
+    const params: SqlValue[] = [Date.now()];
 
     if (updates.content !== undefined) {
       sets.push('content = ?');
@@ -205,37 +275,43 @@ export class MemoryStore {
 
     params.push(id);
 
-    this.db.prepare(`UPDATE memories SET ${sets.join(', ')} WHERE id = ?`).run(...params);
+    db.run(`UPDATE memories SET ${sets.join(', ')} WHERE id = ?`, params as SqlValue[]);
+    this.save();
 
-    return this.get(id)!;
+    return (await this.getAsync(id))!;
   }
 
   async delete(id: string, reason?: string): Promise<void> {
+    const db = await this.ensureSqlite();
     await this.ensureVectorDb();
 
     // Support both full UUID and short ID (first 8 chars)
     let fullId = id;
     if (id.length === 8) {
-      const row = this.db.prepare(
-        'SELECT id FROM memories WHERE id LIKE ? AND deleted_at IS NULL LIMIT 1'
-      ).get(`${id}%`) as { id: string } | undefined;
-      if (row) {
+      const stmt = db.prepare('SELECT id FROM memories WHERE id LIKE ? AND deleted_at IS NULL LIMIT 1');
+      stmt.bind([`${id}%`]);
+      if (stmt.step()) {
+        const row = stmt.getAsObject() as { id: string };
         fullId = row.id;
       }
+      stmt.free();
     }
 
     // Soft delete in SQLite
-    this.db.prepare(`
+    db.run(`
       UPDATE memories
       SET deleted_at = ?, delete_reason = ?
       WHERE id = ?
-    `).run(Date.now(), reason ?? null, fullId);
+    `, [Date.now(), reason ?? null, fullId]);
+
+    this.save();
 
     // Remove from vector index
     await this.vectorTable!.delete(`id = '${fullId}'`);
   }
 
   async search(opts: SearchOptions): Promise<MemorySearchResult[]> {
+    const db = await this.ensureSqlite();
     await this.ensureVectorDb();
 
     let vectorIds: string[] = [];
@@ -259,7 +335,7 @@ export class MemoryStore {
 
     // Build SQL query
     let sql = 'SELECT * FROM memories WHERE deleted_at IS NULL';
-    const params: unknown[] = [];
+    const params: SqlValue[] = [];
 
     if (vectorIds.length > 0) {
       sql += ` AND id IN (${vectorIds.map(() => '?').join(',')})`;
@@ -297,7 +373,7 @@ export class MemoryStore {
     sql += ' LIMIT ?';
     params.push(opts.limit ?? 10);
 
-    const rows = this.db.prepare(sql).all(...params) as Record<string, unknown>[];
+    const rows = this.queryAll(db, sql, params);
 
     // Map results with scores
     const results: MemorySearchResult[] = rows.map(row => ({
@@ -316,13 +392,31 @@ export class MemoryStore {
     return results;
   }
 
+  /**
+   * Async version of list
+   */
+  async listAsync(opts: ListOptions = {}): Promise<{ total: number; items: Memory[] }> {
+    const db = await this.ensureSqlite();
+    return this.listFromDb(db, opts);
+  }
+
+  /**
+   * Sync list - requires database to be initialized
+   */
   list(opts: ListOptions = {}): { total: number; items: Memory[] } {
+    if (!this.db) {
+      throw new Error('Database not initialized. Call an async method first or use listAsync().');
+    }
+    return this.listFromDb(this.db, opts);
+  }
+
+  private listFromDb(db: SqlJsDatabase, opts: ListOptions): { total: number; items: Memory[] } {
     const sortBy = opts.sortBy ?? 'created_at';
     const sortCol = sortBy.replace(/([A-Z])/g, '_$1').toLowerCase();
     const sortOrder = opts.sortOrder ?? 'desc';
 
     let sql = 'SELECT * FROM memories WHERE deleted_at IS NULL';
-    const params: unknown[] = [];
+    const params: SqlValue[] = [];
 
     if (opts.category) {
       sql += ' AND category = ?';
@@ -330,13 +424,13 @@ export class MemoryStore {
     }
 
     const countSql = sql.replace('SELECT *', 'SELECT COUNT(*) as count');
-    const countResult = this.db.prepare(countSql).get(...params) as { count: number };
+    const countResult = this.queryOne(db, countSql, params as SqlValue[]) as { count: number };
 
     sql += ` ORDER BY ${sortCol} ${sortOrder}`;
     sql += ' LIMIT ? OFFSET ?';
     params.push(opts.limit ?? 20, opts.offset ?? 0);
 
-    const rows = this.db.prepare(sql).all(...params) as Record<string, unknown>[];
+    const rows = this.queryAll(db, sql, params);
 
     return {
       total: countResult.count,
@@ -345,6 +439,7 @@ export class MemoryStore {
   }
 
   async findDuplicates(content: string, threshold: number = 0.95): Promise<MemorySearchResult[]> {
+    await this.ensureSqlite();
     await this.ensureVectorDb();
 
     const vector = await this.embeddings.embed(content);
@@ -360,37 +455,121 @@ export class MemoryStore {
 
     if (score < threshold) return [];
 
-    const memory = this.get(results[0].id as string);
+    const memory = await this.getAsync(results[0].id as string);
     if (!memory || memory.deletedAt) return [];
 
     return [{ memory, score }];
   }
 
-  touchMany(ids: string[]): void {
+  /**
+   * Async version of touchMany
+   */
+  async touchManyAsync(ids: string[]): Promise<void> {
     if (ids.length === 0) return;
-    const now = Date.now();
-    const placeholders = ids.map(() => '?').join(',');
-    this.db.prepare(`
-      UPDATE memories SET last_accessed_at = ? WHERE id IN (${placeholders})
-    `).run(now, ...ids);
+    const db = await this.ensureSqlite();
+    this.touchManyInDb(db, ids);
   }
 
+  /**
+   * Sync touchMany - requires database to be initialized
+   */
+  touchMany(ids: string[]): void {
+    if (ids.length === 0) return;
+    if (!this.db) {
+      throw new Error('Database not initialized. Call an async method first or use touchManyAsync().');
+    }
+    this.touchManyInDb(this.db, ids);
+  }
+
+  private touchManyInDb(db: SqlJsDatabase, ids: string[]): void {
+    const now = Date.now();
+    const placeholders = ids.map(() => '?').join(',');
+    db.run(`UPDATE memories SET last_accessed_at = ? WHERE id IN (${placeholders})`, [now, ...ids]);
+    this.save();
+  }
+
+  /**
+   * Async version of count
+   */
+  async countAsync(): Promise<number> {
+    const db = await this.ensureSqlite();
+    return this.countFromDb(db);
+  }
+
+  /**
+   * Sync count - requires database to be initialized
+   */
   count(): number {
-    const result = this.db.prepare(
-      'SELECT COUNT(*) as count FROM memories WHERE deleted_at IS NULL'
-    ).get() as { count: number };
+    if (!this.db) {
+      throw new Error('Database not initialized. Call an async method first or use countAsync().');
+    }
+    return this.countFromDb(this.db);
+  }
+
+  private countFromDb(db: SqlJsDatabase): number {
+    const result = this.queryOne(db, 'SELECT COUNT(*) as count FROM memories WHERE deleted_at IS NULL', []) as { count: number };
     return result.count;
   }
 
+  /**
+   * Async version of getByCategory
+   */
+  async getByCategoryAsync(category: MemoryCategory, limit: number = 50): Promise<Memory[]> {
+    const db = await this.ensureSqlite();
+    return this.getByCategoryFromDb(db, category, limit);
+  }
+
+  /**
+   * Sync getByCategory - requires database to be initialized
+   */
   getByCategory(category: MemoryCategory, limit: number = 50): Memory[] {
-    const rows = this.db.prepare(`
+    if (!this.db) {
+      throw new Error('Database not initialized. Call an async method first or use getByCategoryAsync().');
+    }
+    return this.getByCategoryFromDb(this.db, category, limit);
+  }
+
+  private getByCategoryFromDb(db: SqlJsDatabase, category: MemoryCategory, limit: number): Memory[] {
+    const rows = this.queryAll(db, `
       SELECT * FROM memories
       WHERE category = ? AND deleted_at IS NULL
       ORDER BY importance DESC, created_at DESC
       LIMIT ?
-    `).all(category, limit) as Record<string, unknown>[];
+    `, [category, limit]);
 
     return rows.map(row => this.rowToMemory(row));
+  }
+
+  /**
+   * Helper to run a query and get all results as objects
+   */
+  private queryAll(db: SqlJsDatabase, sql: string, params: SqlValue[]): Record<string, unknown>[] {
+    const stmt = db.prepare(sql);
+    stmt.bind(params);
+
+    const results: Record<string, unknown>[] = [];
+    while (stmt.step()) {
+      results.push(stmt.getAsObject() as Record<string, unknown>);
+    }
+    stmt.free();
+    return results;
+  }
+
+  /**
+   * Helper to run a query and get first result as object
+   */
+  private queryOne(db: SqlJsDatabase, sql: string, params: SqlValue[]): Record<string, unknown> | null {
+    const stmt = db.prepare(sql);
+    stmt.bind(params);
+
+    if (!stmt.step()) {
+      stmt.free();
+      return null;
+    }
+
+    const row = stmt.getAsObject() as Record<string, unknown>;
+    stmt.free();
+    return row;
   }
 
   private rowToMemory(row: Record<string, unknown>): Memory {
@@ -414,6 +593,22 @@ export class MemoryStore {
   }
 
   close(): void {
-    this.db.close();
+    // Close SQLite connection
+    if (this.db) {
+      this.save();
+      this.db.close();
+      this.db = null;
+    }
+
+    // Close LanceDB connection
+    if (this.vectorDb) {
+      this.vectorDb.close();
+      this.vectorDb = null;
+    }
+    this.vectorTable = null;
+
+    // Reset initialization promises so databases can be reopened
+    this.initPromise = null;
+    this.sqliteInitPromise = null;
   }
 }

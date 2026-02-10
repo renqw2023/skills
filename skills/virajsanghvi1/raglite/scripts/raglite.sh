@@ -12,7 +12,6 @@ fi
 source "$VENV_DIR/bin/activate"
 
 # Default engine to OpenClaw unless user overrides.
-# If user didn't pass --engine, inject: --engine openclaw
 args=("$@")
 if [[ " ${args[*]} " != *" --engine "* ]]; then
   args=("${args[@]:0:1}" "--engine" "openclaw" "${args[@]:1}")

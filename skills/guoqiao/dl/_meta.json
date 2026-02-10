@@ -1,0 +1,22 @@
+{
+  "owner": "guoqiao",
+  "slug": "dl",
+  "displayName": "Media Downloader",
+  "latest": {
+    "version": "0.0.9",
+    "publishedAt": 1770635575819,
+    "commit": "https://github.com/openclaw/skills/commit/d060199c494c3c310d103b1870c7bd326364b46f"
+  },
+  "history": [
+    {
+      "version": "0.0.7",
+      "publishedAt": 1770596173733,
+      "commit": "https://github.com/openclaw/skills/commit/b556544daf7a96ef676908df5f3ca1a3d92faaf4"
+    },
+    {
+      "version": "0.0.5",
+      "publishedAt": 1770552984077,
+      "commit": "https://github.com/openclaw/skills/commit/8c608f05ec0478de6dcee98a70b82533c5328851"
+    }
+  ]
+}

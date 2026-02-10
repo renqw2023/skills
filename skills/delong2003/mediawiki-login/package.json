@@ -1,0 +1,32 @@
+{
+  "name": "mediawiki-login",
+  "version": "1.0.0",
+  "description": "MediaWiki login and connection testing skill for OpenClaw",
+  "main": "scripts/login.sh",
+  "scripts": {
+    "test": "./scripts/health_check.sh",
+    "test-connection": "./scripts/test_connection.sh",
+    "login": "./scripts/login.sh",
+    "user-info": "./scripts/get_user_info.sh",
+    "health-check": "./scripts/health_check.sh"
+  },
+  "keywords": [
+    "mediawiki",
+    "login",
+    "authentication",
+    "wiki",
+    "openclaw",
+    "skill",
+    "connection",
+    "api"
+  ],
+  "author": "OpenClaw Team",
+  "license": "MIT",
+  "dependencies": {},
+  "files": [
+    "SKILL.md",
+    "config/",
+    "scripts/",
+    "examples/"
+  ]
+}

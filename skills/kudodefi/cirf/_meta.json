@@ -3,11 +3,16 @@
   "slug": "cirf",
   "displayName": "Crypto Interactive Research Framework - CIRF",
   "latest": {
-    "version": "0.1.1",
-    "publishedAt": 1770383773124,
-    "commit": "https://github.com/openclaw/skills/commit/75ccb88e8f9ec4d94a1e806cb8896cbdaaecf239"
+    "version": "0.1.2",
+    "publishedAt": 1770637729431,
+    "commit": "https://github.com/openclaw/skills/commit/f4d670979728f0d28b013a813e66ac69b03f6abd"
   },
   "history": [
+    {
+      "version": "0.1.1",
+      "publishedAt": 1770383773124,
+      "commit": "https://github.com/openclaw/skills/commit/75ccb88e8f9ec4d94a1e806cb8896cbdaaecf239"
+    },
     {
       "version": "0.1.0",
       "publishedAt": 1770302546027,

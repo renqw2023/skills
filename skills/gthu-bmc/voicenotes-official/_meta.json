@@ -1,0 +1,11 @@
+{
+  "owner": "gthu-bmc",
+  "slug": "voicenotes-official",
+  "displayName": "Voicenotes Official",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1770623406782,
+    "commit": "https://github.com/openclaw/skills/commit/39d08c41a10b3a3ccec58f2b1312c4d26280f177"
+  },
+  "history": []
+}

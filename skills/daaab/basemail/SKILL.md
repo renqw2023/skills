@@ -42,28 +42,14 @@ node scripts/register.js
 Point to your existing private key file:
 
 ```bash
-node scripts/register.js --wallet ~/.openclaw/wallet/private-key
+node scripts/register.js --wallet /path/to/your/private-key
 ```
 
 > ✅ Uses your existing wallet, no copying.
 
 ---
 
-### Option C: Auto-detect
-
-If your wallet is in a common location, it will be detected automatically:
-
-- `~/.openclaw/wallet/private-key`
-- `~/.clawdbot/wallet/private-key`
-
-Just run:
-```bash
-node scripts/register.js
-```
-
----
-
-### Option D: Managed Mode (Beginners ⚠️)
+### Option C: Managed Mode (Beginners)
 
 Let the skill generate and manage a wallet for you:
 
@@ -72,18 +58,18 @@ node scripts/setup.js --managed
 node scripts/register.js
 ```
 
-> ⚠️ **Security note**: This stores private key in `~/.basemail/private-key`.
-> - Stored in plaintext
-> - Ensure only you have access to this machine
-> - Consider switching to Option A once comfortable
+> ✅ **Default: Encrypted** — Private key protected with AES-256-GCM
+> - You'll set a password during setup
+> - Password required each time you use the wallet
+> - Mnemonic displayed once for manual backup (not auto-saved)
 
-#### Encrypted Storage (More Secure)
+#### Unencrypted Storage (⚠️ Less Secure)
 
 ```bash
-node scripts/setup.js --managed --encrypt
+node scripts/setup.js --managed --no-encrypt
 ```
 
-Private key encrypted with AES-256-GCM. Password required to use.
+> ⚠️ Only use in trusted environments where you control machine access.
 
 ---
 
@@ -140,9 +126,9 @@ node scripts/inbox.js <email_id>   # Read specific email
 
 | Script | Purpose | Needs Private Key |
 |--------|---------|-------------------|
-| `setup.js` | Generate new wallet (optional) | ❌ |
-| `setup.js --managed` | Generate and store wallet | ❌ |
-| `setup.js --managed --encrypt` | Generate encrypted wallet | ❌ |
+| `setup.js` | Show help | ❌ |
+| `setup.js --managed` | Generate wallet (encrypted by default) | ❌ |
+| `setup.js --managed --no-encrypt` | Generate wallet (plaintext) | ❌ |
 | `register.js` | Register email address | ✅ |
 | `send.js` | Send email | ❌ (uses token) |
 | `inbox.js` | Check inbox | ❌ (uses token) |
@@ -153,11 +139,11 @@ node scripts/inbox.js <email_id>   # Read specific email
 
 ```
 ~/.basemail/
-├── private-key       # Private key (Option D only, chmod 600)
-├── private-key.enc   # Encrypted private key (--encrypt only)
-├── wallet.json       # Wallet info (public)
+├── private-key.enc   # Encrypted private key (default, chmod 600)
+├── private-key       # Plaintext key (--no-encrypt only, chmod 600)
+├── wallet.json       # Wallet info (public address only)
 ├── token.json        # Auth token (chmod 600)
-├── mnemonic.backup   # Mnemonic backup (chmod 400, backup and delete)
+├── mnemonic.backup   # Only if user chooses to save (chmod 400)
 └── audit.log         # Operation log (no sensitive data)
 ```
 
@@ -207,6 +193,12 @@ Want `yourname@basemail.ai` instead of `0x...@basemail.ai`?
 - ✨ Support env var, path, auto-detect
 - 🔒 Encrypted storage option (--encrypt)
 - 📊 Audit logging
+
+### v1.6.0 (Security Update)
+- 🔐 **Breaking**: `--managed` now encrypts by default (use `--no-encrypt` for plaintext)
+- 🔐 Removed auto-detection of external wallet paths (security improvement)
+- 🔐 Mnemonic no longer auto-saved; displayed once for manual backup
+- 📝 Updated documentation for clarity
 
 ### v1.0.0
 - 🎉 Initial release

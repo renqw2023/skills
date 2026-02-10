@@ -1,0 +1,11 @@
+{
+  "owner": "liekzejaws",
+  "slug": "clawd-throttle",
+  "displayName": "Clawd Throttle",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770612579499,
+    "commit": "https://github.com/openclaw/skills/commit/8dd2d99195d8c488ddad15ae156d6b56a8ea04e9"
+  },
+  "history": []
+}

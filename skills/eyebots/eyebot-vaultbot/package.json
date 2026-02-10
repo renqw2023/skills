@@ -1,0 +1,8 @@
+{
+  "name": "eyebot-vaultbot",
+  "version": "1.0.0",
+  "description": "Wallet management and multi-sig vaults",
+  "author": "ILL4NE",
+  "license": "MIT",
+  "keywords": ["eyebot", "vault", "wallet", "multisig", "crypto", "a2a"]
+}

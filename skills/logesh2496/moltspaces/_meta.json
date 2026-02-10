@@ -3,11 +3,16 @@
   "slug": "moltspaces",
   "displayName": "Moltspaces",
   "latest": {
-    "version": "1.0.12",
-    "publishedAt": 1770224184642,
-    "commit": "https://github.com/clawdbot/skills/commit/b1513da9a423f1a6b250ac7135bd7df1f55fc52f"
+    "version": "1.0.13",
+    "publishedAt": 1770527702517,
+    "commit": "https://github.com/openclaw/skills/commit/6b094ca18ec93b236797fe8d8b4dd8534d43c722"
   },
   "history": [
+    {
+      "version": "1.0.12",
+      "publishedAt": 1770224184642,
+      "commit": "https://github.com/clawdbot/skills/commit/b1513da9a423f1a6b250ac7135bd7df1f55fc52f"
+    },
     {
       "version": "1.0.10",
       "publishedAt": 1770218006368,

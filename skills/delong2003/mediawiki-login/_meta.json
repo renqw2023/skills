@@ -1,0 +1,11 @@
+{
+  "owner": "delong2003",
+  "slug": "mediawiki-login",
+  "displayName": "Mediawiki Login",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770654528711,
+    "commit": "https://github.com/openclaw/skills/commit/9ecd4e82c998ac3307d48f9e64ceda1829d4dc09"
+  },
+  "history": []
+}

@@ -377,21 +377,18 @@ def generate_report(
     import sys
 
     def print_progress(phase: str, current: int, total: int, detail: str = ""):
-        """打印进度条"""
-        bar_len = 20
-        filled = int(bar_len * current / total) if total > 0 else 0
-        bar = "█" * filled + "░" * (bar_len - filled)
-        percent = current / total * 100 if total > 0 else 0
-        # 完成时显示"完成✓"，否则显示当前处理的视频
-        if current == total:
-            detail_str = " ✓ 完成"
-        else:
-            detail_str = f" - {detail}" if detail else ""
-        # 使用 \r 实现同行刷新，\033[K 清除行尾
-        sys.stdout.write(f"\r{phase} [{bar}] {current}/{total} ({percent:.0f}%){detail_str}\033[K")
-        sys.stdout.flush()
-        if current == total:
-            print()  # 完成时换行
+        """打印进度条（只在关键节点输出，避免刷屏）"""
+        percentage = int((current / total) * 100) if total > 0 else 0
+        # 只在 25%、50%、75%、100% 时输出，减少消息量
+        if percentage in [25, 50, 75] or current == total:
+            bar_len = 20
+            filled = int(bar_len * current / total) if total > 0 else 0
+            bar = "█" * filled + "░" * (bar_len - filled)
+            if current == total:
+                print(f"{phase} [{bar}] {current}/{total} (100%) ✓ 完成")
+            else:
+                detail_str = f" - {detail}" if detail else ""
+                print(f"{phase} [{bar}] {current}/{total} ({percentage}%){detail_str}")
 
     print(f"\n{'='*60}")
     print(f"📊 B站热门视频日报生成器")

@@ -1,0 +1,11 @@
+{
+  "owner": "bazinshine",
+  "slug": "the-roaster",
+  "displayName": "Roaster",
+  "latest": {
+    "version": "1.0.4",
+    "publishedAt": 1770586297775,
+    "commit": "https://github.com/openclaw/skills/commit/bc6cd1911baaac9a316e5ba92855c287a41bf887"
+  },
+  "history": []
+}

@@ -3,9 +3,15 @@
   "slug": "openclaw-checkpoint",
   "displayName": "OpenClaw Checkpoint - Personal AI Assistant Backup & Recovery",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1770127133049,
-    "commit": "https://github.com/clawdbot/skills/commit/528afc89416f80c0de71d048be2baae058bbd272"
+    "version": "1.0.3",
+    "publishedAt": 1770646679804,
+    "commit": "https://github.com/openclaw/skills/commit/147bbcd1c00690fe9ac2066eb4d99d29ae4f0ef3"
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1770127133049,
+      "commit": "https://github.com/clawdbot/skills/commit/528afc89416f80c0de71d048be2baae058bbd272"
+    }
+  ]
 }

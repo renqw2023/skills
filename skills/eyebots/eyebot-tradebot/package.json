@@ -1,0 +1,8 @@
+{
+  "name": "eyebot-tradebot",
+  "version": "1.0.0",
+  "description": "High-performance trading and swap execution",
+  "author": "ILL4NE",
+  "license": "MIT",
+  "keywords": ["eyebot", "trading", "swap", "dex", "crypto", "a2a"]
+}

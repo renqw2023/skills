@@ -34,35 +34,66 @@ skills/korail-manager/venv/bin/pip install -r skills/korail-manager/requirements
 
 모든 스크립트는 **반드시 위에서 생성한 가상 환경의 파이썬으로 실행**해야 합니다.
 
-### 열차 검색 (`search.py`)
+### KTX
+
+#### 열차 검색 (`search.py`)
 ```bash
-skills/korail-manager/venv/bin/python skills/korail-manager/scripts/search.py --dep "부산" --arr "서울" --date "20260208"
+venv/bin/python scripts/search.py --dep "부산" --arr "서울" --date "20260210"
 ```
 
-### 좌석 감시 및 자동 예매 (`watch.py`)
+#### 좌석 감시 및 자동 예매 (`watch.py`)
 
-이 스크립트는 백그라운드에서 실행되며, `interval` 초마다 빈자리를 확인하고, 표를 발견하면 자동으로 예매를 시도합니다. 성공 시 텔레그램으로 알림을 보냅니다.
+이 스크립트는 백그라운드에서 실행되며, `interval` 초마다 빈자리를 확인하고, 표를 발견하면 자동으로 예매를 시도합니다. 성공 시 텔레그램/슬랙으로 알림을 보냅니다.
 
-**인수 설명:**
-- `--dep`: 출발역
-- `--arr`: 도착역
-- `--date`: 날짜 (YYYYMMDD 형식)
-- `--start-time`: 감시 시작 시간 (예: 오후 3시는 15)
-- `--end-time`: 감시 종료 시간 (예: 오후 5시는 17)
-- `--interval`: 확인 주기(초) (기본값: 300초)
-
-**사용 예시:**
 ```bash
-skills/korail-manager/venv/bin/python skills/korail-manager/scripts/watch.py --dep "부산" --arr "서울" --date "20260208" --start-time 15 --end-time 17
+venv/bin/python scripts/watch.py --dep "부산" --arr "서울" --date "20260210" --start-time 15 --end-time 17 --interval 300
 ```
 
-### 예약 취소 (`cancel.py`)
+#### 예약 취소 (`cancel.py`)
 ```bash
-skills/korail-manager/venv/bin/python skills/korail-manager/scripts/cancel.py
+# 전체 예약 취소
+venv/bin/python scripts/cancel.py
+
+# 특정 날짜 예약만 취소
+venv/bin/python scripts/cancel.py --date "20260210"
 ```
+
+### SRT
+
+#### 열차 검색 (`srt_search.py`)
+```bash
+venv/bin/python scripts/srt_search.py --dep "수서" --arr "대전" --date "20260210"
+```
+
+#### 좌석 감시 및 자동 예매 (`srt_watch.py`)
+
+```bash
+venv/bin/python scripts/srt_watch.py --dep "수서" --arr "대전" --date "20260210" --start-time 14 --end-time 18 --interval 300
+```
+
+#### 예약 취소 (`cancel_srt.py`)
+```bash
+# 전체 예약 취소
+venv/bin/python scripts/cancel_srt.py
+
+# 특정 날짜 예약만 취소
+venv/bin/python scripts/cancel_srt.py --date "20260210"
+```
+
+### 공통 인수
+
+| 인수 | 설명 | 예시 |
+|------|------|------|
+| `--dep` | 출발역 | `"서울"`, `"수서"`, `"오송"` |
+| `--arr` | 도착역 | `"부산"`, `"대전"` |
+| `--date` | 날짜 (YYYYMMDD) | `"20260210"` |
+| `--time` | 시간 (HHMMSS, 검색 전용) | `"140000"` |
+| `--start-time` | 감시 시작 시간 (0-23) | `15` |
+| `--end-time` | 감시 종료 시간 (0-23) | `17` |
+| `--interval` | 확인 주기, 초 (기본값: 300초 = 5분) | `300` |
 
 ## 환경 변수 설정
-이 스킬은 코레일 로그인 및 알림을 위해 민감한 정보를 필요로 합니다.
+이 스킬은 로그인 및 알림을 위해 민감한 정보를 필요로 합니다.
 **올바르게 작동하려면 반드시 이 정보들을 설정해야 합니다.**
 
 가장 권장되는 방식은, 스킬의 루트 폴더에 `.env` 파일을 생성하여 정보를 관리하는 것입니다.
@@ -71,12 +102,20 @@ skills/korail-manager/venv/bin/python skills/korail-manager/scripts/cancel.py
 2.  새로 생성된 `.env` 파일을 열어 실제 정보를 입력합니다.
 
 ```dotenv
-# skills/korail-manager/.env
+# Korail (KTX) Login
 KORAIL_ID="YOUR_KORAIL_ID"
 KORAIL_PW="YOUR_KORAIL_PASSWORD"
+
+# SRT Login
+SRT_ID="YOUR_SRT_ID"
+SRT_PW="YOUR_SRT_PASSWORD"
+
+# Telegram Bot
 TELEGRAM_BOT_TOKEN="YOUR_TELEGRAM_BOT_TOKEN"
 TELEGRAM_CHAT_ID="YOUR_TELEGRAM_CHAT_ID"
-SLACK_WEBHOOK_URL="YOUR_SLACK_WEBHOOK_URL" # 선택 사항
+
+# Slack Webhook (선택 사항)
+SLACK_WEBHOOK_URL="YOUR_SLACK_WEBHOOK_URL"
 ```
 
 ⚠️ **경고:** `.env` 파일은 `.gitignore`에 포함되어 Git 저장소에 올라가지 않습니다. 하지만 이 파일은 매우 민감한 자격 증명을 담고 있으니, **절대로 외부에 공개하거나 버전 관리에 포함시키지 마십시오.**
@@ -115,8 +154,9 @@ SLACK_WEBHOOK_URL="YOUR_SLACK_WEBHOOK_URL" # 선택 사항
 
 ## 보안 및 프라이버시
 이 스킬은 아래의 목적으로 외부 네트워크 호출을 사용합니다:
-1. **코레일 (letskorail.com):** 열차 조회 및 예매
-2. **텔레그램 API:** 예매 알림 발송 (설정 시)
-3. **슬랙 웹훅:** 예매 알림 발송 (설정 시)
+1. **코레일 (letskorail.com):** KTX 열차 조회 및 예매
+2. **SRT (srail.or.kr):** SRT 열차 조회 및 예매
+3. **텔레그램 API:** 예매 알림 발송 (설정 시)
+4. **슬랙 웹훅:** 예매 알림 발송 (설정 시)
 
 자격 증명 정보는 오직 환경 변수를 통해서만 읽어오며, 다른 곳에 저장되거나 전송되지 않습니다.

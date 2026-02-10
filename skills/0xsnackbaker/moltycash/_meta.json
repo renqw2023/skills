@@ -1,0 +1,11 @@
+{
+  "owner": "0xsnackbaker",
+  "slug": "moltycash",
+  "displayName": "moltycash",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1770670108095,
+    "commit": "https://github.com/openclaw/skills/commit/d120c95f785f1449ab938481f84e38074299f59a"
+  },
+  "history": []
+}

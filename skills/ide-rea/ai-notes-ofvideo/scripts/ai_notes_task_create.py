@@ -8,6 +8,7 @@ def ai_notes_task_create(api_key: str, video_url):
     url = "https://qianfan.baidubce.com/v2/tools/ai_note/task_create"
     headers = {
         "Authorization": "Bearer %s" % api_key,
+        "X-Appbuilder-From": "openclaw",
         "Content-Type": "application/json"
     }
     params = {

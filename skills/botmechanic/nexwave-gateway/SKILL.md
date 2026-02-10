@@ -1,7 +1,7 @@
 ---
 name: nexwave-gateway
-description: Unified crosschain USDC balance via Circle Gateway. Deposit USDC on any supported chain, check your unified balance, and instantly mint USDC on any destination chain in <500ms — no bridging, no liquidity pools, no waiting.
-version: 1.0.0
+description: Unified crosschain USDC balance via Circle Gateway + Circle Programmable Wallets. Deposit USDC on any supported chain, check your unified balance, and instantly mint USDC on any destination chain in <500ms — no bridging, no raw private keys.
+version: 1.1.0
 tags:
   - usdc
   - circle
@@ -10,9 +10,15 @@ tags:
   - defi
   - payments
   - agent-commerce
+  - circle-wallet
+  - arc
 author: nexwave
 requiredEnv:
-  - PRIVATE_KEY
+  - CIRCLE_API_KEY
+  - CIRCLE_ENTITY_SECRET
+  - CIRCLE_WALLET_SET_ID
+dependencies:
+  - eltontay/circle-wallet
 ---
 
 # Nexwave Gateway — Unified Crosschain USDC for OpenClaw Agents
@@ -41,10 +47,11 @@ This is fundamentally different from bridging. There are no liquidity pools, no 
 
 ## Prerequisites
 
-1. An Ethereum-compatible private key set as `PRIVATE_KEY` in your environment
-2. Testnet USDC from https://faucet.circle.com (20 USDC per address per chain, every 2 hours)
-3. Testnet native tokens for gas: ETH on Sepolia/Base Sepolia (use chain faucets), USDC on Arc (same faucet — USDC is the native gas token on Arc)
-4. Node.js installed with the `viem` and `dotenv` packages
+1. Circle Developer Account with API key and entity secret (https://console.circle.com)
+2. The `circle-wallet` skill installed (`clawhub install eltontay/circle-wallet`) with a wallet set containing wallets on ETH-SEPOLIA, BASE-SEPOLIA, and ARC-TESTNET
+3. Testnet USDC from https://faucet.circle.com (20 USDC per address per chain, every 2 hours)
+4. Testnet ETH for gas on Sepolia/Base Sepolia (use Google's Sepolia faucet). On Arc, USDC is the native gas token — same faucet covers everything.
+5. Node.js installed with the `viem`, `dotenv`, and `@circle-fin/developer-controlled-wallets` packages
 
 ## How To Use This Skill
 
@@ -80,13 +87,15 @@ This deposits USDC into the Gateway Wallet contract on Ethereum Sepolia and Arc 
 node transfer.js
 ```
 
-This creates burn intents, signs them with your private key, submits them to the Gateway API for attestation, and mints USDC on Base Sepolia. The attestation response typically arrives in <500ms.
+This creates burn intents, signs them via Circle Programmable Wallets (MPC — no raw private keys), submits them to the Gateway API for attestation, and mints USDC on Base Sepolia. The attestation response typically arrives in <500ms.
 
 ## Key Concepts
 
 **Unified Balance:** After depositing USDC into Gateway on any chain, the Gateway system credits your address with a unified balance. This balance is not locked to any specific chain — it can be accessed on any supported chain.
 
-**Burn Intent:** To withdraw from your unified balance to a specific chain, you sign a "burn intent" — an EIP-712 typed data structure specifying the source chain, destination chain, amount, and recipient. Gateway verifies your balance is sufficient and returns a signed attestation.
+**Burn Intent:** To withdraw from your unified balance to a specific chain, you sign a "burn intent" — an EIP-712 typed data structure specifying the source chain, destination chain, amount, and recipient. Signing is done securely via Circle's MPC Programmable Wallets (no raw private keys). Gateway verifies your balance is sufficient and returns a signed attestation.
+
+**Circle Programmable Wallets:** Instead of raw private keys in `.env` files, this skill uses Circle's developer-controlled wallets backed by multi-party computation (MPC). The private key is never exposed — signing happens server-side via Circle's API. This makes the skill safe for agent use without risk of key exfiltration.
 
 **Attestation:** The Gateway API's signed proof that authorizes minting on the destination chain. You submit this attestation to the Gateway Minter contract on the destination chain to receive USDC.
 
@@ -104,7 +113,7 @@ Gateway Wallet Contract (approve + deposit)
 Wait for chain finality → Unified balance credited
         │
         ▼
-Agent signs burn intent (EIP-712)
+Agent signs burn intent (EIP-712 via Circle MPC Wallets)
         │
         ▼
 Submit to Gateway API ──► Attestation returned (<500ms)
@@ -134,6 +143,9 @@ USDC minted on Chain B for recipient
 ## References
 
 - Circle Gateway Docs: https://developers.circle.com/gateway
+- Circle Programmable Wallets: https://developers.circle.com/wallets
+- Circle Wallet Skill (ClawHub): https://clawhub.ai/eltontay/circle-wallet
+- Arc Testnet Docs: https://docs.arc.network
 - Gateway Quickstart: https://developers.circle.com/gateway/quickstarts/unified-balance-evm
 - Full Quickstart Code: https://github.com/circlefin/evm-gateway-contracts/tree/master/quickstart
 - Circle Faucet: https://faucet.circle.com

@@ -67,6 +67,20 @@ mc-update.sh complete <task_id> "Summary of what was done"
 5. Agent executes task, updates status
 6. Human reviews and approves
 
+## Security
+
+Mission Control passes human-authored task descriptions to an AI agent for execution. This is the product's core function — not a vulnerability.
+
+**Trust model:** Designed for single-user / trusted-user setups where the task author is the same person who controls the agent. For multi-user scenarios, use Clawdbot's agent sandbox and permission settings.
+
+**Mitigations included:**
+- Input sanitization in `mc-update.sh` (blocks shell injection patterns)
+- Webhook HMAC verification with `timingSafeEqual`
+- Credential scanning before open-source sync
+- No tokens or secrets stored in the dashboard
+
+See [SKILL.md](SKILL.md#security) for full details.
+
 ## License
 
 MIT

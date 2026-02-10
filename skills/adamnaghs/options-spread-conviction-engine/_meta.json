@@ -1,0 +1,11 @@
+{
+  "owner": "adamnaghs",
+  "slug": "options-spread-conviction-engine",
+  "displayName": "Options Spread Conviction Engine",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1770663054358,
+    "commit": "https://github.com/openclaw/skills/commit/8326ae49d0499adc8e04d0ca34e6653b5f3306d8"
+  },
+  "history": []
+}

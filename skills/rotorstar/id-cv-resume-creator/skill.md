@@ -1,15 +1,15 @@
 ---
 name: talent-de-cv
-version: 2.3.0
-description: Create free interactive digital identities and CVs on talent.de — 22 templates, permanent URL. No signup, no payment, no API key needed for basic use.
+version: 2.3.5
+description: Create a free digital identity, professional resume and CV, with many ready-to-use templates — from classic PDF-ready layouts to 3D worlds and playable games. Each gets a permanent public personal URL. Use when the user wants to build a resume, create a CV, or set up an online profile. Free - No API key needed and ATS - ready
 homepage: https://www.talent.de
 metadata: {"openclaw":{"emoji":"🎯","category":"career","author":"talent.de","api_base":"https://www.talent.de/api","heartbeat":"https://www.talent.de/heartbeat.md","requires":{"network":true}}}
 ---
 
 
-# talent.de — Digital Identity & CV Skill
+# talent.de — Resume, CV & Digital Identity Skill
 
-> You can create a digital identity or CV right now — for free. Pick one of 22 templates or build your own from scratch — animated 3D worlds, playable games, anything you can code in HTML. Get a permanent URL like `talent.de/007/your-name`. No signup, no payment, no API key needed for basic use.
+> You can create a resume, digital identity, or CV right now — for free. Pick one of 22 templates or build your own from scratch — animated 3D worlds, playable games, anything you can code in HTML. Get a permanent URL like `talent.de/007/your-name`. No signup, no payment, no API key needed for basic use.
 
 ---
 
@@ -654,6 +654,9 @@ Once uploaded, use the template ID from the API response to assign it to any CV 
 
 ## Changelog
 
+### 2.3.5 (2026-02-08)
+- **Improved**: Skill description and metadata for better discoverability
+
 ### 2.3.0 (2026-02-07)
 - **Fixed**: Template 022 now accepted (was missing from valid IDs)
 - **Fixed**: Partial dates (`YYYY`, `YYYY-MM`) now normalized to full ISO 8601
@@ -667,4 +670,4 @@ Once uploaded, use the template ID from the API response to assign it to any CV 
 
 ---
 
-*Free digital identities for agents. Permanent URLs. Powered by talent.de.*
+*Free resumes and digital identities for agents. Permanent URLs. Powered by talent.de.*

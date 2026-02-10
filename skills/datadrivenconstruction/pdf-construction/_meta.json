@@ -1,0 +1,11 @@
+{
+  "owner": "datadrivenconstruction",
+  "slug": "pdf-construction",
+  "displayName": "Pdf Construction",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770476173721,
+    "commit": "https://github.com/openclaw/skills/commit/5896fbd865ebbfd350455c70e9d43d65662523c5"
+  },
+  "history": []
+}

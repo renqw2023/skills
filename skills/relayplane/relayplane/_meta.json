@@ -3,9 +3,15 @@
   "slug": "relayplane",
   "displayName": "RelayPlane",
   "latest": {
-    "version": "0.1.11",
-    "publishedAt": 1770159714106,
-    "commit": "https://github.com/clawdbot/skills/commit/ff3912bede9f694c8792175463ccd4af3a8304d2"
+    "version": "2.1.0",
+    "publishedAt": 1770671549769,
+    "commit": "https://github.com/openclaw/skills/commit/a44c703b4ef618dfc921eccb69fc03b5e461a1dc"
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.1.11",
+      "publishedAt": 1770159714106,
+      "commit": "https://github.com/clawdbot/skills/commit/ff3912bede9f694c8792175463ccd4af3a8304d2"
+    }
+  ]
 }

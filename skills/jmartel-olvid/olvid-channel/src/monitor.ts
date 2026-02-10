@@ -1,16 +1,18 @@
-import type { ChannelAccountSnapshot, RuntimeEnv, OpenClawConfig } from "openclaw/plugin-sdk";
+import type {ChannelAccountSnapshot, RuntimeEnv, OpenClawConfig, ReplyPayload, ChannelLogSink} from "openclaw/plugin-sdk";
 import { datatypes, OlvidClient } from "@olvid/bot-node";
 import { ResolvedOlvidAccount, resolveOlvidAccount } from "./accounts.js";
 import { getOlvidRuntime } from "./runtime.js";
 import { sendMessageOlvid } from "./send.js";
 import { messageIdToString } from "./tools.js";
 import { CoreConfig } from "./types.js";
+import * as fs from "node:fs";
 
 export type MonitorOlvidOpts = {
   accountId?: string;
   config?: CoreConfig;
   runtime?: RuntimeEnv;
   abortSignal?: AbortSignal;
+  logger?: ChannelLogSink;
   statusSink?: (patch: Partial<ChannelAccountSnapshot>) => void;
 };
 
@@ -42,12 +44,14 @@ class OpenClawBot extends OlvidClient {
   private readonly opts: MonitorOlvidOpts;
   private readonly account: ResolvedOlvidAccount;
   private readonly cfg: CoreConfig;
+  private readonly logger?: ChannelLogSink;
 
   constructor(account: ResolvedOlvidAccount, opts: MonitorOlvidOpts, cfg: CoreConfig) {
     super({ serverUrl: account.daemonUrl, clientKey: account.clientKey });
     this.opts = opts;
     this.account = account;
     this.cfg = cfg;
+    this.logger = opts.logger;
 
     this.onMessageReceived({
       callback: this.onMessageReceivedHandler,
@@ -73,6 +77,7 @@ class OpenClawBot extends OlvidClient {
     }
 
     // log and update status
+    this.logger?.info("message received")
     runtime.channel.activity.record({
       channel: "olvid",
       accountId: this.opts.accountId,
@@ -80,6 +85,19 @@ class OpenClawBot extends OlvidClient {
       at: timestamp,
     });
     this.opts.statusSink?.({ lastInboundAt: Date.now() });
+
+    // download message attachments
+    const attachmentsWithPaths: {attachment: datatypes.Attachment, path: string}[] = [];
+    if (message.attachmentsCount > 0) {
+      fs.mkdirSync("/tmp/olvid-attachments", {recursive: true});
+      for await (const attachment of this.attachmentList({filter: new datatypes.AttachmentFilter({messageId: message.id})})) {
+        attachmentsWithPaths.push({
+          attachment: attachment,
+          path: await attachment.save(this, "/tmp/olvid-attachments")
+        })
+      }
+      this.logger?.info(`downloaded ${attachmentsWithPaths.length} attachment(s)`)
+    }
 
     const route = runtime.channel.routing.resolveAgentRoute({
       cfg: this.cfg,
@@ -99,10 +117,6 @@ class OpenClawBot extends OlvidClient {
       sender: { name: sender.displayName, id: sender.id.toString() },
     });
 
-    // TODO implements groupSystemPrompt
-    // const groupConfiguration = this.account?.config?.groups?[Number(message.discussionId)];
-    // const groupSystemPrompt = roomConfig?.systemPrompt?.trim() || undefined;
-
     const ctxPayload = runtime.channel.reply.finalizeInboundContext({
       Body: body,
       RawBody: message.body,
@@ -117,11 +131,16 @@ class OpenClawBot extends OlvidClient {
       SenderId: sender.id.toString(),
       MessageId: messageIdToString(message.id!),
       Timestamp: message.timestamp,
-      // GroupSystemPrompt: isGroup ? groupSystemPrompt : undefined, // TODO implements groupSystemPrompt
       Provider: "olvid",
       Surface: "olvid",
       OriginatingChannel: "olvid",
       OriginatingTo: `olvid:${discussion.id}`,
+      MediaPath: attachmentsWithPaths.length > 0 ? attachmentsWithPaths[0].path : undefined,
+      MediaUrl: attachmentsWithPaths.length > 0 ? attachmentsWithPaths[0].path : undefined,
+      MediaType: attachmentsWithPaths.length > 0 ? runtime.media.mediaKindFromMime(attachmentsWithPaths[0].attachment.mimeType) : undefined,
+      MediaPaths: attachmentsWithPaths.length > 0 ? attachmentsWithPaths.map(awp => awp.path) : undefined,
+      MediaUrls: attachmentsWithPaths.length > 0 ? attachmentsWithPaths.map(awp => awp.path) : undefined,
+      MediaTypes: attachmentsWithPaths.length > 0 ? attachmentsWithPaths.map(awp => runtime.media.mediaKindFromMime(awp.attachment.mimeType)) : undefined,
     });
 
     const storePath = runtime.channel.session.resolveStorePath(
@@ -136,7 +155,7 @@ class OpenClawBot extends OlvidClient {
       sessionKey: ctxPayload.SessionKey ?? route.sessionKey,
       ctx: ctxPayload,
       onRecordError: (err: unknown) => {
-        console.error?.(`olvid: failed updating session meta: ${String(err)}`);
+        this.logger?.error(`olvid: failed updating session meta: ${String(err)}`);
       },
     });
 
@@ -144,13 +163,17 @@ class OpenClawBot extends OlvidClient {
       ctx: ctxPayload,
       cfg: this.cfg,
       dispatcherOptions: {
-        deliver: async (payload) => {
+        deliver: async (payload: ReplyPayload) => {
+          if (payload.replyToCurrent) {
+            payload.replyToId = messageIdToString(message.id);
+          }
           await deliverOlvidReply({
             payload: payload as {
               text?: string;
               mediaUrls?: string[];
               mediaUrl?: string;
               replyToId?: string;
+              replyToCurrent?: boolean
             },
             accountId: this.account.accountId,
             discussionId: discussion.id,
@@ -158,7 +181,7 @@ class OpenClawBot extends OlvidClient {
           });
         },
         onError: (err, info) => {
-          console.error?.(`olvid ${info.kind} reply failed: ${String(err)}`);
+          this.logger?.error?.(`olvid ${info.kind} reply failed: ${String(err)}`);
         },
       },
     });

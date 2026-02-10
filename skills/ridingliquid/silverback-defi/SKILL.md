@@ -1,101 +1,70 @@
 ---
 name: silverback-defi
-description: DeFi intelligence via Silverback x402 - swap quotes, technical analysis, yield opportunities, token audits, whale tracking, and market data
+description: DeFi intelligence powered by Silverback — market data, swap quotes, technical analysis, yield opportunities, token audits, whale tracking, and AI chat via 11 real-time tools on Base chain
 homepage: https://silverbackdefi.app
 user-invocable: true
-metadata: {"openclaw":{"requires":{"env":[]},"emoji":"🦍","category":"Finance & Crypto","tags":["defi","trading","crypto","yield","swap","analysis"]}}
+metadata: {"clawdbot":{"requires":{"bins":["curl","jq"]},"emoji":"🦍","category":"Finance & Crypto","tags":["defi","trading","crypto","yield","swap","analysis","base-chain"]}}
 ---
 
 # Silverback DeFi Intelligence
 
-You have access to Silverback's DeFi intelligence services via x402 micropayments. Use these tools to help users with crypto trading, yield farming, market analysis, and token security.
+Silverback provides real-time DeFi intelligence via an AI agent with 11 specialized tools. Ask any question about crypto markets, trading, yields, or token security — Silverback's agent analyzes on-chain data and returns actionable insights.
 
-## Available Tools
+## Setup
 
-### Market Data
-- **top_coins** - Get top cryptocurrencies by market cap with prices and 24h changes
-- **top_pools** - Get top yielding liquidity pools on Base DEXes
-- **top_protocols** - Get top DeFi protocols by TVL
-
-### Trading & Swaps
-- **swap_quote** - Get optimal swap quote with price impact on Base chain
-- **technical_analysis** - Get RSI, MACD, Bollinger Bands, trend detection, and trading signals
-
-### Yield & DeFi
-- **defi_yield** - Find yield opportunities across protocols (lending, LP, staking)
-- **pool_analysis** - Analyze liquidity pool health, TVL, volume, fees
-
-### Security & Intelligence
-- **token_audit** - Security audit of token contracts (honeypot detection, ownership, taxes)
-- **whale_moves** - Track large wallet movements for any token
-- **agent_reputation** - Get ERC-8004 reputation for AI agents
-- **agent_discover** - Discover trusted AI agents by capability
-
-## How to Use
-
-When the user asks about DeFi, trading, yields, or market data, use the silverback_chat tool to get real-time intelligence.
-
-### Example Queries
-
-| User Question | What to Do |
-|---------------|------------|
-| "What are the top coins right now?" | Call silverback_chat with their question |
-| "Analyze ETH for me" | Call silverback_chat - will use technical_analysis tool |
-| "Where can I earn yield on USDC?" | Call silverback_chat - will use defi_yield tool |
-| "Is 0x123...abc safe?" | Call silverback_chat - will use token_audit tool |
-| "Best pools to LP?" | Call silverback_chat - will use top_pools tool |
-| "Any whale activity on VIRTUAL?" | Call silverback_chat - will use whale_moves tool |
-
-## Tool Definition
-
+1. Get an API key from the Silverback team
+2. Create `config.json` in the skill root:
 ```json
 {
-  "name": "silverback_chat",
-  "description": "Query Silverback DeFi intelligence for market data, swap quotes, technical analysis, yield opportunities, token audits, and whale tracking. Powered by Claude with real-time x402 intelligence tools.",
-  "parameters": {
-    "type": "object",
-    "properties": {
-      "message": {
-        "type": "string",
-        "description": "The user's question about DeFi, trading, yields, or market data"
-      }
-    },
-    "required": ["message"]
-  }
+  "api_key": "sk_sb_YOUR_KEY_HERE"
 }
 ```
 
-## Implementation
+## Usage
 
-The skill calls the Silverback x402 API endpoint:
-
-```
-POST https://x402.silverbackdefi.app/api/v1/chat
-Content-Type: application/json
-
-{
-  "message": "<user's question>"
-}
+```bash
+bash scripts/silverback.sh "What are the top coins right now?"
+bash scripts/silverback.sh "Analyze ETH technically"
+bash scripts/silverback.sh "Where can I earn yield on USDC?"
+bash scripts/silverback.sh "Is 0x558881c4959e9cf961a7E1815FCD6586906babd2 safe?"
+bash scripts/silverback.sh "Show me whale activity on VIRTUAL"
 ```
 
-Response format:
-```json
-{
-  "success": true,
-  "response": "Natural language response with DeFi intelligence",
-  "toolsUsed": ["top_coins", "technical_analysis"],
-  "cost": 0.001
-}
-```
+## Available Intelligence Tools
 
-## Pricing
+| Tool | Description |
+|------|-------------|
+| **top_coins** | Top cryptocurrencies by market cap with prices and 24h changes |
+| **top_pools** | Best yielding liquidity pools on Base DEXes |
+| **top_protocols** | Top DeFi protocols ranked by TVL |
+| **swap_quote** | Optimal swap routing with price impact on Base chain |
+| **technical_analysis** | RSI, MACD, Bollinger Bands, trend detection, trading signals |
+| **defi_yield** | Yield opportunities across lending, LP, and staking protocols |
+| **pool_analysis** | Liquidity pool health — TVL, volume, fees, IL risk |
+| **token_audit** | Smart contract security audit — honeypot detection, ownership, taxes |
+| **whale_moves** | Track large wallet movements for any token |
+| **agent_reputation** | ERC-8004 on-chain reputation scores for AI agents |
+| **agent_discover** | Discover trusted AI agents by capability |
 
-- $0.05 per chat query (includes all tool calls)
-- Paid via x402 micropayments (USDC on Base)
+## Example Queries
 
-## Notes
+| Question | Tools Used |
+|----------|-----------|
+| "What are the top coins?" | top_coins |
+| "Best pools to LP in?" | top_pools |
+| "Analyze ETH for me" | technical_analysis |
+| "Where to earn yield on USDC?" | defi_yield |
+| "Is this token safe? 0xabc..." | token_audit |
+| "Whale activity on VIRTUAL" | whale_moves |
+| "Compare ETH and BTC correlation" | correlation_matrix |
+| "Get me a swap quote: 1 ETH to USDC" | swap_quote |
 
-- Silverback is the DeFi intelligence layer for the agent economy
-- Supports ERC-8004 on-chain identity and reputation
-- All data is real-time from on-chain sources and CoinGecko
-- Technical analysis uses RSI, MACD, Bollinger Bands, and pattern detection
+## How It Works
+
+The skill calls Silverback's `/api/v1/chat` endpoint with your API key. The AI agent:
+1. Understands your question
+2. Selects the right intelligence tools
+3. Fetches real-time on-chain data (CoinGecko, DexScreener, Base chain)
+4. Returns a natural language response with data
+
+See `references/endpoints.md` for the full API reference including all 16 direct endpoints.

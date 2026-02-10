@@ -3,11 +3,16 @@
   "slug": "dex-multichain-aggregator-teneo",
   "displayName": "DEX Multichain Aggregator - powered by Teneo Protocol",
   "latest": {
-    "version": "1.0.3",
-    "publishedAt": 1770302180299,
-    "commit": "https://github.com/clawdbot/skills/commit/0d27da4c15f5957138dcd87ebc9d9a73735dfc1b"
+    "version": "1.0.6",
+    "publishedAt": 1770643198756,
+    "commit": "https://github.com/openclaw/skills/commit/6cb6c8665ae40af46990618d1a5550387573fc3b"
   },
   "history": [
+    {
+      "version": "1.0.3",
+      "publishedAt": 1770302180299,
+      "commit": "https://github.com/clawdbot/skills/commit/0d27da4c15f5957138dcd87ebc9d9a73735dfc1b"
+    },
     {
       "version": "1.0.2",
       "publishedAt": 1770216612735,

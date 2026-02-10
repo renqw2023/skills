@@ -1,18 +1,41 @@
 ---
 name: nima-core
-description: Biologically-inspired cognitive memory for AI agents. Panksepp affects, Free Energy consolidation, VSA binding, sparse retrieval, temporal prediction, metacognition.
-version: 1.0.0
+description: Biologically-inspired cognitive memory for AI agents. Panksepp affects, Free Energy consolidation, VSA binding, sparse retrieval, temporal prediction, metacognition. Website - https://nima-core.ai
+version: 1.1.3
+metadata:
+  {
+    "openclaw":
+      {
+        "emoji": "🧠",
+        "requires": { "bins": ["python3"] },
+      },
+  }
 ---
 
 # NIMA Core
 
 Plug-and-play cognitive memory architecture for AI agents.
 
+**Website:** https://nima-core.ai  
+**GitHub:** https://github.com/lilubot/nima-core
+
 ## Install
 
 ```bash
-pip install torch numpy sentence-transformers
-# Copy nima_core/ to your project
+pip install nima-core
+
+# Auto-setup (detects OpenClaw, installs hooks, configures everything)
+nima-core
+openclaw gateway restart
+```
+
+### Manual Hook Install
+
+```bash
+openclaw hooks install /path/to/nima-core
+openclaw hooks enable nima-bootstrap
+openclaw hooks enable nima-recall
+openclaw gateway restart
 ```
 
 ## Quick Start
@@ -48,17 +71,18 @@ heartbeat.start_background()
 
 Memories from important people get boosted. Emotional content is always kept. Noise is filtered out.
 
-## Enable Components
+## Cognitive Stack
 
-```bash
-export NIMA_V2_ALL=true  # Enable full cognitive stack
-```
+All V2 components are **enabled by default** (v1.1.0+). No configuration needed.
+
+To disable: `export NIMA_V2_ALL=false`
 
 ## API
 
 - `nima.experience(content, who, importance)` — Process through affect → binding → FE pipeline
 - `nima.recall(query, top_k)` — Semantic memory search
 - `nima.capture(who, what, importance)` — Explicit memory capture (bypasses FE gate)
+- `nima.synthesize(insight, domain, sparked_by, importance)` — Lightweight insight capture (280 char max)
 - `nima.dream(hours)` — Run consolidation (schema extraction)
 - `nima.status()` — System status
 - `nima.introspect()` — Metacognitive self-reflection
@@ -80,7 +104,7 @@ AFFECTIVE CORE — Panksepp's 7 affects (SEEKING, RAGE, FEAR, LUST, CARE, PANIC,
 |----------|---------|-------------|
 | `NIMA_DATA_DIR` | `./nima_data` | Memory storage path |
 | `NIMA_MODELS_DIR` | `./models` | Model files path |
-| `NIMA_V2_ALL` | `false` | Enable all components |
+| `NIMA_V2_ALL` | `true` | Full cognitive stack (affects, binding, FE, etc.) |
 | `NIMA_SPARSE_RETRIEVAL` | `true` | Two-stage sparse index |
 | `NIMA_PROJECTION` | `true` | 384D → 50KD projection |
 

@@ -1,0 +1,11 @@
+{
+  "owner": "issa-me-sush",
+  "slug": "openserv-ideaboard-api",
+  "displayName": "Openserv Ideaboard Api",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770637656565,
+    "commit": "https://github.com/openclaw/skills/commit/92a224e40567443b28f5b9d2d1d81fa50366fe56"
+  },
+  "history": []
+}

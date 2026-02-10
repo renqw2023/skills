@@ -3,7 +3,8 @@
 This guide provides in-depth patterns for using the reflective memory store effectively.
 
 For the practice introduction (why and when), see [../SKILL.md](../SKILL.md).
-For quick API/CLI reference, see [REFERENCE.md](REFERENCE.md).
+For quick CLI reference, see [REFERENCE.md](REFERENCE.md).
+For complete Python API reference, see [PYTHON-API.md](PYTHON-API.md).
 
 ---
 
@@ -11,29 +12,33 @@ For quick API/CLI reference, see [REFERENCE.md](REFERENCE.md).
 
 The reflective memory provides persistent storage with semantic search.
 
-**Key principle:** The schema is data. Routing rules, domain patterns, process knowledge — all are documents in the store, queryable and updateable. An agent can be asked "research X and update how you handle X" and the changes persist.
-
 ## Quick Start (Agent Reference)
 
 **CLI:**
 ```bash
-# Uses .keep/ at repo root by default
-keep update file:///project/readme.md -t project=myapp
-keep update "User prefers OAuth2 with PKCE" -t topic=auth
+# Uses ~/.keep/ by default (or KEEP_STORE_PATH)
+keep put "file://$(keep config tool)/docs/library/ancrenewisse.pdf"
+keep put https://inguz.substack.com/p/keep -t topic=practice
+keep put "User prefers OAuth2 with PKCE" -t topic=auth
 keep find "authentication flow" --limit 5
+keep find "auth" -t project=myapp              # Semantic search + tag filter
 keep list --tag project=myapp
 keep get file:///project/readme.md
+keep get ID -t project=myapp                    # Verify item has tag
+keep now -t project=myapp                       # Find now version with tag
+keep del ID                                   # Remove item or revert to previous version
 ```
 
 **Python API:**
 ```python
 from keep import Keeper, Item
 
-# Initialize (defaults to .keep/ at git repo root)
+# Initialize (defaults to ~/.keep/)
 kp = Keeper()
 
-# Index a document from URI (fetches, embeds, summarizes, tags automatically)
+# Index a document from file or URL (fetches, embeds, summarizes, tags automatically)
 item = kp.update("file:///project/readme.md", tags={"project": "myapp"})
+item = kp.update("https://inguz.substack.com/p/keep", tags={"topic": "practice"})
 
 # Store inline content via API (conversations, notes, insights)
 kp.remember(
@@ -62,20 +67,121 @@ if kp.exists("file:///project/readme.md"):
 
 **Item fields:** `id` (URI or custom), `summary` (str), `tags` (dict), `score` (float, search results only). Timestamps are in tags: `item.created` and `item.updated` are property accessors.
 
-**Prerequisites:** Python 3.11+, `uv tool install 'keep-skill[local]'` (or pip in a venv)
+**Prerequisites:** Python 3.11+, `uv tool install keep-skill` (with API key) or `uv tool install 'keep-skill[local]'` (no API needed)
 
-**Default store location:** `.keep/` at the git repository root (created automatically). Override with `KEEP_STORE_PATH` or explicit path argument. Add `.keep/` to `.gitignore` if the store should not be committed.
+**Default store location:** `~/.keep/` in the user's home directory (created automatically). Override with `KEEP_STORE_PATH` or explicit path argument.
 
 **Patterns documentation** (bundled system docs, access via `keep get`):
-- `_system:domains` — domain-specific organization (software dev, research, etc.)
-- `_system:conversations` — process knowledge: how work proceeds
+- `.domains` — domain-specific organization (software dev, research, etc.)
+- `.conversations` — process knowledge: how work proceeds
+- `.tag/act` — speech-act categories (commitment, request, offer, assertion, assessment, declaration)
+- `.tag/status` — lifecycle states (open, fulfilled, declined, withdrawn, renegotiated)
+- `.tag/project` — bounded work contexts
+- `.tag/topic` — cross-cutting subject areas
 
 **When to use:**
-- CLI: `keep update` for all content (URI, inline text, or stdin)
+- CLI: `keep put` for all content (URI, inline text, or stdin)
 - API: `kp.update()` for URIs, `kp.remember()` for inline content
 - `find()` before filesystem search — the answer may already be indexed
 - `get_now()` at session start to see current working context
 - `set_now()` when focus changes to help future agents
+
+---
+
+## The Practice
+
+This guide assumes familiarity with the reflective practice in [SKILL.md](../SKILL.md). The key points:
+
+**Reflect before acting:** Check your current work context and intentions.
+- What kind of conversation is this? (Action? Possibility? Clarification?)
+- What do I already know?
+```bash
+keep now                    # Current context
+keep find "this situation"  # Prior knowledge
+```
+
+**While acting:** Is this leading to harm? If yes: give it up.
+
+**Reflect after acting:** What happened? What did I learn?
+```bash
+keep put "what I learned" -t type=learning
+```
+
+**Periodically:** Run a full structured reflection:
+```bash
+keep reflect
+```
+This guides you through gathering context, examining actions, recognizing conversation structures, and updating intentions.
+
+This cycle — reflect, act, reflect — is the mirror teaching. Memory isn't storage; it's how you develop skillful judgment.
+
+---
+
+## Reading the Output
+
+CLI commands produce structured output. Understanding this format lets you navigate effectively.
+
+### Search results
+
+`keep find "reflection"` returns one line per result — `id date summary`:
+
+```
+now 2026-02-07 Finished reading MN61. The mirror teaching: ...
+file:///.../library/mn61.html 2026-02-07 The Exhortation to Rāhula...
+https://inguz.substack.com/p/keep 2026-02-07 Keep: A Reflective Memory...
+file:///.../library/han_verse.txt 2026-02-07 Han Verse: Great is the matter...
+```
+
+Each ID in the results can be passed directly to `keep get`.
+
+### Full output (frontmatter format)
+
+`keep get`, `keep now`, and `keep put` produce YAML frontmatter followed by the document body:
+
+```
+---
+id: file:///.../library/mn61.html
+tags: {_source: uri, _updated: 2026-02-07T15:14:28, topic: reflection, type: teaching}
+similar:
+  - https://inguz.substack.com/p/keep (0.47) 2026-02-07 Keep: A Reflective Memory...
+  - now (0.45) 2026-02-07 Finished reading MN61. The mirror teachi...
+  - file:///.../library/han_verse.txt (0.44) 2026-02-07 Han Verse: Great is the matter...
+prev:
+  - @V{1} 2026-02-07 Previous version summary...
+---
+The Exhortation to Rāhula at Mango Stone is a Buddhist sutra that teaches...
+```
+
+**Field reference:**
+
+| Field | Meaning | How to use |
+|-------|---------|------------|
+| `id` | Document identifier (URI, content hash, or system ID) | Pass to `keep get ID` |
+| `tags` | User tags + system tags (`_created`, `_updated`, `_source`, etc.) | Filter with `--tag key=value` |
+| `similar` | Related items with similarity scores (0–1) | `keep get <similar-id>` to follow links |
+| `prev` | Older versions, shown as `@V{N}` offsets | `keep get ID -V 1` for previous version |
+| `next` | Newer versions (shown when viewing an older version) | `keep get ID -V 0` to return to current |
+
+**Navigating from output:**
+- See an interesting similar item? → `keep get <that-id>`
+- Want the previous version? → `keep get ID -V 1` (the `@V{1}` offset)
+- `@V{N}` is a version offset: 0 = current, 1 = previous, 2 = two versions ago
+
+### Version history
+
+`keep now --history` or `keep get ID --history` shows a compact version list:
+
+```
+v0 (current): Finished reading MN61. The mirror teaching: reflect before, ...
+
+Archived:
+  v1 (2026-02-07): Reading the first teachings. Exploring MN61 and th...
+```
+
+### Other formats
+
+- `--json` — machine-readable JSON output
+- `--ids` — bare IDs only (useful for piping)
 
 ---
 
@@ -85,43 +191,44 @@ Use the nowdoc as a scratchpad to track where you are in the work. This isn't en
 
 **Session lifecycle (CLI):**
 ```bash
-# 1. Starting work — check current context (shows version history too)
-keep now                                    # Show current context with prev versions
+# 1. Starting work — check your current work context and intentions
+keep now                                    # What am I working on? What kind of conversation is this?
 
-# 2. Update context as work evolves
-keep now "Diagnosing flaky test in auth module"
-keep now "Found timing issue" -t state=investigating
+# 2. Update context as work evolves (tag by project and topic)
+keep now "Diagnosing flaky test in auth module" -t project=myapp -t topic=testing
+keep now "Found timing issue" -t project=myapp -t state=investigating
 
 # 3. Check previous context if needed
 keep now -V 1                               # Previous version
 keep now --history                          # List all versions
+keep now -t project=myapp                   # Find recent now with project tag
 
-# 4. Record learnings separately
-keep update "Flaky timing fix: mock time instead of real assertions" -t type=learning
+# 4. Record learnings (cross-project knowledge uses topic only)
+keep put "Flaky timing fix: mock time instead of real assertions" -t topic=testing -t type=learning
 ```
 
 **Python API equivalent:**
 ```python
-# 1. Starting work — check current context
+# 1. Starting work — check your current work context and intentions
 now = kp.get_now()
-print(now.summary)  # What are we working on?
+print(now.summary)  # What am I working on? What kind of conversation is this?
 
-# 2. Update context as work evolves
+# 2. Update context as work evolves (tag by project and topic)
 kp.set_now(
     "Diagnosing flaky test in auth module. Likely timing issue.",
-    tags={"topic": "testing", "state": "investigating"}
+    tags={"project": "myapp", "topic": "testing", "state": "investigating"}
 )
 
 # 3. Check previous context if needed
-prev = kp.get_version("_now:default", offset=1)  # Previous version
-versions = kp.list_versions("_now:default")       # All versions
+prev = kp.get_version("now", offset=1)  # Previous version
+versions = kp.list_versions("now")       # All versions
 
-# 4. Record the learning
+# 4. Record cross-project learning (topic only, no project)
 kp.remember(
     content="Flaky timing in CI → mock time instead of real assertions.",
-    tags={"type": "learning", "domain": "testing"}
+    tags={"topic": "testing", "type": "learning"}
 )
-kp.set_now("Completed flaky test fix.", tags={"state": "completed"})
+kp.set_now("Completed flaky test fix.", tags={"project": "myapp", "state": "completed"})
 ```
 
 **Key insight:** The store remembers across sessions; working memory doesn't. When you resume, read context first. All updates create version history automatically.
@@ -132,8 +239,8 @@ kp.set_now("Completed flaky test fix.", tags={"state": "completed"})
 
 **Starting a session (CLI):**
 ```bash
-keep now                              # Check current context with version history
-keep now --history                    # See how context evolved
+keep now                              # Check current intentions with version history
+keep now --history                    # See how intentions evolved
 keep find "recent work" --since P1D   # Last 24 hours
 ```
 
@@ -171,6 +278,18 @@ today = kp.query_tag("_updated_date", "2026-01-30") # Today
 
 ---
 
+## Breakdowns as Learning
+
+When the normal flow is interrupted — expected response doesn't come, ambiguity surfaces — an assumption has been revealed. **First:** complete the immediate conversation. **Then record:**
+
+```bash
+keep put "Assumed user wanted full rewrite. Actually: minimal patch." -t type=breakdown
+```
+
+Breakdowns are how agents learn.
+
+---
+
 ## Data Model
 
 An item has:
@@ -183,7 +302,17 @@ An item has:
 
 The full original document is not stored in this service.
 
+**Speech-act tags:** Items can be classified by speech-act type (`act=commitment`, `act=request`, etc.) and tracked through a lifecycle (`status=open` → `status=fulfilled`). This makes the commitment structure of work visible and queryable. See `keep get .tag/act` for details.
+
 The services that implement embedding, summarization and tagging are configured at initialization time. This skill itself is provider-agnostic.
+
+**Contextual Summarization:**
+
+When you provide user tags (domain, topic, project, etc.) during indexing, LLM-based summarizers use context from related items to produce more relevant summaries. Tags aren't just for organization — they shape how new items are understood.
+
+For example, indexing a document with `-t domain=practice` will produce a summary highlighting what's relevant to that practice context, drawing on existing items tagged with the same domain.
+
+Changing tags on an existing document triggers re-summarization with the new context. Simple providers (truncate, first_paragraph) ignore context and produce generic summaries.
 
 ## Document Versioning
 
@@ -221,9 +350,9 @@ nav = kp.get_version_nav(id)  # {'prev': [...], 'next': [...]}
 
 **Content-addressed IDs for text updates:**
 ```bash
-keep update "my note"              # Creates _text:a1b2c3d4e5f6
-keep update "my note" -t done      # Same ID, new version (tag change)
-keep update "different note"       # Different ID (new document)
+keep put "my note"              # Creates %a1b2c3d4e5f6
+keep put "my note" -t done      # Same ID, new version (tag change)
+keep put "different note"       # Different ID (new document)
 ```
 
 Same content = same ID = enables versioning via tag changes.
@@ -245,7 +374,7 @@ within a collection:
 
 > NOTE: update tasks are serialized to avoid any concurrency issues.
 
-> NOTE: Items cannot be deleted through the public API. To remove tags, use `tag()` with empty string values.
+`delete(id)` / `revert(id)` - if the item has version history, reverts to the previous version (the current version is discarded). If no history exists, removes the item completely from both stores.
 
 `find(query: str)` - locate items using a semantic-similarity query for any text
 
@@ -333,7 +462,7 @@ Private isn't just convention — it's enforced by routing to a separate store.
 ```
 Keeper (facade)
     │
-    ├── reads: _system:routing (document in shared store)
+    ├── reads: .routing (document in shared store)
     │         ├── summary: "Items tagged draft/private route separately"
     │         └── private_patterns: [{"_visibility": "draft"}, {"_for": "self"}, ...]
     │
@@ -343,7 +472,7 @@ Keeper (facade)
     │
     └── Shared Store
         └── everything else
-        └── includes the _system:routing document itself
+        └── includes the .routing document itself
 ```
 
 The routing context is itself a document with:
@@ -359,13 +488,13 @@ The facade reads the routing document and makes physical routing decisions. Quer
 - `{"_for": "self"}`
 
 **Customizing routing:**
-The `_system:routing` document can be updated to change what routes privately. The patterns are associative — described in the document, not hardcoded.
+The `.routing` document can be updated to change what routes privately. The patterns are associative — described in the document, not hardcoded.
 
 ---
 
 ## Domain Patterns
 
-See `_system:domains` (`keep get _system:domains`) for suggested collection and tag organization for common use cases:
+See `.domains` (`keep get .domains`) for suggested collection and tag organization for common use cases:
 - Software Development
 - Market Research
 - Personal Reflection & Growth
@@ -381,14 +510,14 @@ The store's guiding metadata is itself stored as documents — like Oracle's dat
 
 | ID | Purpose | Updatable |
 |----|---------|-----------|
-| `_system:routing` | Private/shared routing patterns | Yes |
-| `_system:context` | Current working context | Yes |
-| `_system:guidance` | Local behavioral guidance | Yes |
+| `.routing` | Private/shared routing patterns | Yes |
+| `.context` | Current working context | Yes |
+| `.guidance` | Local behavioral guidance | Yes |
 
 **Querying system documents:**
 ```python
 # Read the routing configuration
-routing = kp.get("_system:routing")
+routing = kp.get(".routing")
 print(routing.summary)  # Natural language description
 print(routing.tags)     # Includes private_patterns
 
@@ -413,7 +542,7 @@ kp.remember(
 
     Source: Team retrospective + industry research.
     """,
-    id="_system:guidance:code_review",
+    id=".guidance/code_review",
     tags={"_system": "true", "domain": "code_review"}
 )
 
@@ -456,19 +585,19 @@ See [QUICKSTART.md](QUICKSTART.md#provider-options) for available embedding, sum
 
 ## Initialization
 
-See [QUICKSTART.md](QUICKSTART.md) for details.
+The store auto-initializes on first use. See [QUICKSTART.md](QUICKSTART.md) for provider setup.
 
 **CLI:**
 ```bash
-keep init                          # Initialize at .keep/ in repo root
-keep init -s /path/to/store        # Explicit store path
-KEEP_STORE_PATH=/path keep init    # Via environment
+# Store created automatically at ~/.keep/
+keep put "first note"           # Auto-initializes store
+KEEP_STORE_PATH=/path keep put "note"  # Custom location via env
 ```
 
 **Python API:**
 ```python
 from keep import Keeper
 
-kp = Keeper()                      # Uses .keep/ at repo root
-kp = Keeper("/path/to/store")      # Explicit path
+kp = Keeper()                      # Uses ~/.keep/ (auto-creates)
+kp = Keeper("/path/to/store")      # Explicit path (auto-creates)
 ```

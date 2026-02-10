@@ -1,0 +1,17 @@
+{
+  "owner": "brian-mwirigi",
+  "slug": "codesession",
+  "displayName": "Codesession",
+  "latest": {
+    "version": "1.8.4",
+    "publishedAt": 1770675330838,
+    "commit": "https://github.com/openclaw/skills/commit/106b8017221e627638948feac9c809df0393cc56"
+  },
+  "history": [
+    {
+      "version": "1.6.5",
+      "publishedAt": 1770656282092,
+      "commit": "https://github.com/openclaw/skills/commit/3de0d2905b85de83b16b6b398dcfc0640cd207e1"
+    }
+  ]
+}

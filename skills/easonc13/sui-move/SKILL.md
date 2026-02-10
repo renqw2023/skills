@@ -1,7 +1,7 @@
 ---
 name: sui-move
 description: Sui blockchain and Move smart contract development. Use when the user asks about Sui, Move language, smart contracts, objects, transactions, or blockchain development on Sui.
-version: 1.0.0
+version: 1.1.0
 metadata:
   author: EasonClawdbot1
   tags: sui, move, blockchain, smart-contract, web3
@@ -19,6 +19,8 @@ metadata:
 
 Comprehensive knowledge base for Sui blockchain and Move smart contract development.
 
+**GitHub:** <https://github.com/EasonC13-agent/sui-skills/tree/main/sui-move>
+
 ## Setup References
 
 Clone the official documentation:
@@ -33,7 +35,22 @@ git clone --depth 1 https://github.com/MystenLabs/move-book.git
 # Clone Sui docs (sparse checkout)
 git clone --depth 1 --filter=blob:none --sparse https://github.com/MystenLabs/sui.git
 cd sui && git sparse-checkout set docs
+
+# Clone Awesome Move (curated examples and resources)
+# Note: Some code examples may be outdated
+git clone --depth 1 https://github.com/MystenLabs/awesome-move.git
 ```
+
+## Additional Resources
+
+### Awesome Move (`references/awesome-move/`)
+A curated list of Move resources, including:
+- Example projects and code snippets
+- Libraries and frameworks
+- Tools and utilities
+- Learning resources
+
+⚠️ **Note**: Some code examples in awesome-move may be outdated as the Move language and Sui platform evolve. Always verify against the latest Move Book and Sui documentation.
 
 ## Reference Structure
 
@@ -178,6 +195,25 @@ When answering Sui/Move questions:
 | Upgrades | `move-book/book/guides/upgradeability.md` |
 | PTB | `move-book/book/move-advanced/ptb/` |
 | BCS | `move-book/book/move-advanced/bcs.md` |
+
+## Related Skills
+
+This skill is part of the Sui development skill suite:
+
+| Skill | Description |
+|-------|-------------|
+| [sui-decompile](https://clawhub.ai/EasonC13/sui-decompile) | Fetch and read on-chain contract source code |
+| **sui-move** | Write and deploy Move smart contracts |
+| [sui-coverage](https://clawhub.ai/EasonC13/sui-coverage) | Analyze test coverage with security analysis |
+| [sui-agent-wallet](https://clawhub.ai/EasonC13/sui-agent-wallet) | Build and test DApps frontend |
+
+**Workflow:**
+```
+sui-decompile → sui-move → sui-coverage → sui-agent-wallet
+    Study        Write      Test & Audit   Build DApps
+```
+
+All skills: <https://github.com/EasonC13-agent/sui-skills>
 
 ## Notes
 

@@ -1,0 +1,11 @@
+{
+  "owner": "aguynextdoor",
+  "slug": "golemedin-mcp",
+  "displayName": "GolemedIn MCP",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770633693105,
+    "commit": "https://github.com/openclaw/skills/commit/b587dddc3bd33d2e9ae5b712d5ebae1a7df21955"
+  },
+  "history": []
+}

@@ -1,0 +1,11 @@
+{
+  "owner": "planetai87",
+  "slug": "warren-deploy-mainnet",
+  "displayName": "Warren Website Deploy(mainnet)",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770558956671,
+    "commit": "https://github.com/openclaw/skills/commit/884d7ddb2dee43a9a8c3934eb16a375f72b24519"
+  },
+  "history": []
+}

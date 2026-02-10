@@ -1,0 +1,22 @@
+{
+  "owner": "eyebots",
+  "slug": "eyebot-socialbot",
+  "displayName": "Eyebot Socialbot",
+  "latest": {
+    "version": "1.8.0",
+    "publishedAt": 1770638993427,
+    "commit": "https://github.com/openclaw/skills/commit/945d87113c9062e2e48be3742cbd809ff4f2ba4f"
+  },
+  "history": [
+    {
+      "version": "1.1.0",
+      "publishedAt": 1770597864462,
+      "commit": "https://github.com/openclaw/skills/commit/c9979c5f8fc5286097eeb44f85d304cab9c5cd26"
+    },
+    {
+      "version": "1.0.3",
+      "publishedAt": 1770580802955,
+      "commit": "https://github.com/openclaw/skills/commit/447fe4017261488ae6969ada44ad90e99cf31da2"
+    }
+  ]
+}

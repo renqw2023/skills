@@ -1,0 +1,11 @@
+{
+  "owner": "adlai88",
+  "slug": "simmer-skill",
+  "displayName": "Simmer Skill",
+  "latest": {
+    "version": "1.7.0",
+    "publishedAt": 1770548708127,
+    "commit": "https://github.com/openclaw/skills/commit/44279e2197a65921bc4e25d75bb1aad6e8fcf879"
+  },
+  "history": []
+}

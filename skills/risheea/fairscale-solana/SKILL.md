@@ -1,101 +1,132 @@
 ---
 name: fairscale-solana
-description: Solana reputation infrastructure. Ask anything about a wallet in plain English — "is this a bot?", "deep pockets?", "diamond hands?" — and get instant, data-backed answers.
+description: Solana wallet reputation. Ask anything in plain English — "is this a bot?", "whale?", "diamond hands?" — get instant answers.
 license: MIT
 metadata:
   author: FairScale
-  version: "3.1.0"
+  version: "3.4.0"
 ---
 
 # FairScale — Reputation Intelligence for Solana
-
-**The only API you need to understand any Solana wallet.**
-
-Ask in plain English. Get data-backed answers.
-
----
-
-## HOW IT WORKS
-
-1. User asks ANY question about a wallet
-2. You call the API
-3. You translate their question into the right features
-4. You respond with a clear, actionable verdict
-
----
-
-## API CALL
-
-```
-GET https://api2.fairscale.xyz/score?wallet=WALLET_ADDRESS
-```
-
-**Header:** `fairkey: YOUR_API_KEY`
-
-**Get your key:** https://sales.fairscale.xyz
 
 **Docs:** https://docs.fairscale.xyz
 
 ---
 
-## THE MAGIC — NATURAL LANGUAGE → FEATURES
+## TWO ACCESS METHODS
 
-When users ask questions in plain English, map them to these features:
+### Method 1: API Key (Recommended)
 
-| User asks | Check these features | Logic |
-|-----------|---------------------|-------|
-| "trustworthy?" / "safe?" | `fairscore`, `tier` | ≥60 = trusted |
-| "deep pockets?" / "whale?" | `lst_percentile_score`, `stable_percentile_score`, `native_sol_percentile` | All >70 = whale |
-| "bot?" / "sybil?" / "fake?" | `burst_ratio`, `platform_diversity`, `active_days` | burst >50 OR diversity <20 = bot |
-| "diamond hands?" / "holder?" | `conviction_ratio`, `no_instant_dumps`, `median_hold_days` | conviction >60 = diamond hands |
-| "active?" / "real user?" | `active_days`, `tx_count`, `platform_diversity` | All >40 = active |
-| "degen?" / "trader?" | `tx_count`, `burst_ratio`, `platform_diversity` | High tx + low burst = degen |
-| "new wallet?" / "fresh?" | `wallet_age_score` | <30 = new |
-| "OG?" / "veteran?" | `wallet_age_score`, `active_days` | Both >70 = OG |
-| "accumulating?" / "buying?" | `net_sol_flow_30d`, `conviction_ratio` | flow >60 = accumulating |
-| "dumping?" / "selling?" | `net_sol_flow_30d`, `no_instant_dumps` | flow <30 AND dumps <30 = dumping |
-| "DeFi native?" | `platform_diversity`, `lst_percentile_score` | diversity >70 = DeFi native |
-| "airdrop eligible?" | `wallet_age_score`, `platform_diversity`, `burst_ratio` | age >50 AND diversity >30 AND burst <30 |
-| "creditworthy?" / "can I lend to them?" | `conviction_ratio`, `no_instant_dumps`, `wallet_age_score` | All >50 = creditworthy |
+Use if you have a FairScale API key.
+
+```
+GET https://api.fairscale.xyz/score?wallet=WALLET_ADDRESS
+Header: fairkey: YOUR_API_KEY
+```
+
+**Example:**
+```bash
+curl "https://api.fairscale.xyz/score?wallet=GFTVQdZumAnBRbmaRgN9n3Z5qH5nXvjMZXJ3EyqP32Tn" \
+  -H "fairkey: YOUR_API_KEY"
+```
+
+Get your key: https://sales.fairscale.xyz
 
 ---
 
-## RESPONSE FORMATS
+### Method 2: x402 Micropayments (For Agents with Wallets)
 
-### Quick Trust Check
-When user asks "is this wallet trustworthy?" or "check this wallet":
+No API key needed. Pay $0.05 USDC per call.
+
+```
+GET https://x402.fairscale.xyz/score?wallet=WALLET_ADDRESS
+```
+
+**Flow:**
+1. Call endpoint → Get 402 response with payment details
+2. Send 0.05 USDC to treasury wallet shown
+3. Retry with header: `x-payment-signature: YOUR_TX_SIGNATURE`
+4. Get wallet data
+
+**Pricing:**
+| Request | Price |
+|---------|-------|
+| Single wallet | $0.05 USDC |
+| Batch (10 wallets) | $0.40 USDC |
+
+---
+
+## WHICH METHOD TO USE
+
+| Situation | Use |
+|-----------|-----|
+| Have API key configured | Method 1 (API Key) |
+| Agent has Solana wallet with USDC | Method 2 (x402) |
+| No API key, no wallet | Cannot access — need one or the other |
+
+**Check for API key first.** If `$FAIRSCALE_API_KEY` is set, use Method 1. Otherwise, try Method 2.
+
+---
+
+## RESPONSE FIELDS
+
+| Field | Use |
+|-------|-----|
+| `fairscore` | The score (0-100) — **USE THIS** |
+| `tier` | bronze / silver / gold / platinum |
+| `badges` | Array — list each `badge.label` |
+| `features` | Object — raw metrics for custom logic |
+
+---
+
+## QUICK RESPONSE FORMAT
+
+For simple "check this wallet" requests:
 
 ```
 📊 FairScore: [fairscore]/100 | Tier: [tier]
 
 [✅ TRUSTED | ⚡ MODERATE | ⚠️ CAUTION | 🚨 HIGH RISK]
 
-🏅 [badge labels]
+🏅 Badges: [badge labels]
 ```
 
-### Natural Language Query
-When user asks something specific like "is this a whale?" or "bot check":
+**Risk thresholds:**
+- ≥60 → ✅ TRUSTED
+- 40-59 → ⚡ MODERATE  
+- 20-39 → ⚠️ CAUTION
+- <20 → 🚨 HIGH RISK
 
-```
-[EMOJI] [QUERY TYPE]: [wallet_short]
+---
 
-[Relevant metrics with values]
+## NATURAL LANGUAGE → FEATURES
 
-Verdict: [Clear yes/no answer with reasoning]
-```
+When users ask in plain English, translate to the right features:
 
-### Examples:
+| User asks | Check these | Logic |
+|-----------|-------------|-------|
+| "trustworthy?" | `fairscore` | ≥60 = yes |
+| "whale?" / "deep pockets?" | `lst_percentile_score`, `stable_percentile_score`, `native_sol_percentile` | All >70 = whale |
+| "bot?" / "sybil?" | `burst_ratio`, `platform_diversity` | burst >50 OR diversity <20 = bot |
+| "diamond hands?" | `conviction_ratio`, `no_instant_dumps` | conviction >60 = yes |
+| "active user?" | `active_days`, `tx_count`, `platform_diversity` | All >40 = active |
+| "OG?" / "veteran?" | `wallet_age_score` | >70 = OG |
+| "airdrop eligible?" | `wallet_age_score >50`, `platform_diversity >30`, `burst_ratio <30` | All must pass |
+| "creditworthy?" | `conviction_ratio`, `no_instant_dumps`, `wallet_age_score` | All >50 = yes |
 
-**"Is this wallet a whale?"**
+---
+
+## RESPONSE EXAMPLES
+
+**"Is this a whale?"**
 ```
 🐋 Whale Check: GFTVQd...P32Tn
 
 💰 LST Holdings: 97.7% — Top 3% 
 💵 Stablecoins: 27.5% — Low
 ◎ Native SOL: 45.2% — Moderate
-📈 Net Flow: 86.8% — Accumulating
 
-Verdict: 🟡 PARTIAL WHALE — Heavy DeFi position (LST), actively accumulating, but not cash-rich. More "DeFi whale" than "cash whale."
+Verdict: 🟡 PARTIAL WHALE — Heavy DeFi, not cash-rich.
 ```
 
 **"Is this a bot?"**
@@ -103,69 +134,54 @@ Verdict: 🟡 PARTIAL WHALE — Heavy DeFi position (LST), actively accumulating
 🤖 Bot Check: GFTVQd...P32Tn
 
 ⚡ Burst Ratio: 16.8% — Organic ✅
-🌐 Platforms Used: 96.6% — Highly diverse ✅
-📅 Active Days: 64% — Consistent ✅
+🌐 Platforms: 96.6% — Diverse ✅
 
-Verdict: ✅ HUMAN — Natural activity patterns, uses many platforms, consistent over time. Not a bot.
-```
-
-**"Diamond hands?"**
-```
-💎 Diamond Hands Check: GFTVQd...P32Tn
-
-🤝 Conviction: 69.7% — Strong holder ✅
-📉 No Instant Dumps: 25% — Sometimes exits 🟡
-⏳ Median Hold: 93.2% — Long-term ✅
-
-Verdict: ✅ DIAMOND HANDS — High conviction, holds through volatility. The 25% dump score means they're pragmatic, not reckless.
+Verdict: ✅ HUMAN — Not a bot.
 ```
 
 **"Airdrop eligible?"**
 ```
 🎁 Airdrop Check: GFTVQd...P32Tn
 
-📅 Wallet Age: 79.2% ✅ (>50% required)
-🌐 Platform Diversity: 96.6% ✅ (>30% required)
-🤖 Burst Ratio: 16.8% ✅ (<30% required)
+📅 Age: 79.2% ✅
+🌐 Diversity: 96.6% ✅
+🤖 Burst: 16.8% ✅
 
-Verdict: ✅ ELIGIBLE — Passes all standard airdrop criteria. Real user, diverse activity, not a bot.
+Verdict: ✅ ELIGIBLE
 ```
 
 ---
 
 ## CUSTOM CRITERIA
 
-When users specify their own rules:
+When users define their own rules:
 
-> "Only allow wallets with conviction > 70 and age > 60"
+> "Only wallets with conviction > 70"
 
 ```
 🔧 Custom Check: GFTVQd...P32Tn
 
-Your Rules:
 • Conviction > 70%: ❌ 69.7%
-• Wallet Age > 60%: ✅ 79.2%
 
-Verdict: ❌ FAILS — Misses conviction threshold by 0.3%
+Verdict: ❌ FAILS
 ```
 
 ---
 
-## ALL AVAILABLE FEATURES
+## ALL FEATURES
 
-| Feature | What it measures |
-|---------|-----------------|
-| `fairscore` | Overall reputation (0-100) |
-| `tier` | bronze / silver / gold / platinum |
-| `wallet_age_score` | How old is the account |
-| `tx_count` | Transaction volume |
-| `active_days` | Days with on-chain activity |
-| `platform_diversity` | # of DeFi protocols used |
-| `conviction_ratio` | Holds through volatility |
+| Feature | Description |
+|---------|-------------|
+| `fairscore` | Overall score (0-100) |
+| `tier` | bronze/silver/gold/platinum |
+| `wallet_age_score` | Account age percentile |
+| `tx_count` | Transaction count percentile |
+| `active_days` | Active days percentile |
+| `platform_diversity` | DeFi protocols used |
+| `conviction_ratio` | Holding behavior |
 | `burst_ratio` | Bot-like patterns (high = bad) |
-| `no_instant_dumps` | Doesn't sell within 24h |
-| `median_hold_days` | Typical holding period |
-| `lst_percentile_score` | Liquid staking holdings |
+| `no_instant_dumps` | Doesn't quick-sell |
+| `lst_percentile_score` | LST holdings |
 | `stable_percentile_score` | Stablecoin holdings |
 | `native_sol_percentile` | SOL balance |
 | `net_sol_flow_30d` | Accumulating or draining |
@@ -174,18 +190,20 @@ Verdict: ❌ FAILS — Misses conviction threshold by 0.3%
 
 ## CRITICAL RULES
 
-1. **ALWAYS call the API** — Never guess or reuse data
-2. **Translate user intent** — Map their words to the right features
-3. **Give clear verdicts** — Yes/no with reasoning, not just data dumps
-4. **Be opinionated** — Users want answers, not just numbers
+1. **ALWAYS call the API** — Never guess, never reuse old data
+2. **Check for API key first** — Use Method 1 if `$FAIRSCALE_API_KEY` is set
+3. **Fall back to x402** — If no API key, use Method 2 (if agent has wallet)
+4. **Use exact endpoint** — `/score?wallet=ADDRESS`
+5. **Translate user intent** — Map plain English to features
+6. **Give verdicts** — Users want yes/no answers, not data dumps
+7. **If API fails** — Say "❌ Couldn't fetch data. Try again."
+
+**Never invent data. Never guess. Always call the API.**
 
 ---
 
-## ERRORS
+## LINKS
 
-If API fails:
-```
-❌ Couldn't fetch wallet data. Try again.
-```
-
-**Never invent data. Never guess. Always call the API.**
+- Docs: https://docs.fairscale.xyz
+- API Key: https://sales.fairscale.xyz
+- Twitter: @FairScaleXYZ

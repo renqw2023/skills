@@ -1,0 +1,11 @@
+{
+  "owner": "byungkyu",
+  "slug": "basecamp",
+  "displayName": "Basecamp",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770544129535,
+    "commit": "https://github.com/openclaw/skills/commit/34cca6d3b385310f20cdc8fae54894ae337361a1"
+  },
+  "history": []
+}

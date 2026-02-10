@@ -1,0 +1,17 @@
+{
+  "owner": "xccx",
+  "slug": "can",
+  "displayName": "CAN: Clock Address Naming",
+  "latest": {
+    "version": "1.2.0",
+    "publishedAt": 1770653343218,
+    "commit": "https://github.com/openclaw/skills/commit/f4c819bb385d1b637a8b9ddad4445686b48d91c2"
+  },
+  "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1770564812772,
+      "commit": "https://github.com/openclaw/skills/commit/4055308e739cebcb7b7efcb2ccb95001f23b7031"
+    }
+  ]
+}

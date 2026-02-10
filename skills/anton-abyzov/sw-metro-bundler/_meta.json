@@ -1,0 +1,11 @@
+{
+  "owner": "anton-abyzov",
+  "slug": "sw-metro-bundler",
+  "displayName": "Metro Bundler",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770713823348,
+    "commit": "https://github.com/openclaw/skills/commit/9bdbd97181e1f6ddf7cf05373f189306f20dd91a"
+  },
+  "history": []
+}

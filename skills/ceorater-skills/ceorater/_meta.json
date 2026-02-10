@@ -3,9 +3,15 @@
   "slug": "ceorater",
   "displayName": "CEORater",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1769932110200,
-    "commit": "https://github.com/clawdbot/skills/commit/4a909484b2d37664652ef0089d6d3b3c62644cc5"
+    "version": "1.0.3",
+    "publishedAt": 1770703533072,
+    "commit": "https://github.com/openclaw/skills/commit/df48290508d5653282bc7bce33b2bee5f1bbb099"
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1769932110200,
+      "commit": "https://github.com/clawdbot/skills/commit/4a909484b2d37664652ef0089d6d3b3c62644cc5"
+    }
+  ]
 }

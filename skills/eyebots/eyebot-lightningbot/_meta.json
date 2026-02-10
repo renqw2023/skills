@@ -1,0 +1,22 @@
+{
+  "owner": "eyebots",
+  "slug": "eyebot-lightningbot",
+  "displayName": "Eyebot Lightningbot",
+  "latest": {
+    "version": "1.8.0",
+    "publishedAt": 1770639028006,
+    "commit": "https://github.com/openclaw/skills/commit/3ba95ece08aa167de874347664360feb02c4475a"
+  },
+  "history": [
+    {
+      "version": "1.1.0",
+      "publishedAt": 1770597913624,
+      "commit": "https://github.com/openclaw/skills/commit/233ff5c8d3bdfc44efdcde3e4bd729b5ab90ca82"
+    },
+    {
+      "version": "1.0.1",
+      "publishedAt": 1770581827958,
+      "commit": "https://github.com/openclaw/skills/commit/eabebcdde201bb7928efbf3b5e43cf36aef8323b"
+    }
+  ]
+}

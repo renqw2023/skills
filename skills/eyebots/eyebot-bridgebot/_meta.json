@@ -1,0 +1,27 @@
+{
+  "owner": "eyebots",
+  "slug": "eyebot-bridgebot",
+  "displayName": "Eyebot Bridgebot",
+  "latest": {
+    "version": "1.8.0",
+    "publishedAt": 1770639001819,
+    "commit": "https://github.com/openclaw/skills/commit/7da9eb58e972f8d5124963234842873ef21ef134"
+  },
+  "history": [
+    {
+      "version": "1.7.0",
+      "publishedAt": 1770638866765,
+      "commit": "https://github.com/openclaw/skills/commit/8ec6517495570a2a7ac3f2f4e49a91ddcd16d9bc"
+    },
+    {
+      "version": "1.1.0",
+      "publishedAt": 1770597883939,
+      "commit": "https://github.com/openclaw/skills/commit/a1414039a00aee38daf3f5edbaa6051975f03d9c"
+    },
+    {
+      "version": "1.0.3",
+      "publishedAt": 1770580809674,
+      "commit": "https://github.com/openclaw/skills/commit/3c519796b891c26ee140a49703b86acc3ee7c13b"
+    }
+  ]
+}

@@ -1,70 +1,99 @@
 # keep
 
-**Reflective memory with version history.**
-
-Index documents and notes. Search by meaning. Track changes over time.
+An agent-skill for self-reflection and learning. It includes [skill instructions](SKILL.md) for reflective practice, and a semantic memory system with a command-line interface.
 
 ```bash
-uv tool install 'keep-skill[local]'
-keep init
+uv tool install keep-skill       # or: pip install keep-skill
+export OPENAI_API_KEY=...        # Or GEMINI_API_KEY (both do embeddings + summarization)
 
-# Index content
-keep update path/to/document.md -t project=myapp
-keep update "Rate limit is 100 req/min" -t topic=api
+# Index content (store auto-initializes on first use)
+keep put https://inguz.substack.com/p/keep -t topic=practice
+keep put "file://$(keep config tool)/docs/library/han_verse.txt" -t type=teaching
+keep put "Rate limit is 100 req/min" -t topic=api
 
 # Search by meaning
 keep find "what's the rate limit?"
 
 # Track what you're working on
 keep now "Debugging auth flow"
-keep now -V 1                    # Previous context
+keep now -V 1                    # Previous intentions
+
+# Instructions for reflection
+keep reflect
 ```
 
 ---
 
 ## What It Does
 
-- **Semantic search** — Find by meaning, not just keywords
+Store anything — URLs, files, notes — and `keep` summarizes, embeds, and tags each item. You search by meaning, not keywords. Content goes in as text, PDF, HTML, or JSON; what comes back is a summary with tags and semantic neighbors.
+
+What makes this more than a vector store: when you view your current context (`keep now`) or retrieve any item (`keep get`), keep automatically surfaces relevant open commitments, past learnings, and breakdowns — ranked by similarity and recency. The right things appear at the right time. That's what makes reflection real.
+
+- **Summarize, embed, tag** — URLs, files, and text are summarized and indexed on ingest
+- **Contextual feedback** — Open commitments and past learnings surface automatically
+- **Semantic search** — Find by meaning, not keywords
+- **Tag organization** — Speech acts, status, project, topic, type — structured and queryable
 - **Version history** — All documents retain history on update
-- **Tag organization** — Filter and navigate with key=value tags
-- **Recency decay** — Recent items rank higher in search
-- **Works offline** — Local embedding models by default
+- **Works offline** — Local models (MLX, Ollama), or API providers (OpenAI, Gemini, Voyage, Anthropic)
 
 Backed by ChromaDB for vectors, SQLite for metadata and versions.
+
+### The Practice
+
+keep is designed as a skill for AI agents — a practice, not just a tool. The [skill instructions](SKILL.md) teach agents to reflect before, during, and after action: check intentions, recognize commitments, capture learnings, notice breakdowns. `keep reflect` guides a structured reflection; `keep now` tracks current intentions and surfaces what's relevant.
+
+This works because the tool and the skill reinforce each other. The tool stores and retrieves; the skill says *when* and *why*. An agent that uses both develops *skillful action* across sessions — not just recall, but looking before acting, and a deep review of outcomes afterwards.
+
+> Why build memory for AI agents? What does "reflective practice" mean here? I wrote a story: **[Wisdom, or Prompt-Engineering?](https://inguz.substack.com/p/keep)**
+
+### Integration
+
+The skill instructions install into your agent's system prompt automatically on first use (Claude Code, OpenAI Codex, OpenClaw). For deeper integration:
+
+| Layer | What it does |
+|-------|-------------|
+| **Skill prompt** | Always in system prompt — guides reflection, breakdown capture, document indexing |
+| **Plugin hook** | Injects `keep now` context at the start of each agent turn ([OpenClaw plugin](SKILL.md#openclaw-integration)) |
+| **Daily cron** | Scheduled deep reflection in an isolated session ([OpenClaw cron](SKILL.md#openclaw-integration)) |
+
+The CLI alone is enough to start. The plugin and cron make it automatic.
 
 ---
 
 ## Installation
 
-**Python 3.11–3.13 required.**
+**Python 3.11–3.13 required.** Use [uv](https://docs.astral.sh/uv/) (recommended) or pip:
 
+If [Ollama](https://ollama.com/) is running locally, keep auto-detects it — no API keys needed.
+
+To use local MLX models on macOS Apple Silicon (no API keys, no Ollama):
 ```bash
-# Recommended: uv (isolated environment, fast)
-uv tool install 'keep-skill[local]'
-
-# Alternative: pip in a virtual environment
-python -m venv .venv && source .venv/bin/activate
-pip install 'keep-skill[local]'
-
-# API-based (requires OPENAI_API_KEY)
-uv tool install 'keep-skill[openai]'
+uv tool install 'keep-skill[local]'   # macOS Apple Silicon optimized
 ```
 
-> **Note:** Always use an isolated environment (uv or venv). Installing with system pip
-> may cause version conflicts with dependencies like typer.
+Or, for API-based summarization and embedding, install and set an API key.
+Providers for Voyage, OpenAI, Anthropic, and Gemini are included:
 
-First run downloads embedding models (~3-5 minutes).
+```bash
+uv tool install keep-skill
+
+export OPENAI_API_KEY=...      # Simplest (handles both embeddings + summarization)
+# Or: GEMINI_API_KEY=...       # Also does both
+# Or: VOYAGE_API_KEY=... and ANTHROPIC_API_KEY=...  # Separate services
+```
+
+See [docs/QUICKSTART.md](docs/QUICKSTART.md) for all provider options.
 
 ---
 
 ## Quick Start
 
 ```bash
-keep init                              # Creates .keep/ at repo root
-
-# Index files and notes
-keep update file:///path/to/doc.md -t project=myapp
-keep update "Important insight" -t type=note
+# Index URLs, files, and notes (store auto-initializes on first use)
+keep put https://inguz.substack.com/p/keep -t topic=practice
+keep put "file://$(keep config tool)/docs/library/han_verse.txt" -t type=teaching
+keep put "Token refresh needs clock sync" -t topic=auth
 
 # Search
 keep find "authentication flow" --limit 5
@@ -78,11 +107,12 @@ keep get ID --history                  # All versions
 
 # Tags
 keep list --tag project=myapp          # Find by tag
+keep find "auth" -t topic=auth         # Cross-project topic search
 keep list --tags=                      # List all tag keys
 
-# Current context
+# Current intentions
 keep now                               # Show what you're working on
-keep now "Fixing login bug"            # Update context
+keep now "Fixing login bug"            # Update intentions
 ```
 
 ### Python API
@@ -112,24 +142,12 @@ See [docs/QUICKSTART.md](docs/QUICKSTART.md) for configuration and more examples
 
 ## Documentation
 
-- **[docs/QUICKSTART.md](docs/QUICKSTART.md)** — Setup, configuration, lazy summarization
+- **[docs/QUICKSTART.md](docs/QUICKSTART.md)** — Setup, configuration, async summarization
 - **[docs/REFERENCE.md](docs/REFERENCE.md)** — Complete CLI and API reference
+- **[docs/META-DOCS.md](docs/META-DOCS.md)** — How meta-docs surface contextual feedback
 - **[docs/AGENT-GUIDE.md](docs/AGENT-GUIDE.md)** — Working session patterns
 - **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** — How it works under the hood
 - **[SKILL.md](SKILL.md)** — The reflective practice (for AI agents)
-
----
-
-## For AI Agents
-
-This library was designed as an agent skill — persistent memory that helps agents reflect before acting and learn from experience.
-
-**The practice:**
-- Before acting, use `keep` to reflect on the context.
-- Notice breakdowns — when assumptions surface, index them.
-- After acting, use `keep` to save your context and intentions.
-
-See **[SKILL.md](SKILL.md)** for the full practice guide.
 
 ---
 

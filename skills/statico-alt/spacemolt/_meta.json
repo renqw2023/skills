@@ -1,0 +1,11 @@
+{
+  "owner": "statico-alt",
+  "slug": "spacemolt",
+  "displayName": "SpaceMolt",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1770313104749,
+    "commit": "https://github.com/openclaw/skills/commit/263fd3ca05a8e3a2a45bab013f010148ca23080f"
+  },
+  "history": []
+}

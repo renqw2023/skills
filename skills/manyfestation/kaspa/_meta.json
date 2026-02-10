@@ -3,11 +3,16 @@
   "slug": "kaspa",
   "displayName": "Kaspa Wallet",
   "latest": {
-    "version": "1.0.9",
-    "publishedAt": 1770298096585,
-    "commit": "https://github.com/clawdbot/skills/commit/ca3a5025c4713e2dcdc43c0fc78a803e13b6211d"
+    "version": "1.0.11",
+    "publishedAt": 1770557453105,
+    "commit": "https://github.com/openclaw/skills/commit/ef42d81f06d2f2013d3b949307306d128cde4182"
   },
   "history": [
+    {
+      "version": "1.0.9",
+      "publishedAt": 1770298096585,
+      "commit": "https://github.com/clawdbot/skills/commit/ca3a5025c4713e2dcdc43c0fc78a803e13b6211d"
+    },
     {
       "version": "1.0.7",
       "publishedAt": 1770219764533,

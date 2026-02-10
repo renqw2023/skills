@@ -24,22 +24,47 @@
 
 **Filter session messages by target day (not file mtime):**
 ```bash
-# Step 1: Define target day
+# Step 1: Define target day and timezone
 TARGET_DAY="$(date +%Y-%m-%d)"
+TARGET_TZ="${TARGET_TZ:-Asia/Shanghai}"
 
-# Step 2: Read session files and keep only messages from TARGET_DAY
-find ~/.openclaw/sessions -name "*.jsonl" -print0 |
-  xargs -0 jq -cr --arg day "$TARGET_DAY" '
-    select((.timestamp // "")[:10] == $day)
+# Step 2: Build timezone-aware [start, end) epoch range for TARGET_DAY
+read START_EPOCH END_EPOCH < <(
+  python3 - <<'PY' "$TARGET_DAY" "$TARGET_TZ"
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
+import sys
+
+day, tz = sys.argv[1], sys.argv[2]
+start = datetime.strptime(day, "%Y-%m-%d").replace(tzinfo=ZoneInfo(tz))
+end = start + timedelta(days=1)
+print(int(start.timestamp()), int(end.timestamp()))
+PY
+)
+
+# Step 3: Read all session files from both locations and keep only messages inside TARGET_DAY
+for dir in "$HOME/.openclaw/sessions" "$HOME/.agent/sessions"; do
+  [ -d "$dir" ] || continue
+  find "$dir" -name "*.jsonl" -print0
+done |
+  xargs -0 jq -cr --argjson start "$START_EPOCH" --argjson end "$END_EPOCH" '
+    (.timestamp // .created_at // empty) as $ts
+    | ($ts | fromdateiso8601?) as $epoch
+    | select($epoch != null and $epoch >= $start and $epoch < $end)
   '
 ```
 
 **Extract image entries from target-day messages:**
 ```bash
 # Keep image entries whose message timestamp is in TARGET_DAY
-find ~/.openclaw/sessions -name "*.jsonl" -print0 |
-  xargs -0 jq -r --arg day "$TARGET_DAY" '
-    select((.timestamp // "")[:10] == $day and .type == "image")
+for dir in "$HOME/.openclaw/sessions" "$HOME/.agent/sessions"; do
+  [ -d "$dir" ] || continue
+  find "$dir" -name "*.jsonl" -print0
+done |
+  xargs -0 jq -r --argjson start "$START_EPOCH" --argjson end "$END_EPOCH" '
+    (.timestamp // .created_at // empty) as $ts
+    | ($ts | fromdateiso8601?) as $epoch
+    | select($epoch != null and $epoch >= $start and $epoch < $end and .type == "image")
     | (.file_path // .url)
   '
 ```
@@ -73,13 +98,40 @@ cp ~/.openclaw/media/inbound/file_*.jpg ~/PhoenixClaw/Journal/assets/$TODAY/
 - Example: `img_001.jpg`, `img_002.jpg`
 - For specific events: `img_001_lunch.jpg` (optional suffix)
 
+### Link Path Generation (Required)
+
+When embedding an image into a journal file, always compute the link from actual file paths.
+
+**Rules:**
+- Never use absolute paths in journal markdown.
+- Never hardcode `../assets` or `../../assets`.
+- Compute the relative path from the journal file directory to the asset file.
+- Use the exact copied filename from disk; do not infer or rewrite timestamp fragments.
+
+```python
+from pathlib import Path
+import os
+
+def get_relative_image_path(daily_file_path: str, image_path: str) -> str:
+    daily_file = Path(daily_file_path).resolve()
+    image_file = Path(image_path).resolve()
+    rel = os.path.relpath(image_file, start=daily_file.parent)
+    return rel.replace(os.sep, "/")
+```
+
+**Validation before render:**
+- `Path(image_path).exists()` is true.
+- Embedded filename equals `Path(image_path).name` exactly.
+- Link does not start with `/`.
+- Link depth is produced by computation, not template constants.
+
 ### Journal Photo Layouts
 
 #### Single Photo (Moment)
 Used for capturing a specific point in time or a single highlight.
 ```markdown
 > [!moment] 🍜 12:30 Lunch
-> ![[assets/2026-02-01/img_001.jpg|400]]
+> ![[../assets/2026-02-01/img_001.jpg|400]]
 > Spicy miso ramen with a perfectly soft-boiled egg at the new shop downtown.
 ```
 
@@ -87,8 +139,8 @@ Used for capturing a specific point in time or a single highlight.
 Used when several photos are sent together or relate to the same context.
 ```markdown
 > [!gallery] 📷 Today's Moments
-> ![[assets/2026-02-01/img_002.jpg|200]] ![[assets/2026-02-01/img_003.jpg|200]]
-> ![[assets/2026-02-01/img_004.jpg|200]]
+> ![[../assets/2026-02-01/img_002.jpg|200]] ![[../assets/2026-02-01/img_003.jpg|200]]
+> ![[../assets/2026-02-01/img_004.jpg|200]]
 ```
 
 #### Photo with Narrative Context
@@ -97,7 +149,7 @@ Used when the photo is part of a larger story or reflection.
 ### Weekend Hike
 The trail was steeper than I remembered, but the view from the summit made every step worth it. 
 
-![[assets/2026-02-01/img_005.jpg|600]]
+![[../assets/2026-02-01/img_005.jpg|600]]
 *The fog rolling over the valley at 8:00 AM.*
 
 I spent about twenty minutes just sitting there, listening to the wind and watching the light change across the ridgeline.

@@ -1,0 +1,11 @@
+{
+  "owner": "datadrivenconstruction",
+  "slug": "resource-pool-optimizer",
+  "displayName": "Resource Pool Optimizer",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770476421391,
+    "commit": "https://github.com/openclaw/skills/commit/809bb638f09378e188f92ebfb08f4d8910c87207"
+  },
+  "history": []
+}

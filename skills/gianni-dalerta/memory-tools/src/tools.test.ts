@@ -58,12 +58,13 @@ describe('Memory Tools', () => {
   let tools: ReturnType<typeof createMemoryTools>;
   let testDir: string;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     testDir = path.join(os.tmpdir(), `memory-tools-test-${Date.now()}`);
     fs.mkdirSync(testDir, { recursive: true });
 
     const embeddings = new MockEmbeddingProvider() as unknown as EmbeddingProvider;
     store = new MemoryStore(testDir, embeddings, 1536);
+    await store.init(); // Initialize sql.js WASM before tests
     tools = createMemoryTools(store);
   });
 

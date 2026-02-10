@@ -1,0 +1,11 @@
+{
+  "owner": "zaynjarvis",
+  "slug": "openviking",
+  "displayName": "OpenViking",
+  "latest": {
+    "version": "1.0.2",
+    "publishedAt": 1770644632479,
+    "commit": "https://github.com/openclaw/skills/commit/c0bd9800eaf6cc6be42cc49ca46e1fb13c2687e2"
+  },
+  "history": []
+}

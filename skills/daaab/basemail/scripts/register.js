@@ -7,10 +7,12 @@
  *   node register.js [--basename yourname.base.eth] [--wallet /path/to/key]
  * 
  * Private key sources (in order of priority):
- *   1. BASEMAIL_PRIVATE_KEY environment variable (recommended)
- *   2. --wallet argument specifying path
- *   3. Auto-detect common wallet locations (~/.openclaw, ~/.clawdbot)
- *   4. ~/.basemail/private-key (managed by setup.js)
+ *   1. BASEMAIL_PRIVATE_KEY environment variable (recommended ✅)
+ *   2. --wallet argument specifying path to your key file
+ *   3. ~/.basemail/private-key (managed by setup.js)
+ * 
+ * ⚠️ Security: This script does NOT auto-detect wallet locations outside
+ *    ~/.basemail/ to avoid accessing unrelated credentials.
  */
 
 const { ethers } = require('ethers');
@@ -99,20 +101,7 @@ async function getPrivateKey() {
     }
   }
   
-  // 3. Auto-detect common wallet locations
-  const commonPaths = [
-    path.join(process.env.HOME, '.openclaw', 'wallet', 'private-key'),
-    path.join(process.env.HOME, '.clawdbot', 'wallet', 'private-key'),
-  ];
-  
-  for (const p of commonPaths) {
-    if (fs.existsSync(p)) {
-      console.log(`🔑 偵測到現有錢包: ${p}`);
-      return fs.readFileSync(p, 'utf8').trim();
-    }
-  }
-  
-  // 4. ~/.basemail managed wallet (encrypted or plaintext)
+  // 3. ~/.basemail managed wallet (encrypted or plaintext)
   const encryptedKeyFile = path.join(CONFIG_DIR, 'private-key.enc');
   const plaintextKeyFile = path.join(CONFIG_DIR, 'private-key');
   

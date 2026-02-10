@@ -1,0 +1,11 @@
+{
+  "owner": "okaris",
+  "slug": "product-changelog",
+  "displayName": "Product Changelog",
+  "latest": {
+    "version": "0.1.0",
+    "publishedAt": 1770656427965,
+    "commit": "https://github.com/openclaw/skills/commit/1f72853d355977c41968a1c44d012a22846f3ca5"
+  },
+  "history": []
+}

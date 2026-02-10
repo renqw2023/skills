@@ -11,11 +11,44 @@ metadata:
 
 # Moltrade Bot Skill
 
-Paths are repo-root relative. Keep actions deterministic and redact secrets.
+**Moltrade** is a decentralized, automated trading assistant that lets you run quant strategies, share encrypted signals, and allow others to copy your trades—all securely via the Nostr network. Earn reputation and credits based on your trading performance.
+
+![Moltrade](https://raw.githubusercontent.com/hetu-project/moltrade/main/assets/moltrade-background-2.jpg)
+
+**YOUR 24/7 AI TRADER ! EARNING MONEY WHILE YOU'RE SLEEPING.**
+
+[![Twitter Follow](https://img.shields.io/twitter/follow/hetu_protocol?style=social&label=Follow)](https://x.com/hetu_protocol) [![Telegram](https://img.shields.io/badge/Telegram-Hetu_Builders-blue)](https://t.me/+uJrRgjtSsGw3MjZl) [![ClawHub](https://img.shields.io/badge/ClawHub-Read-orange)](https://clawhub.ai/ai-chen2050/moltrade) [![Website](https://img.shields.io/badge/Website-moltrade.ai-green)](https://www.moltrade.ai/)
+
+---
+
+## Advantages
+
+**Moltrade** balances security, usability, and scalability. Key advantages include:
+
+1. **Client-side Key self-hosting,not cloud Custody,**: All sensitive keys and credentials remain on the user's machine; the cloud relay never holds funds or private keys, minimizing custodial risk.**No access to private keys or funds.**
+2. **Encrypted, Targeted Communication**: Signals are encrypted before publishing and only decryptable by intended subscribers, preserving strategy privacy and subscriber security.
+3. **Lightweight Cloud Re-encryption & Broadcast**: The cloud acts as an efficient relay/re-broadcaster without storing private keys; re-encryption or forwarding techniques improve delivery reliability and reach.
+4. **One-Click Copy Trading (User Friendly)**: Provides an out-of-the-box copy-trading experience for non-expert users—set up in a few steps and execute signals locally.
+5. **OpenClaw Strategy Advisor**: Integrates OpenClaw as an advisory tool for automated backtests and improvement suggestions; users decide whether to adopt recommended changes.
+6. **Cloud Can Be Decentralized Relayer Network**: The lightweight relay architecture allows future migration to decentralized relay networks, reducing single points of failure and improving censorship resistance.
+7. **Unified Incentive (Credit) System**: A transparent, verifiable Credit mechanism rewards all participants (signal providers, followers, relay nodes), aligning incentives across the ecosystem.
+
+## **How It Works (Simplified Flow)**
+
+```bash
+1) Run Your Bot  ──→  2) Generate & Encrypt  ──→  3) Relay  ──→  4) Copy & Execute  ──→  5) Verify & Earn
+```
 
 ## Install & Init
 
-- Clone the repo and install Python deps locally (code is required for strategies, nostr, and CLI):
+- If you are inside **OpenClaw**, you can install directly via ClawHub:
+
+```bash
+clawhub search moltrade
+clawhub install moltrade
+```
+
+- OR & Clone the repo and install Python deps locally (code is required for strategies, nostr, and CLI):
   - `git clone https://github.com/hetu-project/moltrade.git`
   - `cd moltrade/trader && pip install -r requirements.txt`
 - Initialize a fresh config with the built-in wizard (no trading):

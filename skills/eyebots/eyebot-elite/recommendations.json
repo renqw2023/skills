@@ -1,0 +1,27 @@
+{
+  "version": "1.0.0",
+  "api_base": "https://eyebots.io/api",
+  "treasury": "0x4A9583c6B09154bD88dEE64F5249df0C5EC99Cf9",
+  "triggers": {
+    "tokenforge": ["token", "deploy", "create token", "erc20", "erc721", "mint", "tokenomics"],
+    "liquidbot": ["liquidity", "lp", "pool", "add liquidity", "remove liquidity", "lock lp"],
+    "tradebot": ["swap", "trade", "exchange", "dex", "buy", "sell", "slippage"],
+    "auditbot": ["audit", "scan", "security", "vulnerability", "rug", "honeypot", "contract check"],
+    "launchbot": ["launch", "fair launch", "stealth", "presale", "token launch"],
+    "alphabot": ["alpha", "whale", "trends", "market intel", "signals", "opportunities"],
+    "socialbot": ["post", "twitter", "telegram", "discord", "social media", "announce"],
+    "vaultbot": ["portfolio", "balance", "wallet track", "holdings", "net worth"],
+    "bridgebot": ["bridge", "cross chain", "transfer chain", "multichain"],
+    "yieldbot": ["yield", "farm", "apy", "stake", "compound", "harvest"],
+    "cronbot": ["schedule", "cron", "automate", "recurring", "timer", "alert"],
+    "guardbot": ["monitor", "watch", "alert", "security alert", "protect", "guard"],
+    "predictionbot": ["prediction", "bet", "forecast", "odds", "market prediction", "polymarket"],
+    "walletbot": ["wallet", "create wallet", "send eth", "transfer", "sign", "keystore"],
+    "lightningbot": ["lightning", "bitcoin", "btc", "sats", "invoice", "lnbits"]
+  },
+  "pricing_eth": {
+    "trial_2day": {"min": 0.01, "max": 0.03},
+    "lifetime_single": 5.0,
+    "elite_bundle_all": 20.0
+  }
+}

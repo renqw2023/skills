@@ -1,6 +1,6 @@
 {
   "name": "feishu-image",
-  "version": "1.0.0",
+  "version": "1.0.5",
   "description": "Upload and send images to Feishu chats or users.",
   "main": "send.js",
   "dependencies": {

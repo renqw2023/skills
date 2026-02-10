@@ -5,9 +5,9 @@ author: swancho
 license: CC-BY-NC-4.0
 description: |
   Integrate with macOS Reminders app to check today's/this week's tasks or add new reminders.
+  Supports native recurrence (매주/weekly/毎週/每周) via Swift EventKit - creates single reminder with repeat rule.
   Supports multiple languages (en, ko, ja, zh) for trigger detection and response formatting.
-  Trigger this skill when users ask to "check today's/this week's reminders/tasks/sessions",
-  and internally call cli.js → apple-bridge.js to summarize and organize the results.
+  When users request recurring reminders, MUST use --repeat option (daily|weekly|monthly|yearly).
 ---
 
 # Mac Reminders Agent
@@ -18,12 +18,14 @@ This skill integrates with the local macOS **Reminders** app to:
 
 - View and organize today's/this week's reminders (work/personal/sessions)
 - Add new reminders based on natural language requests
+- **Native recurrence**: Weekly, daily, monthly, yearly repeating reminders
 - **Multi-language support**: English, Korean, Japanese, Chinese
 
 The skill uses the following files relative to its directory:
 
 - `cli.js` (unified entry point)
 - `reminders/apple-bridge.js` (backend: AppleScript + `applescript` npm module)
+- `reminders/eventkit-bridge.swift` (native recurrence via Swift EventKit)
 - `locales.json` (language-specific triggers and responses)
 
 ## Language Support
@@ -179,6 +181,49 @@ node skills/mac-reminders-agent/cli.js add --title "Meeting" --due "2026-02-05T0
 
 ---
 
+## 3) Recurring Reminders (Native Recurrence)
+
+Use `--repeat` to create reminders with **native recurrence** (single reminder with repeat rule, not multiple copies).
+
+### Command Invocation
+
+```bash
+# Weekly recurring reminder
+node skills/mac-reminders-agent/cli.js add --title "Weekly standup" --due "2026-02-10T09:00:00+09:00" --repeat weekly
+
+# Bi-weekly reminder
+node skills/mac-reminders-agent/cli.js add --title "Sprint review" --due "2026-02-10T14:00:00+09:00" --repeat weekly --interval 2
+
+# Monthly reminder until end of year
+node skills/mac-reminders-agent/cli.js add --title "Monthly report" --due "2026-02-28T17:00:00+09:00" --repeat monthly --repeat-end 2026-12-31
+```
+
+### Parameters
+
+- `--repeat` (optional): `daily`, `weekly`, `monthly`, `yearly`
+- `--interval` (optional): Repeat interval (default: 1). Example: `--interval 2` = every 2 weeks
+- `--repeat-end` (optional): End date in `YYYY-MM-DD` format
+
+### IMPORTANT: Always use --repeat for recurring schedules
+
+When user requests recurring reminders (매주, 격주, 매월, etc.), **MUST use --repeat option**.
+Do NOT create multiple individual reminders manually.
+
+**Correct:**
+```bash
+node cli.js add --title "주간 회의" --due "2026-02-10T09:00:00+09:00" --repeat weekly
+```
+
+**Wrong (DO NOT DO THIS):**
+```bash
+# Creating 12 separate reminders is WRONG
+node cli.js add --title "주간 회의 - 2/10" --due "2026-02-10T09:00:00+09:00"
+node cli.js add --title "주간 회의 - 2/17" --due "2026-02-17T09:00:00+09:00"
+...
+```
+
+---
+
 ## Error Handling
 
 ### Locale-aware Error Messages
@@ -200,14 +245,19 @@ When automatic integration fails, offer alternatives in user's language.
 
 ## Environment Constraints
 
-- **macOS only**: Uses AppleScript to control Reminders app
-- **Dependency**: Requires `applescript` npm module
+- **macOS only**: Uses AppleScript + Swift EventKit
+- **Dependencies**:
+  - `applescript` npm module
+  - Swift (included with Xcode Command Line Tools)
 
 ---
 
 ## Summary
 
 - Multi-language support via `locales.json` (en, ko, ja, zh)
-- Core commands: `list --scope today|week|all [--locale XX]` and `add --title ... [--due ...] [--locale XX]`
+- Core commands:
+  - `list --scope today|week|all [--locale XX]`
+  - `add --title ... [--due ...] [--repeat daily|weekly|monthly|yearly] [--interval N] [--repeat-end YYYY-MM-DD] [--locale XX]`
+- **Native recurrence**: Use `--repeat` for recurring reminders (creates single reminder with repeat rule)
 - Automatically detect user language or use explicit `--locale` parameter
 - Format responses using locale-specific templates

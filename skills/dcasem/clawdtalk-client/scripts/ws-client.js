@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * ClawdTalk WebSocket Client v1.1.1
+ * ClawdTalk WebSocket Client v1.2.9
  * 
  * Connects to ClawdTalk server and routes voice calls to your Clawdbot gateway.
  * Phone → STT → Gateway Agent → TTS → Phone
@@ -68,6 +68,10 @@ DRIP PROGRESS UPDATES:
 - Don't wait until the end to summarize — drip information as you find it.`;
 
 function loadGatewayConfig() {
+  // Collect config from all paths, prioritizing ones with valid tokens
+  var bestConfig = null;
+  var configWithToken = null;
+  
   for (var i = 0; i < CLAWDBOT_CONFIG_PATHS.length; i++) {
     try {
       if (fs.existsSync(CLAWDBOT_CONFIG_PATHS[i])) {
@@ -82,15 +86,28 @@ function loadGatewayConfig() {
           mainAgentId = defaultAgent ? defaultAgent.id : config.agents.list[0].id;
         }
         
-        return { 
+        var result = { 
           chatUrl: 'http://127.0.0.1:' + port + '/v1/chat/completions',
           toolsUrl: 'http://127.0.0.1:' + port + '/tools/invoke',
           token: token,
           mainAgentId: mainAgentId
         };
+        
+        // Keep first config as fallback
+        if (!bestConfig) bestConfig = result;
+        
+        // If this config has a token, use it immediately
+        if (token) {
+          configWithToken = result;
+          break;
+        }
       }
     } catch (e) {}
   }
+  
+  // Return config with token, or best available, or defaults
+  if (configWithToken) return configWithToken;
+  if (bestConfig) return bestConfig;
   var defaultPort = 18789;
   return {
     chatUrl: process.env.CLAWDBOT_GATEWAY_URL || 'http://127.0.0.1:' + defaultPort + '/v1/chat/completions',
@@ -134,7 +151,7 @@ class ClawdTalkClient {
     this.gatewayChatUrl = null;
     this.gatewayToolsUrl = null;
     this.gatewayToken = null;
-    this.gatewayAgent = 'voice';
+    this.gatewayAgent = 'main';
     this.mainAgentId = 'main';
     this.voiceContext = DEFAULT_VOICE_CONTEXT;
     this.maxConversationTurns = 20;
@@ -185,6 +202,11 @@ class ClawdTalkClient {
       }
 
       if (!this.config.api_key) throw new Error('No API key configured');
+      
+      // Store for later use (SMS replies, etc)
+      this.apiKey = this.config.api_key;
+      this.baseUrl = this.config.server;
+      
       this.log('INFO', 'Config loaded -> ' + this.config.server);
     } catch (err) {
       this.log('ERROR', 'Config: ' + err.message);
@@ -272,7 +294,7 @@ class ClawdTalkClient {
     }
 
     if (msg.type === 'auth_ok') {
-      this.log('INFO', 'Authenticated (v1.1 agentic mode)');
+      this.log('INFO', 'Authenticated (v1.2.9 agentic mode)');
       this.reconnectAttempts = 0;
       this.currentReconnectDelay = RECONNECT_DELAY_MIN;
       this.startPing();
@@ -343,6 +365,9 @@ class ClawdTalkClient {
         this.transcriptionDebounce.delete(callId);
       }
       this.log('INFO', 'Call ended: ' + callId);
+      
+      // Report call outcome to user
+      this.reportCallOutcome(msg);
       return;
     }
 
@@ -374,6 +399,18 @@ class ClawdTalkClient {
       
       // Process via full Clawdbot agent
       this.handleDeepToolRequest(callId, requestId, query, msg.context || {});
+      return;
+    }
+
+    // Handle SMS received - forward to bot and send reply
+    if (event === 'sms.received') {
+      var smsFrom = msg.from;
+      var smsBody = msg.body || '';
+      var messageId = msg.message_id;
+      this.log('INFO', 'SMS received from ' + (smsFrom ? smsFrom.substring(0, 6) + '***' : 'unknown') + ': ' + smsBody.substring(0, 50));
+      
+      // Process via Clawdbot and send reply
+      this.handleInboundSms(smsFrom, smsBody, messageId);
       return;
     }
 
@@ -479,6 +516,80 @@ class ClawdTalkClient {
       }));
     } catch (err) {
       this.log('ERROR', 'Failed to send deep tool result: ' + err.message);
+    }
+  }
+
+  // ── SMS Handler ─────────────────────────────────────────────
+
+  async handleInboundSms(fromNumber, body, messageId) {
+    try {
+      // Route SMS to main session via sessions_send
+      var smsPrefix = '[SMS from ' + fromNumber + '] Reply concisely (under 300 chars). No markdown. ';
+      
+      var mainSessionKey = 'agent:' + this.mainAgentId + ':main';
+      
+      var response = await fetch(this.gatewayToolsUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + this.gatewayToken
+        },
+        body: JSON.stringify({
+          tool: 'sessions_send',
+          args: {
+            sessionKey: mainSessionKey,
+            message: smsPrefix + body,
+            timeoutSeconds: 60
+          }
+        }),
+        signal: AbortSignal.timeout(90000)
+      });
+      
+      if (!response.ok) {
+        this.log('ERROR', 'SMS agent request failed: ' + response.status);
+        return;
+      }
+      
+      var result = await response.json();
+      var reply = result.result || result.response || '';
+      
+      if (!reply) {
+        this.log('WARN', 'No reply from agent for SMS');
+        return;
+      }
+      
+      // Truncate reply for SMS
+      if (reply.length > 1500) {
+        reply = reply.substring(0, 1497) + '...';
+      }
+      
+      this.log('INFO', 'SMS reply: ' + reply.substring(0, 50) + '...');
+      
+      // Send reply via ClawdTalk API
+      var sendResponse = await fetch(this.baseUrl + '/v1/messages/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + this.apiKey
+        },
+        body: JSON.stringify({
+          to: fromNumber,
+          message: reply
+        })
+      });
+      
+      if (sendResponse.ok) {
+        this.log('INFO', 'SMS reply sent to ' + fromNumber.substring(0, 6) + '***');
+      } else {
+        var errText = await sendResponse.text();
+        this.log('ERROR', 'Failed to send SMS reply: ' + errText);
+      }
+    } catch (err) {
+      if (err.name === 'TimeoutError') {
+        this.log('WARN', 'SMS agent timed out');
+      } else {
+        this.log('ERROR', 'SMS handler error: ' + err.message);
+      }
     }
   }
 
@@ -756,11 +867,138 @@ class ClawdTalkClient {
     }
   }
 
+  /**
+   * Report call outcome to user via gateway sessions_send
+   * Routes to the main persistent session instead of creating ephemeral sessions
+   */
+  async reportCallOutcome(callEvent) {
+    if (!this.gatewayToken) {
+      this.log('DEBUG', 'No gateway configured, skipping call report');
+      return;
+    }
+    
+    var direction = callEvent.direction || 'unknown';
+    var duration = callEvent.duration_seconds || 0;
+    var reason = callEvent.reason || 'unknown';
+    var outcome = callEvent.outcome;
+    var toNumber = callEvent.to_number;
+    var purpose = callEvent.purpose || callEvent.greeting;
+    var voicemailMessage = callEvent.voicemail_message;
+    
+    // Build human-readable summary
+    var summary = '';
+    var emoji = '📞';
+    
+    if (direction === 'outbound') {
+      var target = toNumber ? toNumber.replace(/(\+\d{1})(\d{3})(\d{3})(\d{4})/, '$1 ($2) $3-$4') : 'unknown number';
+      
+      if (outcome === 'voicemail') {
+        emoji = '📬';
+        summary = emoji + ' **Voicemail left** for ' + target;
+        if (voicemailMessage) {
+          summary += '\n> "' + voicemailMessage.substring(0, 200) + (voicemailMessage.length > 200 ? '...' : '') + '"';
+        }
+      } else if (outcome === 'voicemail_failed') {
+        emoji = '📵';
+        summary = emoji + ' Call to ' + target + ' went to voicemail but couldn\'t leave message (no beep detected)';
+      } else if (outcome === 'no_answer' || reason === 'amd_silence') {
+        emoji = '📵';
+        summary = emoji + ' Call to ' + target + ' - no answer (silence detected)';
+      } else if (outcome === 'fax') {
+        emoji = '📠';
+        summary = emoji + ' Call to ' + target + ' - fax machine detected, call ended';
+      } else if (reason === 'user_hangup') {
+        emoji = '✅';
+        summary = emoji + ' Call to ' + target + ' completed (' + this.formatDuration(duration) + ')';
+      } else {
+        summary = emoji + ' Call to ' + target + ' ended: ' + reason + ' (' + this.formatDuration(duration) + ')';
+      }
+      
+      if (purpose && outcome !== 'voicemail') {
+        summary += '\n📋 Purpose: ' + purpose.substring(0, 100);
+      }
+    } else if (direction === 'inbound') {
+      summary = emoji + ' Inbound call ended (' + this.formatDuration(duration) + ')';
+    } else {
+      summary = emoji + ' Call ended: ' + reason;
+    }
+    
+    // Use /tools/invoke to call sessions_send tool
+    // Derive tools endpoint from chat URL (replace /v1/chat/completions with /tools/invoke)
+    var toolsInvokeUrl = this.gatewayChatUrl ? 
+      this.gatewayChatUrl.replace('/v1/chat/completions', '/tools/invoke') :
+      'http://localhost:18789/tools/invoke';
+    
+    try {
+      var response = await fetch(toolsInvokeUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + this.gatewayToken
+        },
+        body: JSON.stringify({
+          tool: 'sessions_send',
+          args: {
+            sessionKey: 'agent:main:main',  // Route to main persistent session
+            message: '[ClawdTalk] ' + summary,
+            timeoutSeconds: 0  // Fire and forget
+          }
+        })
+      });
+      
+      if (response.ok) {
+        this.log('INFO', 'Call outcome reported to user (via sessions_send)');
+      } else {
+        var errText = await response.text().catch(function() { return ''; });
+        this.log('WARN', 'Failed to report call outcome: ' + response.status + ' ' + errText);
+      }
+    } catch (err) {
+      this.log('ERROR', 'Failed to report call outcome: ' + err.message);
+    }
+  }
+  
+  formatDuration(seconds) {
+    if (!seconds || seconds < 1) return '0s';
+    if (seconds < 60) return seconds + 's';
+    var mins = Math.floor(seconds / 60);
+    var secs = seconds % 60;
+    return mins + 'm ' + secs + 's';
+  }
+
   // ── Connection Management ───────────────────────────────────
 
   onClose(code) {
-    this.log('WARN', 'WS closed: ' + code);
+    var closeReason = code === 4000 ? ' ← Server killing connection (duplicate client?)' : '';
+    this.log('WARN', 'WS closed: ' + code + closeReason);
     this.stopPing();
+    
+    // Track consecutive 4000 errors (duplicate client kicks)
+    if (code === 4000) {
+      this.duplicateKickCount = (this.duplicateKickCount || 0) + 1;
+      
+      if (this.duplicateKickCount >= 3) {
+        this.log('ERROR', '════════════════════════════════════════════════════════════════');
+        this.log('ERROR', 'DUPLICATE CLIENT DETECTED!');
+        this.log('ERROR', '');
+        this.log('ERROR', 'Another ClawdTalk client is running with the same API key.');
+        this.log('ERROR', 'Each connection kicks the other off, causing this loop.');
+        this.log('ERROR', '');
+        this.log('ERROR', 'To fix:');
+        this.log('ERROR', '  1. Find and kill all other ws-client processes:');
+        this.log('ERROR', '     pkill -f "ws-client.js" && pkill -f "connect.sh"');
+        this.log('ERROR', '  2. Or check other machines/containers using this API key');
+        this.log('ERROR', '  3. Then restart: ./scripts/connect.sh start');
+        this.log('ERROR', '════════════════════════════════════════════════════════════════');
+        
+        // Stop reconnecting - let user fix it
+        this.isShuttingDown = true;
+        process.exit(1);
+      }
+    } else {
+      // Reset counter on non-4000 close
+      this.duplicateKickCount = 0;
+    }
+    
     if (!this.isShuttingDown) this.scheduleReconnect();
   }
 
@@ -807,7 +1045,7 @@ class ClawdTalkClient {
 
   start() {
     this.log('INFO', '═══════════════════════════════════════════════');
-    this.log('INFO', 'ClawdTalk WebSocket Client v1.1');
+    this.log('INFO', 'ClawdTalk WebSocket Client v1.2.9');
     this.log('INFO', 'Full agentic mode with main session routing');
     this.log('INFO', '═══════════════════════════════════════════════');
     this.log('INFO', 'Chat endpoint: ' + this.gatewayChatUrl);

@@ -3,11 +3,16 @@
   "slug": "mlx-audio-server",
   "displayName": "MLX Audio Server",
   "latest": {
-    "version": "0.2.1",
-    "publishedAt": 1770461306322,
-    "commit": "https://github.com/openclaw/skills/commit/abcf25582cfc0ac3b16b472e369ffb1400a9eae4"
+    "version": "0.2.2",
+    "publishedAt": 1770693372987,
+    "commit": "https://github.com/openclaw/skills/commit/fb6a8f95c903e6bd5687d9352ed72e2ffcfc6f92"
   },
   "history": [
+    {
+      "version": "0.2.1",
+      "publishedAt": 1770461306322,
+      "commit": "https://github.com/openclaw/skills/commit/abcf25582cfc0ac3b16b472e369ffb1400a9eae4"
+    },
     {
       "version": "0.1.4",
       "publishedAt": 1770318884387,

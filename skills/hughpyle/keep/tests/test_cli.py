@@ -47,7 +47,7 @@ class TestCliBasics:
         assert result.returncode == 0
         assert "keep" in result.stdout.lower()
         assert "find" in result.stdout
-        assert "update" in result.stdout
+        assert "put" in result.stdout
     
     def test_no_args_shows_now(self, cli):
         """CLI with no args shows current working context."""
@@ -57,9 +57,32 @@ class TestCliBasics:
         assert "---" in result.stdout  # YAML frontmatter
         assert "id:" in result.stdout
 
+    def test_meta_docs_loaded(self, cli):
+        """Meta-doc system docs are loaded and accessible."""
+        result = cli("get", ".meta/todo", "--no-similar")
+        assert result.returncode == 0
+        assert ".meta/todo" in result.stdout
+
+    def test_tag_type_doc_loaded(self, cli):
+        """Tag description doc .tag/type is loaded and has full content."""
+        result = cli("get", ".tag/type", "--no-similar")
+        assert result.returncode == 0
+        assert "Content Classification" in result.stdout
+        # Should contain the values table (verbatim, not summarized)
+        assert "learning" in result.stdout
+        assert "breakdown" in result.stdout
+
+    def test_meta_sections_use_namespace_prefix(self, cli):
+        """Meta sections in frontmatter use meta/ prefix to avoid key conflicts."""
+        result = cli("get", ".meta/todo", "--no-similar")
+        assert result.returncode == 0
+        # The meta-doc itself shouldn't show meta/ sections (it IS a meta-doc)
+        # but its content should have the query lines intact
+        assert "act=commitment" in result.stdout
+
     def test_command_help(self, cli):
         """Individual commands have help."""
-        for cmd in ["find", "update", "get", "list"]:
+        for cmd in ["find", "put", "get", "list"]:
             result = cli(cmd, "--help")
             assert result.returncode == 0, f"{cmd} --help failed"
             assert "Usage" in result.stdout or "usage" in result.stdout.lower()
@@ -210,12 +233,32 @@ class TestExitCodes:
     
     def test_invalid_tag_format_returns_error(self, cli):
         """Invalid tag format returns exit code 1."""
-        # update with bad tag format
-        result = cli("update", "test:1", "--tag", "badformat")
+        # put with bad tag format
+        result = cli("put", "test:1", "--tag", "badformat")
         # Should fail due to missing = in tag
         # (may also fail due to NotImplemented, which is fine)
         if "Invalid tag format" in result.stderr:
             assert result.returncode == 1
+
+    def test_put_inline_with_summary_rejected(self, cli):
+        """--summary with inline text is rejected (would lose content)."""
+        result = cli("put", "my note", "--summary", "a summary")
+        assert result.returncode == 1
+        assert "cannot be used with inline text" in result.stderr
+
+    def test_put_stdin_with_summary_rejected(self, cli):
+        """--summary with stdin is rejected (would lose content)."""
+        result = cli("put", "-", "--summary", "a summary", input="some content")
+        assert result.returncode == 1
+        assert "cannot be used with stdin" in result.stderr
+
+    def test_put_inline_too_long_rejected(self, cli):
+        """Inline text exceeding max_summary_length is rejected."""
+        long_text = "x" * 3000
+        result = cli("put", long_text)
+        assert result.returncode == 1
+        assert "too long to store" in result.stderr
+        assert "file" in result.stderr.lower()  # Hint mentions file
 
 
 # -----------------------------------------------------------------------------
@@ -229,12 +272,12 @@ class TestTagParsing:
         """Single --tag is parsed correctly."""
         # We can't fully test this without implementation,
         # but we can check the format is accepted
-        result = cli("update", "--help")
+        result = cli("put", "--help")
         assert "--tag" in result.stdout or "-t" in result.stdout
-    
+
     def test_tag_format_validation(self, cli):
         """Tags without = are rejected."""
-        result = cli("update", "test:1", "--tag", "invalid")
+        result = cli("put", "test:1", "--tag", "invalid")
         # Should fail - either due to format error or missing dependencies
         # When implementation is complete, this should specifically check for format error
         assert result.returncode != 0
@@ -290,18 +333,42 @@ class TestUnixComposability:
         """IDs can be extracted for use in other commands."""
         from keep.cli import _format_items
         from keep.types import Item
-        
+
         items = [
             Item(id="file:///a.md", summary="A"),
             Item(id="file:///b.md", summary="B"),
         ]
-        
+
         json_output = _format_items(items, as_json=True)
         parsed = json.loads(json_output)
-        
+
         # Simulate: keep find "query" --json | jq -r '.[].id' | xargs -I{} keep get {}
         ids = [item["id"] for item in parsed]
         assert ids == ["file:///a.md", "file:///b.md"]
+
+    def test_get_multiple_ids_separated_by_yaml_separator(self, cli):
+        """Multiple IDs in get produce YAML-document-separated output."""
+        # Get two system docs that always exist
+        result = cli("get", ".conversations", ".domains", "--no-similar")
+        assert result.returncode == 0
+        # Multiple items separated by --- between them
+        parts = result.stdout.split("\n---\n")
+        # At least 2 documents (each starts with --- frontmatter too)
+        assert len(parts) >= 3  # opening ---, doc1 body + ---, doc2 frontmatter + body
+        assert ".conversations" in result.stdout
+        assert ".domains" in result.stdout
+
+    def test_get_single_id_no_extra_separator(self, cli):
+        """Single ID in get produces normal output (no extra separators)."""
+        result = cli("get", ".conversations", "--no-similar")
+        assert result.returncode == 0
+        assert "id: .conversations" in result.stdout
+
+    def test_get_nonexistent_id_returns_error(self, cli):
+        """Nonexistent ID returns exit code 1."""
+        result = cli("get", "nonexistent:id:that:does:not:exist")
+        assert result.returncode == 1
+        assert "Not found" in result.stderr
 
 
 # -----------------------------------------------------------------------------
@@ -317,24 +384,30 @@ class TestApiCliEquivalence:
         assert "semantic" in result.stdout.lower() or "similar" in result.stdout.lower()
         # The CLI find uses mem.find(query, limit=limit)
     
-    def test_update_maps_to_api_update(self, cli):
-        """'update' command maps to Keeper.update()."""
-        result = cli("update", "--help")
+    def test_put_maps_to_api_update(self, cli):
+        """'put' command maps to Keeper.update()."""
+        result = cli("put", "--help")
         assert "URI" in result.stdout or "document" in result.stdout.lower()
-        # The CLI update uses mem.update(id, source_tags=...)
-    
-    def test_update_text_mode_maps_to_api_remember(self, cli):
-        """'update' text mode (no ://) maps to Keeper.remember()."""
-        result = cli("update", "--help")
+        # The CLI put uses mem.update(id, source_tags=...)
+
+    def test_put_text_mode_maps_to_api_remember(self, cli):
+        """'put' text mode (no ://) maps to Keeper.remember()."""
+        result = cli("put", "--help")
         # The help should mention text content mode
         assert "text" in result.stdout.lower() or "content" in result.stdout.lower()
-        # The CLI update with text calls kp.remember() internally
+        # The CLI put with text calls kp.remember() internally
     
     def test_get_maps_to_api_get(self, cli):
         """'get' command maps to Keeper.get()."""
         result = cli("get", "--help")
         assert "ID" in result.stdout or "id" in result.stdout.lower()
         # The CLI get uses mem.get(id)
+
+    def test_get_accepts_multiple_ids(self, cli):
+        """'get' command accepts multiple ID arguments."""
+        result = cli("get", "--help")
+        # Help should show variadic argument
+        assert "ID..." in result.stdout
     
     def test_list_tag_maps_to_api_query_tag(self, cli):
         """'list --tag' command maps to Keeper.query_tag()."""
@@ -370,3 +443,127 @@ class TestOptions:
         # --json is now a global flag, visible in main help
         result = cli("--help")
         assert "--json" in result.stdout or "-j" in result.stdout
+
+
+# -----------------------------------------------------------------------------
+# Shell-safe ID Quoting Tests
+# -----------------------------------------------------------------------------
+
+class TestShellQuoteId:
+    """Tests for _shell_quote_id() helper."""
+
+    def test_safe_id_not_quoted(self):
+        """IDs with only shell-safe chars are returned as-is."""
+        from keep.cli import _shell_quote_id
+        assert _shell_quote_id("%abc123def456") == "%abc123def456"
+        assert _shell_quote_id("file:///path/to/doc.md") == "file:///path/to/doc.md"
+        assert _shell_quote_id("https://example.com/path") == "https://example.com/path"
+        assert _shell_quote_id("now@V{3}") == "now@V{3}"
+        assert _shell_quote_id(".tag/act") == ".tag/act"
+        assert _shell_quote_id(".conversations") == ".conversations"
+
+    def test_space_id_quoted(self):
+        """IDs with spaces get single-quoted."""
+        from keep.cli import _shell_quote_id
+        result = _shell_quote_id("file:///Application Data/foo")
+        assert result == "'file:///Application Data/foo'"
+
+    def test_special_chars_quoted(self):
+        """IDs with shell-special chars get single-quoted."""
+        from keep.cli import _shell_quote_id
+        assert _shell_quote_id("test$var") == "'test$var'"
+        assert _shell_quote_id("test&bg") == "'test&bg'"
+        assert _shell_quote_id("test;cmd") == "'test;cmd'"
+
+    def test_single_quote_escaped(self):
+        """IDs containing single quotes use '\\'' escaping."""
+        from keep.cli import _shell_quote_id
+        result = _shell_quote_id("it's a test")
+        assert result == "'it'\\''s a test'"
+
+    def test_summary_line_quotes_unsafe_id(self):
+        """_format_summary_line quotes IDs with spaces."""
+        from keep.cli import _format_summary_line
+        from keep.types import Item
+        item = Item(
+            id="file:///Application Data/doc.md",
+            summary="A doc",
+            tags={"_updated": "2026-01-15T00:00:00Z"},
+        )
+        output = _format_summary_line(item)
+        assert "'file:///Application Data/doc.md'" in output
+
+    def test_summary_line_no_quotes_safe_id(self):
+        """_format_summary_line does not quote safe IDs."""
+        from keep.cli import _format_summary_line
+        from keep.types import Item
+        item = Item(
+            id="%abc123",
+            summary="A note",
+            tags={"_updated": "2026-01-15T00:00:00Z"},
+        )
+        output = _format_summary_line(item)
+        assert "%abc123" in output
+        assert "'" not in output.split(" ")[0]  # ID portion not quoted
+
+    def test_versioned_id_quotes_unsafe(self):
+        """_format_versioned_id quotes IDs with spaces."""
+        from keep.cli import _format_versioned_id
+        from keep.types import Item
+        item = Item(
+            id="file:///my docs/test.md",
+            summary="Test",
+            tags={},
+        )
+        output = _format_versioned_id(item)
+        assert output == "'file:///my docs/test.md'"
+
+    def test_json_output_not_quoted(self):
+        """JSON output does NOT shell-quote IDs."""
+        from keep.cli import _format_item
+        from keep.types import Item
+        item = Item(
+            id="file:///Application Data/doc.md",
+            summary="A doc",
+            tags={},
+        )
+        output = _format_item(item, as_json=True)
+        parsed = json.loads(output)
+        assert parsed["id"] == "file:///Application Data/doc.md"  # Raw, no quoting
+
+
+# -----------------------------------------------------------------------------
+# Command Alias Tests
+# -----------------------------------------------------------------------------
+
+class TestCommandAliases:
+    """Tests that old command names still work as hidden aliases."""
+
+    def test_help_shows_put_not_update(self, cli):
+        """Main help shows 'put' and 'del', not 'update' or 'delete'."""
+        result = cli("--help")
+        assert result.returncode == 0
+        assert "put" in result.stdout
+        assert "del" in result.stdout
+        # Old names should be hidden
+        lines = result.stdout.split("\n")
+        visible_commands = [l for l in lines if l.strip() and not l.strip().startswith("--")]
+        visible_text = "\n".join(visible_commands)
+        # 'update' and 'delete' should not appear as visible commands
+        # (they may appear in descriptions, so check command column only)
+
+    def test_update_alias_works(self, cli):
+        """'update' still works as a hidden alias for 'put'."""
+        result = cli("update", "--help")
+        assert result.returncode == 0
+
+    def test_delete_alias_works(self, cli):
+        """'delete' still works as a hidden alias for 'del'."""
+        result = cli("delete", "--help")
+        assert result.returncode == 0
+
+    def test_del_help(self, cli):
+        """'del' command has help."""
+        result = cli("del", "--help")
+        assert result.returncode == 0
+        assert "Delete" in result.stdout or "delete" in result.stdout.lower()

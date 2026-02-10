@@ -1,0 +1,4 @@
+interface:
+  display_name: "Agent Passport"
+  short_description: "Consent mandates with Preview/Live and KYA support"
+  default_prompt: "Use $agent-passport to preview or create a mandate for this action."

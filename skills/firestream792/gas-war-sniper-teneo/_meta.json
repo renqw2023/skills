@@ -3,11 +3,16 @@
   "slug": "gas-war-sniper-teneo",
   "displayName": "Gas War Sniper - powered by Teneo Protocol",
   "latest": {
-    "version": "1.0.3",
-    "publishedAt": 1770302188195,
-    "commit": "https://github.com/clawdbot/skills/commit/865aff2de44bea30626008883f0ace95e2c1eaec"
+    "version": "1.0.6",
+    "publishedAt": 1770643205448,
+    "commit": "https://github.com/openclaw/skills/commit/2f8e24f71e63778b026fe4cde72786accdbc359c"
   },
   "history": [
+    {
+      "version": "1.0.3",
+      "publishedAt": 1770302188195,
+      "commit": "https://github.com/clawdbot/skills/commit/865aff2de44bea30626008883f0ace95e2c1eaec"
+    },
     {
       "version": "1.0.2",
       "publishedAt": 1770216621067,

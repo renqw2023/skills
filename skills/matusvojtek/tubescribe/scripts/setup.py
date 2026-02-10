@@ -24,6 +24,11 @@ from config import (
     CONFIG_DIR, CONFIG_FILE, DEFAULT_CONFIG,
     load_config, save_config, get_config_dir
 )
+from tubescribe import (
+    find_ytdlp as _find_ytdlp,
+    find_kokoro as _find_kokoro,
+    KOKORO_DEPS,
+)
 
 
 def print_header():
@@ -59,15 +64,6 @@ def get_kokoro_path() -> str:
 def get_ml_env_path() -> str:
     """Get the path to shared ML environment."""
     return os.path.expanduser("~/.openclaw/tools/ml-env")
-
-
-# Required packages for Kokoro TTS
-KOKORO_DEPS = {
-    "torch": "torch",           # import name same as package
-    "soundfile": "soundfile",
-    "numpy": "numpy",
-    "huggingface_hub": "huggingface_hub",
-}
 
 
 def check_ml_deps() -> dict:
@@ -129,10 +125,14 @@ def find_kokoro() -> tuple[bool, str | None, str | None]:
     Find Kokoro TTS installation.
     Returns (found: bool, python_path: str | None, kokoro_dir: str | None).
     """
-    python_path, kokoro_dir = get_python_for_kokoro()
-    
+    # Delegate to tubescribe's cached finder, skip cache for setup checks
+    python_path, kokoro_dir = _find_kokoro(use_cache=False)
     if python_path and kokoro_dir:
-        # Verify it actually works
+        return True, python_path, kokoro_dir
+    # Fall back to get_python_for_kokoro for the case where repo exists but
+    # tubescribe's finder didn't find a working Python (setup may install deps)
+    python_path, kokoro_dir = get_python_for_kokoro()
+    if python_path and kokoro_dir:
         try:
             result = subprocess.run(
                 [python_path, "-c", "from kokoro import KPipeline; print('ok')"],
@@ -142,7 +142,6 @@ def find_kokoro() -> tuple[bool, str | None, str | None]:
                 return True, python_path, kokoro_dir
         except (subprocess.SubprocessError, OSError, TimeoutError):
             pass
-    
     return False, None, None
 
 
@@ -276,17 +275,24 @@ def install_pandoc() -> bool:
         print("  → Extracting...")
         if archive.endswith(".zip"):
             with zipfile.ZipFile(download_path, 'r') as z:
+                # Validate no path traversal in zip entries
+                for info in z.infolist():
+                    target = os.path.realpath(os.path.join(tools_dir, info.filename))
+                    if not target.startswith(os.path.realpath(tools_dir)):
+                        raise ValueError(f"Unsafe zip entry: {info.filename}")
                 z.extractall(tools_dir)
         else:
             with tarfile.open(download_path, 'r:gz') as t:
+                # Validate no path traversal in tar entries
+                for member in t.getmembers():
+                    target = os.path.realpath(os.path.join(tools_dir, member.name))
+                    if not target.startswith(os.path.realpath(tools_dir)):
+                        raise ValueError(f"Unsafe tar entry: {member.name}")
                 t.extractall(tools_dir)
-        
+
         # Find and move the binary
         extracted_dir = os.path.join(tools_dir, f"pandoc-{version}")
-        if system == "darwin":
-            binary_src = os.path.join(extracted_dir, "bin", "pandoc")
-        else:
-            binary_src = os.path.join(extracted_dir, "bin", "pandoc")
+        binary_src = os.path.join(extracted_dir, "bin", "pandoc")
         
         binary_dst = os.path.join(tools_dir, "pandoc")
         if os.path.exists(binary_src):
@@ -320,45 +326,9 @@ def get_ytdlp_path() -> str:
     return os.path.expanduser("~/.openclaw/tools/yt-dlp/yt-dlp")
 
 
-# Common yt-dlp installation paths to check
-YTDLP_PATHS = [
-    # Homebrew (Apple Silicon)
-    "/opt/homebrew/bin/yt-dlp",
-    # Homebrew (Intel Mac) / Linux system
-    "/usr/local/bin/yt-dlp",
-    # System-wide (Linux)
-    "/usr/bin/yt-dlp",
-    # pip install --user
-    os.path.expanduser("~/.local/bin/yt-dlp"),
-    # pipx
-    os.path.expanduser("~/.local/pipx/venvs/yt-dlp/bin/yt-dlp"),
-    # Our tools directory (last resort)
-    os.path.expanduser("~/.openclaw/tools/yt-dlp/yt-dlp"),
-]
-
-
 def find_ytdlp() -> str | None:
-    """
-    Find yt-dlp binary in common locations.
-    Returns full path if found, None otherwise.
-    
-    Search order:
-    1. System PATH (via `which`)
-    2. Homebrew locations
-    3. pip/pipx user installs
-    4. Our tools directory
-    """
-    # Check system PATH first
-    system_ytdlp = shutil.which("yt-dlp")
-    if system_ytdlp:
-        return system_ytdlp
-    
-    # Check known locations
-    for path in YTDLP_PATHS:
-        if os.path.exists(path) and os.access(path, os.X_OK):
-            return path
-    
-    return None
+    """Find yt-dlp binary. Delegates to tubescribe.find_ytdlp."""
+    return _find_ytdlp()
 
 
 def check_ytdlp() -> bool:

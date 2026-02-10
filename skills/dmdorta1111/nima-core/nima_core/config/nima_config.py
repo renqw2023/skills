@@ -22,10 +22,21 @@ from typing import Dict
 
 
 # Base paths - configurable via environment
+# NOTE: These are evaluated at import time. If NIMA_DATA_DIR env var is set
+# AFTER import (e.g. in NimaCore.__init__), call refresh_paths() to update.
 NIMA_DATA_DIR = Path(os.getenv("NIMA_DATA_DIR", "./nima_data"))
 NIMA_MODELS_DIR = Path(os.getenv("NIMA_MODELS_DIR", "./models"))
 STORAGE_DIR = NIMA_DATA_DIR / "storage"
 DATA_DIR = STORAGE_DIR / "data"
+
+
+def refresh_paths():
+    """Re-read path env vars. Call after setting NIMA_DATA_DIR/NIMA_MODELS_DIR at runtime."""
+    global NIMA_DATA_DIR, NIMA_MODELS_DIR, STORAGE_DIR, DATA_DIR
+    NIMA_DATA_DIR = Path(os.getenv("NIMA_DATA_DIR", "./nima_data"))
+    NIMA_MODELS_DIR = Path(os.getenv("NIMA_MODELS_DIR", "./models"))
+    STORAGE_DIR = NIMA_DATA_DIR / "storage"
+    DATA_DIR = STORAGE_DIR / "data"
 
 
 # Size limits to prevent unbounded growth
@@ -109,7 +120,7 @@ class NimaConfig:
             return default
         
         # Check for global enable
-        all_enabled = env_bool("NIMA_V2_ALL", False)
+        all_enabled = env_bool("NIMA_V2_ALL", True)
         
         # Sparse retrieval and projection default ON (validated)
         sparse_default = True

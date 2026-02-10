@@ -4,6 +4,10 @@
 // Usage:
 //   node reminders/apple-bridge.js list --scope week
 //   node reminders/apple-bridge.js add --title "Buy groceries" --due "2026-02-02T15:10:00+09:00"
+//   node reminders/apple-bridge.js add --title "Weekly" --due "..." --repeat weekly
+
+const { execFile } = require('child_process');
+const path = require('path');
 
 let applescript;
 try {
@@ -92,27 +96,95 @@ async function list(scope) {
 
 function parseISO(dueISO) {
   if (!dueISO) return null;
-  const m = dueISO.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):\d{2}\+09:00$/);
-  if (!m) return null;
+
+  // Use Date object to parse any valid ISO format and convert to local time
+  const d = new Date(dueISO);
+  if (isNaN(d.getTime())) return null;
+
   return {
-    year: Number(m[1]),
-    month: Number(m[2]),
-    day: Number(m[3]),
-    hour: Number(m[4]),
-    minute: Number(m[5]),
+    year: d.getFullYear(),
+    month: d.getMonth() + 1, // getMonth() is 0-indexed
+    day: d.getDate(),
+    hour: d.getHours(),
+    minute: d.getMinutes(),
   };
 }
 
-async function add(title, dueISO, note) {
+// Check if Swift is available
+function checkSwift() {
+  return new Promise((resolve) => {
+    execFile('which', ['swift'], (err) => {
+      resolve(!err);
+    });
+  });
+}
+
+// Run Swift EventKit helper for creating reminders with native recurrence
+async function runSwiftHelper(args) {
+  // Check Swift availability
+  const hasSwift = await checkSwift();
+  if (!hasSwift) {
+    throw new Error(
+      'Swift not found. Native recurrence requires Swift.\n' +
+      'Install Xcode Command Line Tools: xcode-select --install'
+    );
+  }
+
+  return new Promise((resolve, reject) => {
+    const swiftPath = path.join(__dirname, 'eventkit-bridge.swift');
+    execFile('swift', [swiftPath, ...args], { encoding: 'utf8' }, (err, stdout, stderr) => {
+      if (err) {
+        return reject(new Error(stderr || err.message || String(err)));
+      }
+      const text = stdout.trim();
+      try {
+        const json = JSON.parse(text);
+        if (json.ok === false) {
+          return reject(new Error(json.error || 'Swift helper failed'));
+        }
+        resolve(json);
+      } catch (parseErr) {
+        reject(new Error('Swift returned invalid JSON: ' + text.slice(0, 200)));
+      }
+    });
+  });
+}
+
+async function add(title, dueISO, note, repeat, repeatEnd, interval) {
   if (!title) {
     throw new Error('title is required');
   }
 
+  // Use Swift EventKit helper for recurrence (native support)
+  // or for any reminder creation (more reliable)
+  if (repeat) {
+    const args = ['add', '--title', title];
+    if (dueISO) args.push('--due', dueISO);
+    if (note) args.push('--note', note);
+    if (repeat) args.push('--repeat', repeat);
+    if (interval) args.push('--interval', String(interval));
+    if (repeatEnd) args.push('--repeat-end', repeatEnd);
+
+    const result = await runSwiftHelper(args);
+    return {
+      ok: true,
+      title,
+      due: dueISO || null,
+      note: note || null,
+      repeat: repeat || null,
+      interval: interval || null,
+      repeatEnd: repeatEnd || null,
+      ...result,
+    };
+  }
+
+  // Non-recurring: use AppleScript (existing behavior)
   const escTitle = title.replace(/"/g, '\\"');
   const escNote = note ? note.replace(/"/g, '\\"') : '';
   const dt = parseISO(dueISO);
 
   let script;
+
   if (dt) {
     if (escNote) {
       script = `
@@ -166,7 +238,12 @@ async function add(title, dueISO, note) {
   }
 
   await runAppleScript(script);
-  return { ok: true, title, due: dueISO || null, note: note || null };
+  return {
+    ok: true,
+    title,
+    due: dueISO || null,
+    note: note || null,
+  };
 }
 
 async function main() {
@@ -177,11 +254,13 @@ async function main() {
   if (!cmd || cmd === 'help' || cmd === '--help' || cmd === '-h') {
     console.log(`Usage:
   list [--scope today|week|all]
-  add --title "TITLE" [--due ISO_DATE] [--note "MEMO"]
+  add --title "TITLE" [--due ISO_DATE] [--note "MEMO"] [--repeat daily|weekly|monthly|yearly] [--interval N] [--repeat-end YYYY-MM-DD]
 
 Examples:
   node reminders/apple-bridge.js list --scope week
-  node reminders/apple-bridge.js add --title "9am meeting tomorrow" --due "2026-02-02T09:00:00+09:00" --note "Review materials before meeting"`);
+  node reminders/apple-bridge.js add --title "Meeting" --due "2026-02-02T09:00:00+09:00"
+  node reminders/apple-bridge.js add --title "Weekly standup" --due "2026-02-02T09:00:00+09:00" --repeat weekly
+  node reminders/apple-bridge.js add --title "Bi-weekly" --due "2026-02-02T14:00:00+09:00" --repeat weekly --interval 2`);
     process.exit(0);
   }
 
@@ -194,11 +273,14 @@ Examples:
       const title = args.title;
       const due = args.due || '';
       const note = args.note || '';
+      const repeat = args.repeat || '';
+      const repeatEnd = args['repeat-end'] || '';
+      const interval = args.interval || '';
       if (!title) {
         console.error('Error: --title is required for add');
         process.exit(1);
       }
-      const result = await add(title, due || null, note || null);
+      const result = await add(title, due || null, note || null, repeat || null, repeatEnd || null, interval || null);
       console.log(JSON.stringify(result));
     } else {
       console.error('Unknown command:', cmd);

@@ -1,6 +1,6 @@
 {
   "name": "habit-flow-skill",
-  "version": "1.5.2",
+  "version": "1.5.4",
   "type": "module",
   "description": "AI-powered atomic habit tracker for clawdbot",
   "scripts": {

@@ -13,41 +13,18 @@ from datetime import datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from config import VENUES
+from config import VENUES, PLAN_TYPE, BUSINESS_TYPE
 
 
 async def scan_venue(page, venue_key, venue_data, target_date):
     """Scannt eine einzelne Venue für ein Datum."""
-    url = venue_data["url"]
+    url = f"{venue_data['url']}?date={target_date}&business_type%5B%5D={BUSINESS_TYPE}&plan_type={PLAN_TYPE}"
 
     try:
         print(f"  {venue_data['name']}...", file=sys.stderr)
 
         await page.goto(url, wait_until="domcontentloaded", timeout=30000)
-        await page.wait_for_timeout(1500)
-
-        try:
-            await page.locator('text="Kurse"').first.click(timeout=5000)
-            await page.wait_for_timeout(1500)
-        except Exception:
-            print(f"    Kein Kurse-Tab gefunden", file=sys.stderr)
-
-        # Wenn nicht heute, navigiere zum Datum
-        if target_date != datetime.now().strftime("%Y-%m-%d"):
-            day_num = datetime.strptime(target_date, "%Y-%m-%d").day
-            weekday_map = {
-                "Monday": "Mo", "Tuesday": "Di", "Wednesday": "Mi",
-                "Thursday": "Do", "Friday": "Fr", "Saturday": "Sa", "Sunday": "So"
-            }
-            weekday = weekday_map.get(
-                datetime.strptime(target_date, "%Y-%m-%d").strftime("%A"), ""
-            )
-
-            try:
-                await page.locator(f'text="{weekday} {day_num}"').first.click(timeout=5000)
-                await page.wait_for_timeout(2000)
-            except Exception:
-                pass
+        await page.wait_for_timeout(2000)
 
         # Kurse aus DOM-Elementen mit data-appointment-id extrahieren
         elements = await page.locator("[data-appointment-id]").all()

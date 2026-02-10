@@ -171,6 +171,7 @@ class DreamEngine:
     def __init__(
         self,
         data_dir: str,
+        models_dir: Optional[str] = None,
         nima_core: Optional[Any] = None,
         domains: Optional[Dict[str, List[str]]] = None,
     ):
@@ -179,10 +180,12 @@ class DreamEngine:
 
         Args:
             data_dir: Root data directory (will use data_dir/dreams/ for state)
+            models_dir: Models directory for projection training (defaults to data_dir/models)
             nima_core: Optional reference to NimaCore instance (for memory access)
             domains: Custom domain keyword mapping (defaults to DEFAULT_DOMAINS)
         """
         self.data_dir = Path(data_dir)
+        self.models_dir = Path(models_dir) if models_dir else self.data_dir / "models"
         self.nima_core = nima_core
         self.domains = domains or DEFAULT_DOMAINS
 
@@ -301,15 +304,20 @@ class DreamEngine:
             if verbose:
                 logger.info("  → Generated %d insights total", len(all_new_insights))
 
+            # --- Stage 6: Auto-Train Projection (if needed) ---
+            projection_trained = self._maybe_train_projection(verbose)
+
             # --- Finalize ---
             end = datetime.now()
             session.end_time = end.isoformat()
             session.duration_seconds = (end - start).total_seconds()
+            projection_msg = " +projection" if projection_trained else ""
             session.summary = (
                 f"Processed {session.memories_processed} memories: "
                 f"{session.patterns_found} patterns, "
                 f"{session.schemas_extracted} schemas, "
-                f"{session.insights_generated} insights "
+                f"{session.insights_generated} insights"
+                f"{projection_msg} "
                 f"in {session.duration_seconds:.1f}s"
             )
 
@@ -382,6 +390,135 @@ class DreamEngine:
                     )[:5]
                 ],
             }
+
+    # -----------------------------------------------------------------
+    # Stage 6: Auto-Train Projection
+    # -----------------------------------------------------------------
+
+    def _maybe_train_projection(self, verbose: bool = True) -> bool:
+        """
+        Auto-train projection matrix if enough memories have accumulated.
+
+        Trains at 100 memories, retrains every 500.
+        Uses the bot's own embeddings for personalized projection.
+        Lightweight: ~30s on CPU, no GPU needed.
+
+        Returns:
+            True if projection was trained this cycle
+        """
+        try:
+            from ..embeddings.projection_trainer import ProjectionTrainer
+
+            trainer = ProjectionTrainer(self.models_dir)
+
+            # Get memory count
+            memory_count = 0
+            if self.nima_core and hasattr(self.nima_core, "_load_memories"):
+                memories = self.nima_core._load_memories()
+                memory_count = len(memories)
+            elif self.nima_core and hasattr(self.nima_core, "status"):
+                try:
+                    status = self.nima_core.status()
+                    memory_count = status.get("memory_count", 0)
+                except Exception as e:
+                    logger.debug("Could not get memory count from status: %s", e)
+
+            if not trainer.should_train(memory_count):
+                if verbose and not trainer.projection_path.exists():
+                    logger.info(
+                        "  Stage 6: Projection — %d/%d memories (trains at %d)",
+                        memory_count,
+                        100,
+                        100,
+                    )
+                return False
+
+            if verbose:
+                logger.info("  Stage 6: Training personalized projection...")
+
+            # Get raw (unprojected) embeddings from all memories
+            embeddings = self._get_raw_embeddings()
+            if embeddings is None or embeddings.shape[0] < 100:
+                if verbose:
+                    logger.info("  → Not enough embeddings for projection training")
+                return False
+
+            success = trainer.train(embeddings, memory_count, verbose=verbose)
+
+            if success and verbose:
+                logger.info("  → Projection will activate on next session start")
+
+            return success
+
+        except ImportError as e:
+            logger.debug("Projection training unavailable: %s", e)
+            return False
+        except Exception as e:
+            logger.exception("Projection training error: %s", e)
+            return False
+
+    def _get_raw_embeddings(self) -> "np.ndarray | None":
+        """Extract raw 384D embeddings from stored memories."""
+        try:
+            import numpy as np
+
+            if not self.nima_core:
+                return None
+
+            # Get all memory texts
+            memories = []
+            if hasattr(self.nima_core, "_load_memories"):
+                memories = self.nima_core._load_memories()
+            elif hasattr(self.nima_core, "_memories"):
+                memories = self.nima_core._memories
+            else:
+                return None
+
+            if len(memories) < 100:
+                return None
+
+            # Extract text content
+            texts = []
+            for m in memories:
+                text = m.get("what", "") or m.get("content", "")
+                if text:
+                    texts.append(text[:500])  # Cap per-text length
+
+            if len(texts) < 100:
+                return None
+
+            # Encode WITHOUT projection (raw 384D)
+            from ..embeddings.embeddings import get_embedder
+
+            embedder = get_embedder()
+            if embedder is None or not embedder._loaded:
+                return None
+
+            # Temporarily disable projection to get raw embeddings
+            original_proj = embedder.enable_projection
+            embedder.enable_projection = False
+
+            try:
+                # Encode in batches to avoid memory issues
+                batch_size = 64
+                all_embeddings = []
+                for i in range(0, len(texts), batch_size):
+                    batch = texts[i : i + batch_size]
+                    emb = embedder.encode(batch, apply_projection=False)
+                    if emb is not None:
+                        all_embeddings.append(emb)
+            finally:
+                # Always restore projection setting
+                embedder.enable_projection = original_proj
+
+            if not all_embeddings:
+                return None
+
+            return np.vstack(all_embeddings)
+
+        except Exception as e:
+            logger.exception("Failed to extract raw embeddings: %s", e)
+            return None
 
     # -----------------------------------------------------------------
     # Stage 1: Memory Replay
@@ -592,7 +729,7 @@ class DreamEngine:
 
         # Decay old patterns not seen recently (gentle decay)
         for p in self.patterns:
-            if p.name not in {np.name for np in new_patterns}:
+            if p.name not in {new_p.name for new_p in new_patterns}:
                 p.strength *= 0.95  # Slow decay
 
         # Remove dead patterns

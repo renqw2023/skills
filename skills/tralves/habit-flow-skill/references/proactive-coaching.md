@@ -29,7 +29,7 @@ The Proactive Coaching system automatically initiates coaching interactions at o
 
 5. **Cron Integration** (`scripts/sync_reminders.ts`)
    - Daily checks (8am): milestones + risks
-   - Weekly check-in (Sunday 7pm)
+   - Weekly check-in (Monday 8am)
    - Pattern insights (Wednesday 10am)
 
 ## Coaching Triggers
@@ -95,7 +95,7 @@ You got this! LOCK IN and EXECUTE! 💪
 
 ### 3. Weekly Check-ins
 
-**When:** Every Sunday at 7pm
+**When:** Every Monday at 8am
 
 **Stats Included:**
 - Days completed this week (X/7)
@@ -105,7 +105,7 @@ You got this! LOCK IN and EXECUTE! 💪
 
 **Example Message (Luna):**
 ```
-🌙 Your Weekly Reflection
+☀️ Your Weekly Reflection
 
 This week, you showed up for meditation 6 out of 7 days—a 85% expression of your commitment.
 
@@ -204,7 +204,7 @@ Charts are generated at message creation time and attached as images.
 | Job | Schedule | Description |
 |-----|----------|-------------|
 | Daily Coaching Check | `0 8 * * *` | Milestone + risk detection (8am daily) |
-| Weekly Check-in | `0 19 * * 0` | Progress summary (Sunday 7pm) |
+| Weekly Check-in | `0 8 * * 1` | Progress summary (Monday 8am) |
 | Pattern Insights | `0 10 * * 3` | Mid-week insights (Wednesday 10am) |
 
 ## Usage

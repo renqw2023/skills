@@ -3,11 +3,16 @@
   "slug": "smart-accounts-kit",
   "displayName": "MetaMask Smart Accounts KIt",
   "latest": {
-    "version": "1.0.3",
-    "publishedAt": 1770271304157,
-    "commit": "https://github.com/clawdbot/skills/commit/2bd2d818fa4bc7b54794a4e4a1469df82fbfd61d"
+    "version": "1.0.5",
+    "publishedAt": 1770657390297,
+    "commit": "https://github.com/openclaw/skills/commit/4b031bdb5be1794d9c86edd23bd22c5d3ebcd02f"
   },
   "history": [
+    {
+      "version": "1.0.3",
+      "publishedAt": 1770271304157,
+      "commit": "https://github.com/clawdbot/skills/commit/2bd2d818fa4bc7b54794a4e4a1469df82fbfd61d"
+    },
     {
       "version": "1.0.2",
       "publishedAt": 1770220600500,

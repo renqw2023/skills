@@ -3,11 +3,16 @@
   "slug": "instagram-teneo",
   "displayName": "Instagram - powered by Teneo Protocol",
   "latest": {
-    "version": "1.0.7",
-    "publishedAt": 1770302195783,
-    "commit": "https://github.com/clawdbot/skills/commit/982dd1dc846f66a3e1eb11e62dafa8bcb2679865"
+    "version": "1.0.11",
+    "publishedAt": 1770643211206,
+    "commit": "https://github.com/openclaw/skills/commit/1b9016f86a58048b1292bb3454c96b074054f5dd"
   },
   "history": [
+    {
+      "version": "1.0.7",
+      "publishedAt": 1770302195783,
+      "commit": "https://github.com/clawdbot/skills/commit/982dd1dc846f66a3e1eb11e62dafa8bcb2679865"
+    },
     {
       "version": "1.0.6",
       "publishedAt": 1770216631525,

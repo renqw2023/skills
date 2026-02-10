@@ -1,0 +1,11 @@
+{
+  "owner": "aaron-he-zhu",
+  "slug": "geo-content-optimizer",
+  "displayName": "Geo Content Optimizer",
+  "latest": {
+    "version": "0.1.0",
+    "publishedAt": 1770559361914,
+    "commit": "https://github.com/openclaw/skills/commit/c7c8c89d918f6860e61a597b87d1fe377ed3204a"
+  },
+  "history": []
+}

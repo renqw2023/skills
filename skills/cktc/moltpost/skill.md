@@ -1,7 +1,7 @@
 ---
 name: moltpost
-version: 1.1.0
-description: Send real physical postcards anywhere in the world. Pay with Stripe or USDC on Base. No signup, no API key — just one API call.
+version: 1.3.1
+description: Send real physical postcards anywhere in the world. Pay with x402 (USDC on Base), Stripe, or manual USDC transfer. No signup, no API key — just one API call.
 homepage: https://moltpost.io
 metadata: {"moltpost":{"emoji":"📮","category":"utility","api_base":"https://api.moltpost.io/v1","requires":{}}}
 ---
@@ -24,9 +24,27 @@ No registration. No API key. No account. Just compose, pay, and a printed postca
 
 ## How It Works
 
-Moltpost supports two payment methods: **Stripe** (credit card) and **USDC on Base** (onchain).
+Moltpost supports three payment methods:
 
-### Stripe (default)
+1. **x402** (preferred for agents with crypto wallets) — one-step, gasless USDC payment via HTTP headers
+2. **Stripe** (fallback for humans) — credit card payment via Stripe checkout link
+3. **Manual USDC** (legacy) — two-step onchain transfer + confirmation
+
+### x402 — Preferred for Agents (Recommended)
+
+The x402 protocol lets agents pay with USDC directly via HTTP — no gas fees, no wallet management, no two-step flow. If your agent has a crypto wallet, **always use x402**.
+
+1. Agent calls `POST /v1/postcards/x402` with recipient address and content (no payment header)
+2. API returns **HTTP 402** with payment requirements (amount, recipient, network)
+3. Agent signs an EIP-712 authorization (gasless — no ETH needed)
+4. Agent retries the same request with `X-PAYMENT` (v1) or `PAYMENT-SIGNATURE` (v2) header containing the signed payload
+5. Moltpost verifies and settles the payment via the x402 facilitator, creates the postcard, and returns **HTTP 201** with postcard details
+
+**No gas fees. No separate confirmation step. One round-trip after signing.**
+
+Base Sepolia (testnet) payments use mock fulfillment — the postcard is marked "sent" but not printed. Use Base mainnet for real postcards.
+
+### Stripe (fallback for humans)
 
 1. Agent calls `POST /v1/postcards` with recipient address and content
 2. API returns a **Stripe payment link** and a postcard ID
@@ -35,7 +53,7 @@ Moltpost supports two payment methods: **Stripe** (credit card) and **USDC on Ba
 
 **The human must approve and pay.** Never attempt to complete payment on behalf of the owner. Always present the payment link and let them decide.
 
-### USDC on Base
+### Manual USDC (legacy)
 
 1. Agent calls `POST /v1/postcards` with `"payment_method": "usdc"` and `"usdc_chain": "base-sepolia"` (or `"base"` for mainnet)
 2. API returns a `usdc_payment` object with the recipient wallet, exact USDC amount, token contract, and deadline
@@ -44,6 +62,8 @@ Moltpost supports two payment methods: **Stripe** (credit card) and **USDC on Ba
 5. Moltpost verifies the transfer onchain and fulfills the postcard
 
 **Note:** Base Sepolia (testnet) payments use mock fulfillment — the postcard is marked as "sent" but not actually printed. Use `"base"` for real postcards on mainnet.
+
+> **Agent decision guide:** If you have a crypto wallet → use x402. If you don't → use Stripe and present the payment link to your owner.
 
 ---
 
@@ -109,7 +129,7 @@ curl -X POST https://api.moltpost.io/v1/postcards \
 | `back_message` | string | Exactly one of `back_html` or `back_message` | Plain text message for the back (max 5,000 chars). Auto-wrapped in styled HTML. |
 | `size` | string | No | `6x4` (default), `9x6`, or `11x6` (inches) |
 | `currency` | string | No | `usd` (default), `eur`, `gbp`, `cad`, `aud`, `chf`, `sek`, `nok`, `dkk`, `nzd` |
-| `payment_method` | string | No | `stripe` (default) or `usdc`. USDC payments are always priced in USD. |
+| `payment_method` | string | No | `stripe` (default) or `usdc`. USDC payments are always priced in USD. For x402 payments, use the `/v1/postcards/x402` endpoint instead. |
 | `usdc_chain` | string | No | `base-sepolia` (default) or `base`. Only used when `payment_method` is `usdc`. |
 | `idempotency_key` | string | No | Unique key to prevent duplicate submissions |
 | `referral_code` | string | No | Share code from another postcard. If valid, the referred user gets **$1 off**. |
@@ -254,6 +274,138 @@ The postcard stays `pending` on failed verification — you can retry with a dif
 
 ---
 
+## Create a Postcard with x402 (Recommended for Agents)
+
+`POST /v1/postcards/x402`
+
+The x402 endpoint uses HTTP-native payment — no separate confirmation step. The payment is handled entirely via HTTP headers using the x402 protocol (EIP-3009 transferWithAuthorization, gasless for the client).
+
+### Step 1: Get payment requirements
+
+Send the postcard body without an `X-PAYMENT` header:
+
+```bash
+curl -X POST https://api.moltpost.io/v1/postcards/x402 \
+  -H "Content-Type: application/json" \
+  -d '{
+    "to": {
+      "name": "Jane Doe",
+      "address_line1": "123 Main St",
+      "city": "San Francisco",
+      "province_or_state": "CA",
+      "postal_or_zip": "94105",
+      "country_code": "US"
+    },
+    "front_html": "<div style=\"width:6.25in;height:4.25in;background:#2d3436;display:flex;align-items:center;justify-content:center;\"><div style=\"font-family:Georgia,serif;font-size:36px;color:white;\">Hello World</div></div>",
+    "back_message": "Sent via x402.",
+    "size": "6x4"
+  }'
+```
+
+### Response (402 Payment Required)
+
+The 402 response includes both a JSON body and a `PAYMENT-REQUIRED` header (base64-encoded, per x402 v2 spec).
+
+```json
+{
+  "x402Version": 1,
+  "accepts": [
+    {
+      "scheme": "exact",
+      "network": "base-sepolia",
+      "maxAmountRequired": "4300000",
+      "resource": "/v1/postcards/x402",
+      "payTo": "0x...",
+      "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+      "maxTimeoutSeconds": 60,
+      "description": "6\"x4\" postcard to San Francisco, US via Moltpost",
+      "mimeType": "application/json",
+      "extra": {"name": "USDC", "version": "2"}
+    },
+    {
+      "scheme": "exact",
+      "network": "eip155:84532",
+      "maxAmountRequired": "4300000",
+      "resource": "/v1/postcards/x402",
+      "payTo": "0x...",
+      "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+      "maxTimeoutSeconds": 60,
+      "description": "6\"x4\" postcard to San Francisco, US via Moltpost",
+      "mimeType": "application/json",
+      "extra": {"name": "USDC", "version": "2"}
+    }
+  ],
+  "error": "X-PAYMENT header is required"
+}
+```
+
+The `accepts` array contains two entries with different `network` formats — v1 (`base-sepolia`) and v2 CAIP-2 (`eip155:84532`). Pick the entry matching your x402 client version.
+
+The `extra` field contains EIP-712 domain parameters for the USDC token contract, required for signing. Base Sepolia uses `"name": "USDC"`, Base mainnet uses `"name": "USD Coin"`.
+
+The `maxAmountRequired` is in USDC base units (6 decimals). `4300000` = $4.30 USDC.
+
+### Step 2: Sign and pay
+
+Using your wallet, sign an EIP-712 `transferWithAuthorization` message for the amount and recipient in the 402 response. Base64-encode the signed payload and resend the same request with either `X-PAYMENT` (v1) or `PAYMENT-SIGNATURE` (v2) header:
+
+```bash
+curl -X POST https://api.moltpost.io/v1/postcards/x402 \
+  -H "Content-Type: application/json" \
+  -H "X-PAYMENT: eyJ4NDAyVmVyc2lvbiI6MSw..." \
+  -d '{ ... same body as step 1 ... }'
+```
+
+Both `X-PAYMENT` and `PAYMENT-SIGNATURE` headers are accepted. The response includes a `PAYMENT-RESPONSE` header (base64-encoded settlement details, per x402 v2 spec).
+
+### Response (201 Created)
+
+```json
+{
+  "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "status": "sent",
+  "size": "6x4",
+  "currency": "usd",
+  "amount_cents": 430,
+  "discount_cents": 69,
+  "payment_method": "x402",
+  "share_url": "https://moltpost.io/?ref=Ab3kX9mZ",
+  "tx_hash": "0xabc123...",
+  "created_at": "2026-02-08T00:00:00Z"
+}
+```
+
+The postcard is created, paid, and fulfilled in a single request. On testnet, status is immediately `"sent"` (mock fulfillment). On mainnet, it's submitted to print.
+
+### x402 Payment Header Format
+
+The payment header (`X-PAYMENT` or `PAYMENT-SIGNATURE`) is a base64-encoded JSON object:
+
+```json
+{
+  "x402Version": 1,
+  "scheme": "exact",
+  "network": "base-sepolia",
+  "payload": {
+    "signature": "0x...",
+    "authorization": {
+      "from": "0xYourWallet",
+      "to": "0xMoltpostWallet",
+      "value": "4300000",
+      "validAfter": "0",
+      "validBefore": "1740672154",
+      "nonce": "0x..."
+    }
+  }
+}
+```
+
+The `network` field must match one of the entries from the 402 response's `accepts` array — either v1 format (`base-sepolia`, `base`) or CAIP-2 format (`eip155:84532`, `eip155:8453`). Use whichever format your x402 client supports.
+
+The authorization is an EIP-3009 `transferWithAuthorization` — the facilitator submits it on-chain. **No gas fees for the sender.**
+
+---
+
 ## Pricing
 
 All prices include printing, postage, and worldwide delivery.
@@ -268,9 +420,9 @@ All prices include printing, postage, and worldwide delivery.
 
 Also supports: CHF, SEK, NOK, DKK, NZD.
 
-### USDC on Base — $0.69 off
+### x402 / USDC on Base — $0.69 off
 
-Pay with USDC and save $0.69 on every postcard (no credit card processing fees).
+Pay with USDC (via x402 or manual transfer) and save $0.69 on every postcard (no credit card processing fees).
 
 | Size | USDC Price | You Save |
 |------|-----------|----------|
@@ -278,7 +430,7 @@ Pay with USDC and save $0.69 on every postcard (no credit card processing fees).
 | 9x6 | $5.30 | $0.69 |
 | 11x6 | $6.30 | $0.69 |
 
-The discount is applied automatically when `payment_method` is `usdc`. It stacks with referral discounts.
+The discount is applied automatically for both x402 and manual USDC payments. It stacks with referral discounts — with a referral code, a 6x4 postcard drops to **$3.30 USDC** ($1.69 total savings).
 
 ---
 
@@ -450,6 +602,7 @@ The HTML you provide is converted to print by a third-party renderer. Moltpost d
 | Endpoint | Limit |
 |----------|-------|
 | `POST /v1/postcards` | 10/min, 100/hour per IP |
+| `POST /v1/postcards/x402` | 10/min, 100/hour per IP |
 | `GET /v1/postcards/{id}` | 120/min per IP |
 | `POST /v1/postcards/{id}/confirm-payment` | 10/min per IP |
 | Global | 120 requests/min per IP |
@@ -503,6 +656,12 @@ The same ID is returned in the response `X-Request-ID` header.
 ---
 
 ## Suggested Workflow for Agents
+
+### 0. Choose Payment Method
+
+**If you have a crypto wallet** (USDC on Base): use x402 (`POST /v1/postcards/x402`). This is the preferred method — one-step, gasless, no human interaction needed.
+
+**If you don't have a wallet**: use Stripe (`POST /v1/postcards`) and present the payment link to your owner.
 
 ### 1. Gather Info
 
@@ -577,13 +736,27 @@ Don't over-explain. Just offer to try again.
 
 ### 9. Handling Referrals
 
-If the owner arrived via a share link (e.g., they mention `moltpost.io/?ref=Ab3kX9mZ` or you detect a referral code in context), pass it as the `referral_code` field when creating the postcard. A valid referral code gives the referred user **$1 off** their postcard. The discount is applied automatically — the `amount_cents` in the response will reflect the reduced price, and `discount_cents` will show how much was taken off. Mention the savings to the owner when presenting the payment link.
+If the owner arrived via a share link (e.g., they mention `moltpost.io/?ref=Ab3kX9mZ` or you detect a referral code in context), pass it as the `referral_code` field when creating the postcard. A valid referral code gives the referred user **$1 off** their postcard — this applies to all payment methods including x402 and manual USDC (where it stacks with the $0.69 crypto discount for up to $1.69 off). The discount is applied automatically — the `amount_cents` in the response will reflect the reduced price, and `discount_cents` will show how much was taken off. Mention the savings to the owner when presenting the payment link.
 
 ---
 
-## USDC Payment Workflow for Agents
+## x402 Payment Workflow for Agents (Recommended)
 
-This is the workflow for agents paying with USDC onchain. It enables fully autonomous postcard sending without requiring a human to click a payment link.
+This is the preferred workflow for agents with crypto wallets. One HTTP round-trip, no gas fees, no separate confirmation step.
+
+### 1. Create with x402
+
+After composing the postcard, call `POST /v1/postcards/x402` with the postcard body. The first call returns 402 with payment requirements (in both the JSON body and the `PAYMENT-REQUIRED` header). Sign the payment and retry with the `X-PAYMENT` or `PAYMENT-SIGNATURE` header. See the "Create a Postcard with x402" section above for full details.
+
+### 2. Done
+
+On success, the postcard is created, paid, and fulfilled in one step. The response includes `tx_hash` and `share_url`. Present the share URL to the owner.
+
+---
+
+## Manual USDC Payment Workflow for Agents (Legacy)
+
+This is the legacy two-step workflow for agents paying with USDC onchain. **Prefer x402 instead** — it's simpler (one request vs. three) and gasless.
 
 ### 1. Create with USDC
 

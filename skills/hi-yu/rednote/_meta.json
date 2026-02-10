@@ -1,0 +1,11 @@
+{
+  "owner": "hi-yu",
+  "slug": "rednote",
+  "displayName": "小红书 - RedNote",
+  "latest": {
+    "version": "1.2.0",
+    "publishedAt": 1770655680453,
+    "commit": "https://github.com/openclaw/skills/commit/21b529c7ef83cdd4edbbe06e37aec46db95026b9"
+  },
+  "history": []
+}

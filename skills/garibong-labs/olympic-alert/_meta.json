@@ -1,0 +1,11 @@
+{
+  "owner": "garibong-labs",
+  "slug": "olympic-alert",
+  "displayName": "Olympic Alert (올림픽 경기 알림)",
+  "latest": {
+    "version": "0.1.2",
+    "publishedAt": 1770556967808,
+    "commit": "https://github.com/openclaw/skills/commit/256c4f1b1b691ce09cd484b9cfbe5ad42f9a700f"
+  },
+  "history": []
+}

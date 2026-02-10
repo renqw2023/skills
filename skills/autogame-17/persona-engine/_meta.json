@@ -1,0 +1,11 @@
+{
+  "owner": "autogame-17",
+  "slug": "persona-engine",
+  "displayName": "Persona Engine",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770648966610,
+    "commit": "https://github.com/openclaw/skills/commit/850e62aa236f3aa06883b0063b9d4a47026b45fd"
+  },
+  "history": []
+}

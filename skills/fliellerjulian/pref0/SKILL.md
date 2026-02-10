@@ -47,10 +47,13 @@ curl -X POST https://api.pref0.com/v1/track \
 **Response:**
 ```json
 {
-  "preferencesExtracted": 2,
-  "patternsExtracted": 1
+  "messagesAnalyzed": 4,
+  "preferences": { "created": 2, "reinforced": 0, "decreased": 0, "removed": 0 },
+  "patterns": { "created": 1, "reinforced": 0 }
 }
 ```
+
+The response tells you how many messages were processed (`messagesAnalyzed`) and exactly what changed: `created` (new preference learned), `reinforced` (existing preference seen again, confidence increased), `decreased` (user retracted, confidence lowered), `removed` (fully retracted and deleted).
 
 ### Get learned preferences (GET /v1/profiles/:userId)
 
@@ -93,30 +96,12 @@ curl https://api.pref0.com/v1/profiles/<user-id>?minConfidence=0.5 \
   ],
   "patterns": [
     { "pattern": "prefers explicit tooling choices over defaults", "confidence": 0.60 }
-  ]
-}
-```
-
-Each preference includes `evidence` (the quote that triggered extraction), `firstSeen` (when first learned), and `lastSeen` (when last reinforced).
-
-### Get system prompt string (GET /v1/profiles/:userId/prompt)
-
-Get a ready-to-use string for system prompt injection. No JSON parsing needed — just fetch and append. Defaults to `?minConfidence=0.5`.
-
-```bash
-curl https://api.pref0.com/v1/profiles/<user-id>/prompt \
-  -H "Authorization: Bearer $PREF0_API_KEY"
-```
-
-**Response:**
-```json
-{
-  "userId": "user_abc123",
+  ],
   "prompt": "The following preferences have been learned from this user's previous conversations. Follow them unless explicitly told otherwise:\n- language: typescript\n- package_manager: pnpm\n- css_framework: tailwind\n\nBehavioral patterns observed:\n- prefers explicit tooling choices over defaults"
 }
 ```
 
-Returns `{"prompt": ""}` if no preferences meet the confidence threshold.
+Each preference includes `evidence` (the quote that triggered extraction), `firstSeen` (when first learned), and `lastSeen` (when last reinforced). The `prompt` field is a ready-to-use string you can append directly to your system prompt.
 
 ### Delete a user profile (DELETE /v1/profiles/:userId)
 
@@ -134,8 +119,8 @@ Returns `204 No Content`.
 1. **Identify the user.** Use a stable user ID (email, account ID, phone number — whatever you have).
 
 2. **At the start of a session**, fetch preferences:
-   - **Simplest:** Call `GET /v1/profiles/{userId}/prompt` and append the returned `prompt` string to your system prompt. Done.
-   - **More control:** Call `GET /v1/profiles/{userId}?minConfidence=0.5` to get the full JSON with confidence scores, evidence, and timestamps per preference.
+   - Call `GET /v1/profiles/{userId}?minConfidence=0.5`
+   - Use the `prompt` field to inject into your system prompt directly, or use the structured `preferences` array for more control.
 
 3. **At the end of a session**, track the conversation:
    - Call `POST /v1/track` with the full message history

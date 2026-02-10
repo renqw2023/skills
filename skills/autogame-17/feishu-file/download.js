@@ -68,17 +68,30 @@ async function downloadFile(url, outputPath, attempt = 1) {
 }
 
 async function run() {
-    if (!options.messageId || !options.fileKey || !options.output) {
-        console.error('Usage: node download.js --message-id <id> --file-key <key> --output <path>');
+    // Validation: message-id is optional for 'file', required for 'image'
+    if (!options.fileKey || !options.output) {
+        console.error('Usage: node download.js [--message-id <id>] --file-key <key> --output <path> --type <file|image>');
         process.exit(1);
+    }
+    
+    if (options.type !== 'file' && !options.messageId) {
+         console.error('Error: --message-id is required for resource/image downloads.');
+         process.exit(1);
     }
 
     try {
         console.log(`[Feishu-File] Initializing download for ${options.fileKey} (Type: ${options.type})...`);
         
         // Construct URL
-        const typeParam = options.type ? `?type=${options.type}` : '';
-        const url = `https://open.feishu.cn/open-apis/im/v1/messages/${options.messageId}/resources/${options.fileKey}${typeParam}`;
+        let url;
+        if (options.messageId) {
+            // Get Resource from Message (Context-aware, works for received files)
+            const typeParam = options.type ? `?type=${options.type}` : '';
+            url = `https://open.feishu.cn/open-apis/im/v1/messages/${options.messageId}/resources/${options.fileKey}${typeParam}`;
+        } else {
+            // Direct File Access (Usually for bot-uploaded files)
+            url = `https://open.feishu.cn/open-apis/im/v1/files/${options.fileKey}`;
+        }
         
         await downloadFile(url, options.output);
         

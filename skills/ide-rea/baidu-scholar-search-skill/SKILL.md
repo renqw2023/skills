@@ -9,12 +9,6 @@ metadata: { "openclaw": { "emoji": "🔬", "requires": { "bins": ["curl"] ,"env"
 
 Based on the keywords entered by the user, search for both Chinese and English literature, covering various types of literature such as academic journals, conference papers, and dissertations
 
-## Setup
-
-1.  **API Key:** Ensure the BAIDU_API_KEY environment variable is set with your valid API key.
-2.  **Environment:** The API key should be available in the runtime environment.
-3.  **BAIDU_API_KEY:** BAIDU_API_KEY available, need to go to the baidu cloud platform(https://login.bce.baidu.com) registered account, if you already have account will go to get the API KEY (https://console.bce.baidu.com/qianfan/ais/console/apiKey)
-
 ## API table
 |     name    |               path              |            description                |
 |-------------|---------------------------------|---------------------------------------|
@@ -37,7 +31,8 @@ Based on the keywords entered by the user, search for both Chinese and English l
 ### Example Usage
 ```bash
 curl -XGET 'https://qianfan.baidubce.com/v2/tools/baidu_scholar/search?wd=人工智能&enable_abstract=true' \
--H 'Authorization: Bearer $BAIDU_API_KEY'
+-H 'Authorization: Bearer $BAIDU_API_KEY' \
+-H 'X-Appbuilder-From: openclaw'
 ```
 
 ## EXEC scripts
@@ -67,5 +62,5 @@ enable_abstract="$3"
 if [ -z "$enable_abstract" ]; then
     enable_abstract=false
 fi
-curl -XGET "https://qianfan.baidubce.com/v2/tools/baidu_scholar/search?wd=$WD&pageNum=$pageNum&enable_abstract=$enable_abstract" -H "Authorization: Bearer $BAIDU_API_KEY" 
+curl -XGET "https://qianfan.baidubce.com/v2/tools/baidu_scholar/search?wd=$WD&pageNum=$pageNum&enable_abstract=$enable_abstract" -H "Authorization: Bearer $BAIDU_API_KEY" -H "X-Appbuilder-From: openclaw" 
 ```

@@ -4,9 +4,38 @@ description: This skill should be used when managing financial data, syncing ban
 tags: [finance, banking, plaid, gocardless, gmail, beancount, ledger, transactions]
 ---
 
-# BillClaw - Financial Data Sovereignty for OpenClaw
+# BillClaw - Financial Data Management for OpenClaw
 
-Complete financial data management skill for OpenClaw with local-first architecture. Sync bank transactions, fetch bills from email, and export to accounting formats.
+Complete financial data management for OpenClaw with local-first architecture. Sync bank transactions, fetch bills from email, and export to accounting formats.
+
+## Security & Privacy
+
+BillClaw is designed with **security-first architecture** to protect your sensitive financial data:
+
+- **Local-First Storage**: Your data never leaves your machine. All transactions are stored locally in `~/.billclaw/`
+- **System Keychain**: Sensitive tokens (Plaid access tokens, Gmail refresh tokens) are stored in your platform's secure keychain (macOS Keychain, Windows Credential Manager, Linux Secret Service)
+- **No Cloud Dependency**: No external servers or databases. Your financial data stays under your control
+- **Audit Logging**: All credential operations are logged locally for complete transparency
+- **Open Source**: Fully auditable codebase at https://github.com/fire-la/billclaw
+- **Minimal Permissions**: Only accesses `~/.billclaw/` directory for data storage
+
+**Credential Storage Summary:**
+
+| Credential Type | Storage Location |
+|----------------|------------------|
+| Plaid API keys | `~/.billclaw/config.json` (user-provided) |
+| Plaid access tokens | System Keychain (encrypted) |
+| Gmail refresh tokens | System Keychain (encrypted) |
+| Transaction data | `~/.billclaw/transactions/` (local JSON) |
+
+## What is BillClaw?
+
+BillClaw gives you **complete control over your financial data**:
+- Your bank credentials stay on your machine (not stored on third-party servers)
+- Transactions sync directly to your local storage
+- Support for US/Canada banks (Plaid) and European banks (GoCardless)
+- Gmail bill fetching for automatic expense tracking
+- Export to Beancount or Ledger for accounting
 
 ## When to Use This Skill
 
@@ -14,56 +43,89 @@ Use this skill when:
 - Syncing bank transactions from Plaid (US/Canada) or GoCardless (Europe)
 - Fetching and parsing bills from Gmail
 - Exporting financial data to Beancount or Ledger formats
-- Managing local transaction storage with caching and indexing
-- Running financial data operations with full data sovereignty
-
-## Package Information
-
-- **Packages**: `@firela/billclaw-core`, `@firela/billclaw-cli`, `@firela/billclaw-openclaw`
-- **Repository**: https://github.com/fire-la/billclaw
-- **Version**: 0.0.1
-- **License**: MIT
+- Managing local transaction storage
+- Setting up bank account connections
 
 ## Installation
 
-### Via npm
+### For OpenClaw Users (Recommended)
+
+This skill is designed for OpenClaw. Install directly from ClawHub:
 
 ```bash
-# Core package (framework-agnostic)
-npm install @firela/billclaw-core
-
-# CLI application
-npm install @firela/billclaw-cli
-
-# OpenClaw plugin
-npm install @firela/billclaw-openclaw
+clawhub install billclaw
 ```
 
-### Via pnpm
+Once installed, you can use BillClaw tools and commands directly within OpenClaw without any additional installation.
+
+**No external packages required** - the skill includes all necessary functionality.
+
+### For Standalone CLI Users
+
+If you prefer to use BillClaw as a command-line tool outside of OpenClaw:
 
 ```bash
-pnpm add @firela/billclaw-core
-pnpm add @firela/billclaw-cli
-pnpm add @firela/billclaw-openclaw
+npm install -g @firela/billclaw-cli
+billclaw setup
 ```
 
-## CLI Usage
+The CLI package provides the same functionality as the OpenClaw skill, but through a terminal interface.
 
-### Setup Wizard
+## Quick Start (OpenClaw)
+
+### 1. Setup Your Accounts
+
+Use the setup command within OpenClaw:
+
+```
+/billclaw-setup
+```
+
+Interactive wizard will guide you through:
+- Connecting bank accounts (Plaid/GoCardless)
+- Configuring Gmail for bill fetching
+- Setting local storage location
+
+### 2. Sync Your Data
+
+```
+You: Sync my bank transactions for last month
+
+OpenClaw: [Uses plaid_sync tool]
+✓ Synced 127 transactions from checking account
+```
+
+Or use the command directly:
+```
+/billclaw-sync --from 2024-01-01 --to 2024-12-31
+```
+
+### 3. Export to Accounting Formats
+
+```
+/billclaw-export --format beancount --output 2024.beancount
+```
+
+## Quick Start (CLI)
+
+If using the standalone CLI:
+
+### 1. Install BillClaw CLI
+
+```bash
+npm install -g @firela/billclaw-cli
+```
+
+### 2. Setup Your Accounts
 
 ```bash
 billclaw setup
 ```
 
-Interactive wizard for:
-- Linking Plaid accounts
-- Configuring Gmail bill fetching
-- Setting up local storage path
-
-### Sync Transactions
+### 3. Sync Your Data
 
 ```bash
-# Sync all accounts
+# Sync all configured accounts
 billclaw sync
 
 # Sync specific account
@@ -73,44 +135,53 @@ billclaw sync --account <account-id>
 billclaw sync --from 2024-01-01 --to 2024-12-31
 ```
 
-### Status & Configuration
-
-```bash
-# View account status
-billclaw status
-
-# List all accounts
-billclaw config accounts
-
-# View storage statistics
-billclaw status --storage
-```
-
-### Export Data
+### 4. Export to Accounting Formats
 
 ```bash
 # Export to Beancount
-billclaw export --format beancount --output transactions.beancount
+billclaw export --format beancount --output 2024.beancount
 
 # Export to Ledger
-billclaw export --format ledger --output transactions.ledger
-
-# Export with date filter
-billclaw export --from 2024-01-01 --format beancount
+billclaw export --format ledger --output 2024.ledger
 ```
 
-## OpenClaw Plugin Usage
+## CLI Commands Reference
 
-When installed in OpenClaw, this skill provides:
+### Setup & Configuration
 
-### Tools
+```bash
+billclaw setup                          # Interactive setup wizard
+billclaw status                          # View account status
+billclaw config --list                     # List all configuration
+```
+
+### Sync Commands
+
+```bash
+billclaw sync                            # Sync all accounts
+billclaw sync --account <id>               # Sync specific account
+billclaw sync --from YYYY-MM-DD            # Sync from date
+billclaw sync --to YYYY-MM-DD              # Sync to date
+```
+
+### Export Commands
+
+```bash
+billclaw export --format beancount        # Export to Beancount
+billclaw export --format ledger           # Export to Ledger
+billclaw export --from YYYY-MM-DD          # Export date range
+```
+
+## OpenClaw Integration
+
+When installed in OpenClaw, you get these tools:
+
+### Agent Tools
 
 - `plaid_sync` - Sync bank transactions from Plaid
 - `gmail_fetch` - Fetch bills from Gmail
-- `bill_parse` - Parse bill documents
 - `conversational_sync` - Natural language sync interface
 - `conversational_status` - Check sync status
-- `conversational_help` - Get help with commands
 
 ### Commands
 
@@ -119,14 +190,68 @@ When installed in OpenClaw, this skill provides:
 - `/billclaw-status` - View status
 - `/billclaw-config` - Manage configuration
 
-### OAuth Providers
+### Example Usage in OpenClaw
 
-- Plaid Link integration for bank account linking
-- Gmail OAuth for bill fetching
+```
+You: Sync my bank transactions for last month
 
-## Features
+OpenClaw: [Uses plaid_sync tool]
+✓ Synced 127 transactions from checking account
+```
 
-### Data Sources
+## Connect OAuth Service
+
+For secure bank authentication, BillClaw uses the Connect OAuth service.
+
+### Quick Start (Local Development)
+
+```bash
+# 1. Start Connect service
+cd packages/connect
+pnpm build
+node dist/server.js
+# Visit http://localhost:4456
+
+# 2. Configure ~/.billclaw/config.json
+{
+  "version": 1,
+  "connect": { "port": 4456, "host": "localhost" },
+  "plaid": {
+    "clientId": "your_client_id",
+    "secret": "your_secret",
+    "environment": "sandbox"
+  }
+}
+```
+
+### Production Deployment
+
+For real bank authentication, you need an external URL:
+
+```bash
+# Using ngrok for testing
+ngrok http 4456
+# Add to config: "publicUrl": "https://abc123.ngrok.io"
+
+# Or deploy to VPS with HTTPS
+{
+  "connect": {
+    "publicUrl": "https://yourdomain.com",
+    "tls": {
+      "enabled": true,
+      "keyPath": "/path/to/key.pem",
+      "certPath": "/path/to/cert.pem"
+    }
+  }
+}
+```
+
+**Important**: Add your public URL as a redirect URI in Plaid Dashboard:
+```
+https://yourdomain.com/oauth/plaid/callback
+```
+
+## Data Sources
 
 | Source | Description | Regions |
 |--------|-------------|---------|
@@ -134,141 +259,114 @@ When installed in OpenClaw, this skill provides:
 | **GoCardless** | European bank integration | Europe |
 | **Gmail** | Bill fetching via email | Global |
 
-### Storage Architecture
+## Storage
 
-- **Location**: `~/.billclaw/` (configurable)
-- **Format**: Monthly partitioned JSON files
-- **Caching**: TTL-based in-memory cache
-- **Deduplication**: 24-hour window based on transaction ID
-- **Streaming**: Efficient handling of large datasets
+- **Location**: `~/.billclaw/` (your home directory)
+- **Format**: JSON files with monthly partitioning
+- **Security**: Local-only storage with optional encryption
 
-### Export Formats
+## Export Formats
 
-- **Beancount**: Double-entry accounting format
-- **Ledger**: CLI accounting tool format
-- **CSV**: Spreadsheet-compatible format
+### Beancount
 
-### Security
+```
+2024/01/15 * "Starbucks"
+  Expenses:Coffee
+  Liabilities:CreditCard:Visa
+    $5.50
+```
 
-- Platform keychain storage for credentials (keytar)
-- Audit logging for all credential access
-- Optional AES-256-GCM encryption
-- Local-first architecture - your data never leaves your control
+### Ledger
+
+```
+2024/01/15 Starbucks
+  Expenses:Coffee  $5.50
+  Liabilities:Credit Card:Visa
+```
 
 ## Configuration
 
-Configuration is stored in `~/.billclaw/config.yaml`:
+Configuration is stored in `~/.billclaw/config.json`:
 
-```yaml
-accounts:
-  - id: plaid-checking
-    type: plaid
-    name: "My Checking Account"
-    enabled: true
-    syncFrequency: daily
-
-  - id: gmail-bills
-    type: gmail
-    name: "Bill Email Fetcher"
-    enabled: true
-    syncFrequency: daily
-
-storage:
-  path: "~/.billclaw"
-  format: json
-
-sync:
-  defaultFrequency: daily
-  retryOnFailure: true
-  maxRetries: 3
+```json
+{
+  "plaid": {
+    "clientId": "your_client_id",
+    "secret": "your_secret",
+    "environment": "sandbox"
+  },
+  "gmail": {
+    "clientId": "your_gmail_client_id",
+    "clientSecret": "your_gmail_client_secret"
+  },
+  "storage": {
+    "path": "~/.billclaw",
+    "format": "json"
+  }
+}
 ```
 
-## Runtime Abstractions
+### Environment Variables (Optional)
 
-The core package is framework-agnostic and uses runtime abstractions:
-
-- **Logger**: Abstract logging interface
-- **ConfigProvider**: Configuration management
-- **EventEmitter**: Event system for sync operations
-
-This allows BillClaw to work across different environments (CLI, OpenClaw plugin, future platforms).
-
-## Event System
-
-BillClaw emits events for important operations:
-
-- `transaction.added` - New transactions added
-- `transaction.updated` - Existing transactions updated
-- `sync.started` - Sync operation started
-- `sync.completed` - Sync operation completed
-- `sync.failed` - Sync operation failed
-- `account.connected` - Account successfully connected
-- `account.disconnected` - Account disconnected
-- `account.error` - Account error occurred
-
-## Scripts
-
-### Validate Skill
-
-Run validation before publishing:
+You can override config with environment variables:
 
 ```bash
-./skills/billclaw/scripts/validate-skill.sh skills/billclaw
+PORT=4456
+HOST=localhost
+PUBLIC_URL=https://yourdomain.com
+PLAID_CLIENT_ID=your_client_id
+PLAID_SECRET=your_secret
+GMAIL_CLIENT_ID=your_gmail_client_id
+GMAIL_CLIENT_SECRET=your_gmail_client_secret
 ```
 
-This checks:
-- SKILL.md format and required fields
-- File size limits
-- Directory structure
-- Description quality
+**Priority**: Environment variables > Config file > Defaults
 
-## Troubleshooting
+## Common Issues
 
 ### Issue: Plaid Link fails
 
-**Solution**: Ensure Plaid credentials are configured:
+**Solution**: Ensure Plaid credentials are configured
 ```bash
-billclaw config plaid --client-id <id> --secret <secret>
+billclaw config --list
+# Check that plaid.clientId and plaid.secret are set
 ```
+
+### Issue: Production OAuth callback fails
+
+**Solution**: Configure publicUrl for external access
+```json
+{ "connect": { "publicUrl": "https://yourdomain.com" } }
+```
+
+Add redirect URI in Plaid Dashboard: `https://yourdomain.com/oauth/plaid/callback`
 
 ### Issue: Gmail fetch returns no bills
 
-**Solution**: Check Gmail filters and sender whitelist:
-```bash
-billclaw config gmail --filters "from:billing@service.com"
+**Solution**: Check sender whitelist in config
+```json
+{ "gmail": { "senderWhitelist": ["billing@service.com"] } }
 ```
 
 ### Issue: Export format incorrect
 
-**Solution**: Verify account mappings:
+**Solution**: Verify with format mapping
 ```bash
 billclaw export --format beancount --show-mappings
 ```
 
-## Resources
+## Getting Help
 
 - **Documentation**: https://github.com/fire-la/billclaw
-- **npm packages**: https://www.npmjs.com/org/fire-zu
 - **Issues**: https://github.com/fire-la/billclaw/issues
+- **Security**: Report security vulnerabilities privately at security@fire-la.dev
+- **npm packages**: https://www.npmjs.com/org/firela
 
-## Contributing
+## Security Disclosure
 
-Contributions are welcome! Please see CONTRIBUTING.md in the repository.
+BillClaw is an open-source project. You can review the complete source code at:
+- **Repository**: https://github.com/fire-la/billclaw
+- **License**: MIT
 
-## License
+For security researchers: If you discover a security vulnerability, please disclose it responsibly by emailing security@fire-la.dev before public disclosure.
 
-MIT License - See LICENSE file for details.
-
-## Changelog
-
-### 0.0.1 (2025-02-07)
-
-Initial release:
-- Plaid integration for US/Canada banks
-- GoCardless integration for European banks
-- Gmail bill fetching and parsing
-- Local token storage with keychain
-- Beancount and Ledger export
-- CLI with setup wizard
-- OpenClaw plugin with tools and commands
-- GitHub Actions publishing workflow

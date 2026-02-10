@@ -1,0 +1,16 @@
+{
+  "name": "clawfi",
+  "version": "0.1.2",
+  "description": "Install the ClawFi skill so your agent knows how to call the ClawFi API",
+  "type": "module",
+  "bin": {
+    "clawfi": "index.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "index.js",
+    "skill.md"
+  ]
+}

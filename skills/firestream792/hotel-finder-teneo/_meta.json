@@ -3,11 +3,16 @@
   "slug": "hotel-finder-teneo",
   "displayName": "Hotel Finder - powered by Teneo Protocol",
   "latest": {
-    "version": "1.0.4",
-    "publishedAt": 1770302193258,
-    "commit": "https://github.com/clawdbot/skills/commit/85418a6809595a307c92a247ae561b8875bbf983"
+    "version": "1.0.7",
+    "publishedAt": 1770643209097,
+    "commit": "https://github.com/openclaw/skills/commit/7cb2ff43c832773ee0ab1c6152aa4969fd015bb9"
   },
   "history": [
+    {
+      "version": "1.0.4",
+      "publishedAt": 1770302193258,
+      "commit": "https://github.com/clawdbot/skills/commit/85418a6809595a307c92a247ae561b8875bbf983"
+    },
     {
       "version": "1.0.3",
       "publishedAt": 1770216628114,

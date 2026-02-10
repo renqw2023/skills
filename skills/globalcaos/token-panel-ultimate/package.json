@@ -1,0 +1,12 @@
+{
+  "name": "token-panel-ultimate",
+  "version": "1.0.5",
+  "description": "Multi-provider usage tracking for AI agents. Claude Max, Gemini, and Manus in one dashboard with webchat widget.",
+  "keywords": ["openclaw", "tokens", "budget", "usage", "claude-max", "gemini", "manus", "dashboard", "widget"],
+  "author": "Oscar Serra",
+  "license": "MIT",
+  "repository": "https://github.com/globalcaos/clawdbot-moltbot-openclaw",
+  "openclaw": {
+    "emoji": "🎛️"
+  }
+}

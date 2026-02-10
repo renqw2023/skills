@@ -8,6 +8,7 @@ def ai_picture_book_task_create(api_key: str, method: int, content):
     url = "https://qianfan.baidubce.com/v2/tools/ai_picture_book/task_create"
     headers = {
         "Authorization": "Bearer %s" % api_key,
+        "X-Appbuilder-From": "openclaw",
         "Content-Type": "application/json"
     }
     params = {
@@ -38,7 +39,7 @@ if __name__ == "__main__":
 
     api_key = os.getenv("BAIDU_API_KEY")
     if not api_key:
-        print("Error: BAIDU_API_KEY  must be set in environment.")
+        print("Error: BAIDU_API_KEY must be set in environment.")
         sys.exit(1)
     try:
         results = ai_picture_book_task_create(api_key, method, content)

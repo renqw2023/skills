@@ -1,0 +1,17 @@
+{
+  "owner": "eyebots",
+  "slug": "eyebot-alphabot",
+  "displayName": "Eyebot Alphabot",
+  "latest": {
+    "version": "1.8.0",
+    "publishedAt": 1770638988891,
+    "commit": "https://github.com/openclaw/skills/commit/fdaa5f4ccf3f21e6e93849b15a8fc4c24e95a97c"
+  },
+  "history": [
+    {
+      "version": "1.0.3",
+      "publishedAt": 1770580790510,
+      "commit": "https://github.com/openclaw/skills/commit/d78d3038842d9e8d2ec9fed34c216bebbee3e060"
+    }
+  ]
+}

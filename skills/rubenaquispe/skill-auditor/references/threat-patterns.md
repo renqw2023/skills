@@ -52,5 +52,34 @@ All patterns the scanner checks, organized by category.
 
 ## Privilege Escalation
 - **browser-tool** — Browser automation (puppeteer, playwright, selenium)
-- **node-control** — Moltbot node tools (camera_snap, screen_record, location_get)
+- **node-control** — OpenClaw node tools (camera_snap, screen_record, location_get)
 - **config-modification** — Gateway config changes (config.apply, config.patch)
+
+## Sleeper Agent Detection (NEW v2.1)
+Patterns that indicate delayed/conditional malicious execution:
+
+- **sleeper-delayed-trigger** — "after N days/hours then execute" time-bomb patterns
+- **sleeper-keyword-trigger** — "when user says X" activation phrase waiting
+- **sleeper-date-trigger** — Future date-based activation
+- **sleeper-conditional-memory** — "secretly/silently add to memory" hidden writes
+- **sleeper-counter-trigger** — "after N messages/sessions" count-based activation
+- **sleeper-hidden-instruction** — "remember this secretly" covert instruction planting
+- **sleeper-dormant-behavior** — "remain dormant until" waiting for conditions
+
+## Risky Agent Social Networks (NEW v2.1)
+Connections to agent networks with known security issues:
+
+- **social-moltbook** — Moltbook/Molthub (leaked 1.5M API tokens Feb 2026)
+- **social-fourclaw** — FourClaw network (prompt injection attacks common)
+- **social-agentverse** — AgentVerse (unvetted agent interactions)
+- **social-botnet-patterns** — Generic agent network registration
+- **social-agent-messaging** — Inter-agent message exchange (prompt injection risk)
+- **social-collective-memory** — Shared memory across agents (context pollution)
+
+## Supply Chain Risks (NEW v2.1)
+Dangerous installation and dependency patterns:
+
+- **supply-chain-curl-pipe** — `curl | bash` remote code execution
+- **supply-chain-remote-script** — Downloads .sh/.py/.js scripts
+- **supply-chain-npm-exec** — npx/npm exec without explicit install
+- **supply-chain-pip-install-url** — pip install from URL (unverified)

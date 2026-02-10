@@ -10,6 +10,7 @@ This is the minimal working implementation focused on:
 
 import hashlib
 import importlib.resources
+import json
 import logging
 import re
 from datetime import datetime, timezone, timedelta
@@ -102,6 +103,30 @@ def _filter_by_date(items: list, since: str) -> list:
     ]
 
 
+def _truncate_ts(ts: str) -> str:
+    """Truncate ISO timestamp to seconds UTC, no timezone suffix.
+
+    Strips microseconds and timezone indicator from stored timestamps.
+    All timestamps are UTC by convention.
+    """
+    # Remove microseconds: cut at first '.' after position 19 (HH:MM:SS)
+    dot = ts.find(".", 19)
+    if dot != -1:
+        # Find where timezone starts after microseconds
+        for i in range(dot + 1, len(ts)):
+            if ts[i] in "+-Z":
+                ts = ts[:dot] + ts[i:]
+                break
+        else:
+            ts = ts[:dot]
+    # Strip timezone suffix (+00:00, Z, etc.) — all timestamps are UTC
+    if ts.endswith("+00:00"):
+        ts = ts[:-6]
+    elif ts.endswith("Z"):
+        ts = ts[:-1]
+    return ts
+
+
 def _record_to_item(rec, score: float = None) -> "Item":
     """
     Convert a DocumentRecord to an Item with timestamp tags.
@@ -110,11 +135,16 @@ def _record_to_item(rec, score: float = None) -> "Item":
     to ensure consistent timestamp exposure across all retrieval methods.
     """
     from .types import Item
+    updated = _truncate_ts(rec.updated_at) if rec.updated_at else ""
+    created = _truncate_ts(rec.created_at) if rec.created_at else ""
+    accessed = _truncate_ts(rec.accessed_at or rec.updated_at) if (rec.accessed_at or rec.updated_at) else ""
     tags = {
         **rec.tags,
-        "_updated": rec.updated_at,
-        "_created": rec.created_at,
-        "_updated_date": rec.updated_at[:10] if rec.updated_at else "",
+        "_updated": updated,
+        "_created": created,
+        "_updated_date": updated[:10],
+        "_accessed": accessed,
+        "_accessed_date": accessed[:10],
     }
     return Item(id=rec.id, summary=rec.summary, tags=tags, score=score)
 
@@ -152,7 +182,7 @@ COLLECTION_NAME_PATTERN = re.compile(r"^[a-z][a-z0-9_]*$")
 ENV_TAG_PREFIX = "KEEP_TAG_"
 
 # Fixed ID for the current working context (singleton)
-NOWDOC_ID = "_now:default"
+NOWDOC_ID = "now"
 
 
 def _get_system_doc_dir() -> Path:
@@ -187,10 +217,78 @@ def _get_system_doc_dir() -> Path:
 SYSTEM_DOC_DIR = _get_system_doc_dir()
 
 # Stable IDs for system documents (path-independent)
+# Convention: filename sans .md, hyphens → /, prefixed with .
 SYSTEM_DOC_IDS = {
-    "now.md": "_system:now",
-    "conversations.md": "_system:conversations",
-    "domains.md": "_system:domains",
+    "now.md": ".now",
+    "conversations.md": ".conversations",
+    "domains.md": ".domains",
+    "library.md": ".library",
+    "tag-act.md": ".tag/act",
+    "tag-status.md": ".tag/status",
+    "tag-project.md": ".tag/project",
+    "tag-topic.md": ".tag/topic",
+    "tag-type.md": ".tag/type",
+    "meta-todo.md": ".meta/todo",
+    "meta-learnings.md": ".meta/learnings",
+}
+
+# Pattern for meta-doc query lines: key=value pairs separated by spaces
+_META_QUERY_PAIR = re.compile(r'^[a-zA-Z_][a-zA-Z0-9_]*=\S+$')
+# Pattern for context-match lines: key= (bare, no value)
+_META_CONTEXT_KEY = re.compile(r'^([a-zA-Z_][a-zA-Z0-9_]*)=$')
+
+
+def _parse_meta_doc(content: str) -> tuple[list[dict[str, str]], list[str]]:
+    """
+    Parse meta-doc content into query lines and context-match keys.
+
+    Returns:
+        (query_lines, context_keys) where:
+        - query_lines: list of dicts, each {key: value, ...} for AND queries
+        - context_keys: list of tag keys for context matching
+    """
+    query_lines: list[dict[str, str]] = []
+    context_keys: list[str] = []
+
+    for line in content.split("\n"):
+        line = line.strip()
+        if not line:
+            continue
+
+        # Check for context-match: exactly "key=" with no value
+        ctx_match = _META_CONTEXT_KEY.match(line)
+        if ctx_match:
+            context_keys.append(ctx_match.group(1))
+            continue
+
+        # Check for query line: all space-separated tokens are key=value
+        tokens = line.split()
+        pairs: dict[str, str] = {}
+        is_query = True
+        for token in tokens:
+            if _META_QUERY_PAIR.match(token):
+                k, v = token.split("=", 1)
+                pairs[k] = v
+            else:
+                is_query = False
+                break
+
+        if is_query and pairs:
+            query_lines.append(pairs)
+
+    return query_lines, context_keys
+
+# Old IDs for migration (maps old → new)
+_OLD_ID_RENAMES = {
+    "_system:now": ".now",
+    "_system:conversations": ".conversations",
+    "_system:domains": ".domains",
+    "_system:library": ".library",
+    "_tag:act": ".tag/act",
+    "_tag:status": ".tag/status",
+    "_tag:project": ".tag/project",
+    "_tag:topic": ".tag/topic",
+    "_now:default": "now",
 }
 
 
@@ -248,23 +346,42 @@ def _content_hash(content: str) -> str:
     return hashlib.sha256(content.encode("utf-8")).hexdigest()
 
 
+def _user_tags_changed(old_tags: dict, new_tags: dict) -> bool:
+    """
+    Check if non-system tags differ between old and new.
+
+    Used for contextual re-summarization: when user tags change,
+    the summary context changes and should be regenerated.
+
+    Args:
+        old_tags: Existing tags from document store
+        new_tags: New merged tags being applied
+
+    Returns:
+        True if user (non-system) tags differ
+    """
+    old_user = {k: v for k, v in old_tags.items() if not k.startswith('_')}
+    new_user = {k: v for k, v in new_tags.items() if not k.startswith('_')}
+    return old_user != new_user
+
+
 def _text_content_id(content: str) -> str:
     """
     Generate a content-addressed ID for text updates.
 
     This makes text updates versioned by content:
-    - `keep update "my note"` → ID = _text:{hash[:12]}
-    - `keep update "my note" -t status=done` → same ID, new version
-    - `keep update "different note"` → different ID
+    - `keep put "my note"` → ID = %{hash[:12]}
+    - `keep put "my note" -t status=done` → same ID, new version
+    - `keep put "different note"` → different ID
 
     Args:
         content: The text content
 
     Returns:
-        Content-addressed ID in format _text:{hash[:12]}
+        Content-addressed ID in format %{hash[:12]}
     """
     content_hash = hashlib.sha256(content.encode("utf-8")).hexdigest()[:12]
-    return f"_text:{content_hash}"
+    return f"%{content_hash}"
 
 
 class Keeper:
@@ -358,10 +475,10 @@ class Keeper:
         Migrate system documents to stable IDs and current version.
 
         Handles:
-        - Migration from old file:// URIs to _system:{name} IDs
+        - Migration from old file:// URIs to stable IDs
+        - Rename of old prefixes (_system:, _tag:, _now:, _text:) to new (.x, .tag/x, now, %x)
         - Fresh creation for new stores
         - Version upgrades when bundled content changes
-        - Cleanup of old file:// URIs (from before path was changed)
 
         Called during init. Only loads docs that don't already exist,
         so user modifications are preserved. Updates config version
@@ -382,46 +499,127 @@ class Keeper:
         filename_to_id = {name: doc_id for name, doc_id in SYSTEM_DOC_IDS.items()}
 
         # First pass: clean up old file:// URIs with category=system tag
-        # These may have different paths than current SYSTEM_DOC_DIR
         try:
             old_system_docs = self.query_tag("category", "system")
             for doc in old_system_docs:
                 if doc.id.startswith("file://") and doc.id.endswith(".md"):
-                    # Extract filename from path
                     filename = Path(doc.id.replace("file://", "")).name
                     new_id = filename_to_id.get(filename)
                     if new_id and not self.exists(new_id):
-                        # Migrate content to new ID
                         self.remember(doc.summary, id=new_id, tags=doc.tags)
                         self.delete(doc.id)
                         stats["migrated"] += 1
                         logger.info("Migrated system doc: %s -> %s", doc.id, new_id)
                     elif new_id:
-                        # New ID already exists, just clean up old one
                         self.delete(doc.id)
                         stats["cleaned"] += 1
                         logger.info("Cleaned up old system doc: %s", doc.id)
         except Exception as e:
             logger.debug("Error scanning old system docs: %s", e)
 
-        # Second pass: create any missing system docs from bundled content
+        # Second pass: rename old prefixes to new
+        # _system:foo → .foo, _tag:foo → .tag/foo, _now:default → now
+        for old_id, new_id in _OLD_ID_RENAMES.items():
+            try:
+                old_item = self.get(old_id)
+                if old_item and not self.exists(new_id):
+                    self.remember(old_item.summary, id=new_id, tags=old_item.tags)
+                    self.delete(old_id)
+                    stats["migrated"] += 1
+                    logger.info("Renamed ID: %s -> %s", old_id, new_id)
+                elif old_item:
+                    self.delete(old_id)
+                    stats["cleaned"] += 1
+            except Exception as e:
+                logger.debug("Error renaming %s: %s", old_id, e)
+
+        # Rename _text:hash → %hash (transfer embeddings directly, no re-embedding)
+        # Preserves original timestamps — these are user memories with meaningful dates
+        try:
+            coll = self._resolve_collection(None)
+            old_text_docs = self._document_store.query_by_id_prefix(coll, "_text:")
+            for rec in old_text_docs:
+                new_id = "%" + rec.id[len("_text:"):]
+                if not self._document_store.get(coll, new_id):
+                    # Direct SQL copy preserving created_at and updated_at
+                    tags_json = json.dumps(rec.tags, ensure_ascii=False)
+                    self._document_store._conn.execute("""
+                        INSERT OR REPLACE INTO documents
+                        (id, collection, summary, tags_json, created_at, updated_at, content_hash, accessed_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    """, (new_id, coll, rec.summary, tags_json,
+                          rec.created_at, rec.updated_at, rec.content_hash, rec.accessed_at))
+                    self._document_store._conn.commit()
+                    # Transfer embedding from ChromaDB (no re-embedding needed)
+                    try:
+                        chroma_coll = self._store._get_collection(coll)
+                        result = chroma_coll.get(
+                            ids=[rec.id],
+                            include=["embeddings", "metadatas", "documents"])
+                        if result["ids"] and result["embeddings"]:
+                            meta = result["metadatas"][0] or {}
+                            chroma_coll.upsert(
+                                ids=[new_id],
+                                embeddings=[result["embeddings"][0]],
+                                documents=[result["documents"][0] or rec.summary],
+                                metadatas=[meta])
+                    except Exception:
+                        pass  # ChromaDB entry may not exist
+                self.delete(rec.id)
+                stats["migrated"] += 1
+                logger.info("Renamed text ID: %s -> %s", rec.id, new_id)
+        except Exception as e:
+            logger.debug("Error migrating _text: IDs: %s", e)
+
+        # Third pass: remove system docs no longer bundled
+        _RETIRED_SYSTEM_IDS = [".meta/decisions"]
+        for old_id in _RETIRED_SYSTEM_IDS:
+            try:
+                if self.exists(old_id):
+                    self.delete(old_id)
+                    stats["cleaned"] += 1
+                    logger.info("Removed retired system doc: %s", old_id)
+            except Exception as e:
+                logger.debug("Error removing retired doc %s: %s", old_id, e)
+
+        # Fourth pass: create or update system docs from bundled content
         for path in SYSTEM_DOC_DIR.glob("*.md"):
             new_id = SYSTEM_DOC_IDS.get(path.name)
             if new_id is None:
                 logger.debug("Skipping unknown system doc: %s", path.name)
                 continue
 
-            # Skip if already exists
-            if self.exists(new_id):
-                stats["skipped"] += 1
-                continue
-
             try:
                 content, tags = _load_frontmatter(path)
+                bundled_hash = _content_hash(content)
                 tags["category"] = "system"
+                tags["bundled_hash"] = bundled_hash
+
+                # Check for user edits before overwriting
+                existing_doc = self._document_store.get(coll, new_id)
+                if existing_doc:
+                    prev_hash = existing_doc.tags.get("bundled_hash")
+                    if prev_hash and existing_doc.content_hash != prev_hash:
+                        # User edited this doc — preserve their version
+                        stats["skipped"] += 1
+                        logger.info("Preserving user-edited system doc: %s", new_id)
+                        continue
+
+                # Store via remember() for embedding/versioning, then patch
+                # summary to full verbatim content (system docs are reference
+                # material — never summarize them)
                 self.remember(content, id=new_id, tags=tags)
-                stats["created"] += 1
-                logger.info("Created system doc: %s", new_id)
+                self._document_store.upsert(
+                    collection=coll, id=new_id, summary=content,
+                    tags=self._document_store.get(coll, new_id).tags,
+                    content_hash=bundled_hash,
+                )
+                if existing_doc:
+                    stats["migrated"] += 1
+                    logger.info("Updated system doc: %s", new_id)
+                else:
+                    stats["created"] += 1
+                    logger.info("Created system doc: %s", new_id)
             except FileNotFoundError:
                 # System file missing - skip silently
                 pass
@@ -438,6 +636,10 @@ class Keeper:
 
         This allows read-only operations to work offline without loading
         the embedding model (which may try to reach HuggingFace).
+
+        For MLX (local GPU) providers, wraps with a lifecycle lock that
+        serializes model access across processes to prevent GPU memory
+        exhaustion.
         """
         if self._embedding_provider is None:
             registry = get_registry()
@@ -445,6 +647,13 @@ class Keeper:
                 self._config.embedding.name,
                 self._config.embedding.params,
             )
+            # Wrap local GPU providers with lifecycle lock
+            if self._config.embedding.name == "mlx":
+                from .model_lock import LockedEmbeddingProvider
+                base_provider = LockedEmbeddingProvider(
+                    base_provider,
+                    self._store_path / ".embedding.lock",
+                )
             cache_path = self._store_path / "embedding_cache.db"
             self._embedding_provider = CachingEmbeddingProvider(
                 base_provider,
@@ -460,14 +669,94 @@ class Keeper:
     def _get_summarization_provider(self) -> SummarizationProvider:
         """
         Get summarization provider, creating it lazily on first use.
+
+        For MLX (local GPU) providers, wraps with a lifecycle lock.
         """
         if self._summarization_provider is None:
             registry = get_registry()
-            self._summarization_provider = registry.create_summarization(
+            provider = registry.create_summarization(
                 self._config.summarization.name,
                 self._config.summarization.params,
             )
+            if self._config.summarization.name == "mlx":
+                from .model_lock import LockedSummarizationProvider
+                provider = LockedSummarizationProvider(
+                    provider,
+                    self._store_path / ".summarization.lock",
+                )
+            self._summarization_provider = provider
         return self._summarization_provider
+
+    def _gather_context(
+        self,
+        id: str,
+        collection: str,
+        tags: dict[str, str],
+    ) -> str | None:
+        """
+        Gather related item summaries that share any user tag.
+
+        Uses OR union (any tag matches), not AND intersection.
+        Boosts score when multiple tags match.
+
+        Args:
+            id: ID of the item being summarized (to exclude from results)
+            collection: Collection to search
+            tags: User tags from the item being summarized
+
+        Returns:
+            Formatted context string, or None if no related items found
+        """
+        if not tags:
+            return None
+
+        # Get similar items (broader search, we'll filter by tags)
+        try:
+            similar = self.find_similar(id, limit=20, collection=collection)
+        except KeyError:
+            # Item not found yet (first indexing) - no context available
+            return None
+
+        # Score each item: similarity * (1 + matching_tag_count * boost)
+        TAG_BOOST = 0.2  # 20% boost per matching tag
+        scored: list[tuple[float, int, Item]] = []
+
+        for item in similar:
+            if item.id == id:
+                continue
+
+            # Count matching tags (OR: at least one must match)
+            matching = sum(
+                1 for k, v in tags.items()
+                if item.tags.get(k) == v
+            )
+            if matching == 0:
+                continue  # No tag overlap, skip
+
+            # Boost score by number of matching tags
+            base_score = item.score if item.score is not None else 0.5
+            boosted_score = base_score * (1 + matching * TAG_BOOST)
+            scored.append((boosted_score, matching, item))
+
+        if not scored:
+            return None
+
+        # Sort by boosted score, take top 5
+        scored.sort(key=lambda x: x[0], reverse=True)
+        top = scored[:5]
+
+        # Format context as topic keywords only (not summaries).
+        # Including raw summary text causes small models to parrot
+        # phrases from context into the new summary (contamination).
+        topic_values = set()
+        for _, _, item in top:
+            for k, v in filter_non_system_tags(item.tags).items():
+                topic_values.add(v)
+
+        if not topic_values:
+            return None
+
+        return "Related topics: " + ", ".join(sorted(topic_values))
 
     def _validate_embedding_identity(self, provider: EmbeddingProvider) -> None:
         """
@@ -534,12 +823,16 @@ class Keeper:
         summary: Optional[str] = None,
         source_tags: Optional[dict[str, str]] = None,  # Deprecated alias
         collection: Optional[str] = None,
-        lazy: bool = False
     ) -> Item:
         """
         Insert or update a document in the store.
 
         Fetches the document, generates embeddings and summary, then stores it.
+
+        **Summary behavior:**
+        - If summary is provided, use it (skips auto-summarization)
+        - For large content, summarization is async (truncated placeholder
+          stored immediately, real summary generated in background)
 
         **Update behavior:**
         - Summary: Replaced with user-provided or newly generated summary
@@ -553,9 +846,6 @@ class Keeper:
             summary: User-provided summary (skips auto-summarization if given)
             source_tags: Deprecated alias for 'tags'
             collection: Target collection (uses default if None)
-            lazy: If True, use truncated placeholder summary and queue for
-                  background processing. Use `process_pending()` to generate
-                  real summaries later. Ignored if summary is provided.
 
         Returns:
             The stored Item with merged tags and new summary
@@ -593,41 +883,8 @@ class Keeper:
         # Generate embedding
         embedding = self._get_embedding_provider().embed(doc.content)
 
-        # Determine summary - skip if content unchanged
-        max_len = self._config.max_summary_length
-        content_unchanged = (
-            existing_doc is not None
-            and existing_doc.content_hash == new_hash
-        )
-
-        if content_unchanged and summary is None:
-            # Content unchanged - preserve existing summary
-            logger.debug("Content unchanged, skipping summarization for %s", id)
-            final_summary = existing_doc.summary
-        elif summary is not None:
-            # User-provided summary - validate length
-            if len(summary) > max_len:
-                import warnings
-                warnings.warn(
-                    f"Summary exceeds max_summary_length ({len(summary)} > {max_len}), truncating",
-                    UserWarning,
-                    stacklevel=2
-                )
-                summary = summary[:max_len]
-            final_summary = summary
-        elif lazy:
-            # Truncated placeholder for lazy mode
-            if len(doc.content) > max_len:
-                final_summary = doc.content[:max_len] + "..."
-            else:
-                final_summary = doc.content
-            # Queue for background processing
-            self._pending_queue.enqueue(id, coll, doc.content)
-        else:
-            # Auto-generate summary
-            final_summary = self._get_summarization_provider().summarize(doc.content)
-
-        # Build tags: existing → config → env → user (later wins on collision)
+        # Build tags first (needed for tags_changed check)
+        # Order: existing → config → env → user (later wins on collision)
         merged_tags = {**existing_tags}
 
         # Merge config default tags
@@ -646,6 +903,47 @@ class Keeper:
         merged_tags["_source"] = "uri"
         if doc.content_type:
             merged_tags["_content_type"] = doc.content_type
+
+        # Determine summary - skip if content AND tags unchanged
+        max_len = self._config.max_summary_length
+        content_unchanged = (
+            existing_doc is not None
+            and existing_doc.content_hash == new_hash
+        )
+        tags_changed = (
+            existing_doc is not None
+            and _user_tags_changed(existing_doc.tags, merged_tags)
+        )
+
+        if content_unchanged and not tags_changed and summary is None:
+            # Content and tags unchanged - preserve existing summary
+            logger.debug("Content and tags unchanged, skipping summarization for %s", id)
+            final_summary = existing_doc.summary
+        elif summary is not None:
+            # Caller-provided summary — enforce max_summary_length
+            if len(summary) > max_len:
+                import warnings
+                warnings.warn(
+                    f"Summary exceeds max_summary_length ({len(summary)} > {max_len}), truncating",
+                    UserWarning,
+                    stacklevel=2
+                )
+                summary = summary[:max_len]
+            final_summary = summary
+        elif content_unchanged and tags_changed:
+            # Tags changed but content unchanged - keep existing summary, queue for re-summarization
+            logger.debug("Tags changed, queueing re-summarization for %s", id)
+            final_summary = existing_doc.summary
+            if len(doc.content) > max_len:
+                self._pending_queue.enqueue(id, coll, doc.content)
+        else:
+            # New or changed content
+            if len(doc.content) > max_len:
+                final_summary = doc.content[:max_len] + "..."
+                # Queue for background processing
+                self._pending_queue.enqueue(id, coll, doc.content)
+            else:
+                final_summary = doc.content
 
         # Get existing doc info for versioning before upsert
         old_doc = self._document_store.get(coll, id)
@@ -686,8 +984,8 @@ class Keeper:
                     tags=old_doc.tags,
                 )
 
-        # Spawn background processor if lazy (only if summary wasn't user-provided and content changed)
-        if lazy and summary is None and not content_unchanged:
+        # Spawn background processor if content was queued (large content, no user summary, content or tags changed)
+        if summary is None and len(doc.content) > max_len and (not content_unchanged or tags_changed):
             self._spawn_processor()
 
         # Return the stored item
@@ -703,7 +1001,6 @@ class Keeper:
         tags: Optional[dict[str, str]] = None,
         source_tags: Optional[dict[str, str]] = None,  # Deprecated alias
         collection: Optional[str] = None,
-        lazy: bool = False
     ) -> Item:
         """
         Store inline content directly (without fetching from a URI).
@@ -713,7 +1010,8 @@ class Keeper:
         **Smart summary behavior:**
         - If summary is provided, use it (skips auto-summarization)
         - If content is short (≤ max_summary_length), use content verbatim
-        - Otherwise, generate summary via summarization provider
+        - For large content, summarization is async (truncated placeholder
+          stored immediately, real summary generated in background)
 
         **Update behavior (when id already exists):**
         - Summary: Replaced with user-provided, content, or generated summary
@@ -728,9 +1026,6 @@ class Keeper:
             tags: User-provided tags to merge with existing tags
             source_tags: Deprecated alias for 'tags'
             collection: Target collection (uses default if None)
-            lazy: If True and content is long, use truncated placeholder summary
-                  and queue for background processing. Ignored if content is
-                  short or summary is provided.
 
         Returns:
             The stored Item with merged tags and new summary
@@ -769,41 +1064,8 @@ class Keeper:
         # Generate embedding
         embedding = self._get_embedding_provider().embed(content)
 
-        # Determine summary (smart behavior for remember) - skip if content unchanged
-        max_len = self._config.max_summary_length
-        content_unchanged = (
-            existing_doc is not None
-            and existing_doc.content_hash == new_hash
-        )
-
-        if content_unchanged and summary is None:
-            # Content unchanged - preserve existing summary
-            logger.debug("Content unchanged, skipping summarization for %s", id)
-            final_summary = existing_doc.summary
-        elif summary is not None:
-            # User-provided summary - validate length
-            if len(summary) > max_len:
-                import warnings
-                warnings.warn(
-                    f"Summary exceeds max_summary_length ({len(summary)} > {max_len}), truncating",
-                    UserWarning,
-                    stacklevel=2
-                )
-                summary = summary[:max_len]
-            final_summary = summary
-        elif len(content) <= max_len:
-            # Content is short enough - use verbatim (smart summary)
-            final_summary = content
-        elif lazy:
-            # Content is long and lazy mode - truncated placeholder
-            final_summary = content[:max_len] + "..."
-            # Queue for background processing
-            self._pending_queue.enqueue(id, coll, content)
-        else:
-            # Content is long - generate summary
-            final_summary = self._get_summarization_provider().summarize(content)
-
-        # Build tags: existing → config → env → user (later wins on collision)
+        # Build tags first (needed for tags_changed check)
+        # Order: existing → config → env → user (later wins on collision)
         merged_tags = {**existing_tags}
 
         # Merge config default tags
@@ -820,6 +1082,47 @@ class Keeper:
 
         # Add system tags
         merged_tags["_source"] = "inline"
+
+        # Determine summary (smart behavior for remember) - skip if content AND tags unchanged
+        max_len = self._config.max_summary_length
+        content_unchanged = (
+            existing_doc is not None
+            and existing_doc.content_hash == new_hash
+        )
+        tags_changed = (
+            existing_doc is not None
+            and _user_tags_changed(existing_doc.tags, merged_tags)
+        )
+
+        if content_unchanged and not tags_changed and summary is None:
+            # Content and tags unchanged - preserve existing summary
+            logger.debug("Content and tags unchanged, skipping summarization for %s", id)
+            final_summary = existing_doc.summary
+        elif summary is not None:
+            # Caller-provided summary — enforce max_summary_length
+            if len(summary) > max_len:
+                import warnings
+                warnings.warn(
+                    f"Summary exceeds max_summary_length ({len(summary)} > {max_len}), truncating",
+                    UserWarning,
+                    stacklevel=2
+                )
+                summary = summary[:max_len]
+            final_summary = summary
+        elif content_unchanged and tags_changed:
+            # Tags changed but content unchanged - keep existing summary, queue for re-summarization
+            logger.debug("Tags changed, queueing re-summarization for %s", id)
+            final_summary = existing_doc.summary
+            if len(content) > max_len:
+                self._pending_queue.enqueue(id, coll, content)
+        elif len(content) <= max_len:
+            # Content is short enough - use verbatim (smart summary)
+            final_summary = content
+        else:
+            # Content is long - async summarization (truncated placeholder now, real summary later)
+            final_summary = content[:max_len] + "..."
+            # Queue for background processing
+            self._pending_queue.enqueue(id, coll, content)
 
         # Get existing doc info for versioning before upsert
         old_doc = self._document_store.get(coll, id)
@@ -860,8 +1163,8 @@ class Keeper:
                     tags=old_doc.tags,
                 )
 
-        # Spawn background processor if lazy and content was queued (only if content changed)
-        if lazy and summary is None and len(content) > max_len and not content_unchanged:
+        # Spawn background processor if content was queued (large content, no user summary, content or tags changed)
+        if summary is None and len(content) > max_len and (not content_unchanged or tags_changed):
             self._spawn_processor()
 
         # Return the stored item
@@ -892,8 +1195,10 @@ class Keeper:
             updated_str = item.tags.get("_updated")
             if updated_str and item.score is not None:
                 try:
-                    # Parse ISO timestamp
+                    # Parse ISO timestamp (may lack timezone — all timestamps are UTC)
                     updated = datetime.fromisoformat(updated_str.replace("Z", "+00:00"))
+                    if updated.tzinfo is None:
+                        updated = updated.replace(tzinfo=timezone.utc)
                     days_elapsed = (now - updated).total_seconds() / 86400
                     
                     # Exponential decay: 0.5^(days/half_life)
@@ -957,8 +1262,12 @@ class Keeper:
         if since is not None:
             items = _filter_by_date(items, since)
 
-        return items[:limit]
-    
+        final = items[:limit]
+        # Touch accessed_at for returned items
+        if final:
+            self._document_store.touch_many(coll, [i.id for i in final])
+        return final
+
     def find_similar(
         self,
         id: str,
@@ -1004,7 +1313,11 @@ class Keeper:
         if since is not None:
             items = _filter_by_date(items, since)
 
-        return items[:limit]
+        final = items[:limit]
+        # Touch accessed_at for returned items
+        if final:
+            self._document_store.touch_many(coll, [i.id for i in final])
+        return final
 
     def get_similar_for_display(
         self,
@@ -1087,6 +1400,162 @@ class Keeper:
         version_count = self._document_store.version_count(coll, base_id)
         return version_count - int(version_tag) + 1
 
+    def resolve_meta(
+        self,
+        item_id: str,
+        *,
+        limit_per_doc: int = 3,
+        collection: Optional[str] = None,
+    ) -> dict[str, list[Item]]:
+        """
+        Resolve all .meta/* docs against an item's tags.
+
+        Meta-docs define tag-based queries that surface contextually relevant
+        items — open commitments, past learnings, decisions to revisit.
+        Results are ranked by similarity to the current item + recency decay,
+        so the most relevant matches surface first.
+
+        Args:
+            item_id: ID of the item whose tags provide context
+            limit_per_doc: Max results per meta-doc
+            collection: Target collection
+
+        Returns:
+            Dict of {meta_name: [matching Items]}. Empty results omitted.
+        """
+        coll = self._resolve_collection(collection)
+
+        # Find all .meta/* documents
+        meta_records = self._document_store.query_by_id_prefix(coll, ".meta/")
+        if not meta_records:
+            return {}
+
+        # Get current item's tags for context
+        current = self.get(item_id, collection=collection)
+        if current is None:
+            return {}
+        current_tags = current.tags
+
+        result: dict[str, list[Item]] = {}
+
+        for rec in meta_records:
+            meta_id = rec.id
+            short_name = meta_id.split("/", 1)[1] if "/" in meta_id else meta_id
+
+            query_lines, context_keys = _parse_meta_doc(rec.summary)
+            if not query_lines:
+                continue
+
+            # Get context values from current item's tags
+            context_values: dict[str, str] = {}
+            for key in context_keys:
+                val = current_tags.get(key)
+                if val and not key.startswith("_"):
+                    context_values[key] = val
+
+            # Build expanded queries: cross-product of query lines × context values
+            expanded: list[dict[str, str]] = []
+            if context_values:
+                for query in query_lines:
+                    for ctx_key, ctx_val in context_values.items():
+                        expanded.append({**query, ctx_key: ctx_val})
+            else:
+                # No context → use query lines as-is
+                expanded = list(query_lines)
+
+            # Run each expanded query, union results (fetch generously for ranking)
+            seen_ids: set[str] = set()
+            matches: list[Item] = []
+            for query in expanded:
+                try:
+                    items = self.query_tag(
+                        collection=collection,
+                        limit=100,  # fetch all candidates for ranking
+                        **query,
+                    )
+                except (ValueError, Exception):
+                    continue
+                for item in items:
+                    # Skip the current item, meta-docs, and dupes
+                    if item.id == item_id or item.id.startswith(".meta/") or item.id in seen_ids:
+                        continue
+                    seen_ids.add(item.id)
+                    matches.append(item)
+
+            if not matches:
+                continue
+
+            # Rank by similarity to current item + recency decay
+            matches = self._rank_by_relevance(coll, item_id, matches)
+            result[short_name] = matches[:limit_per_doc]
+
+        return result
+
+    def _rank_by_relevance(
+        self,
+        coll: str,
+        anchor_id: str,
+        candidates: list[Item],
+    ) -> list[Item]:
+        """
+        Rank candidate items by similarity to anchor + recency decay.
+
+        Uses stored embeddings from ChromaDB — no re-embedding needed.
+        Falls back to recency-only ranking if embeddings unavailable.
+        """
+        import math
+
+        if not candidates:
+            return candidates
+
+        # Get anchor embedding from ChromaDB
+        try:
+            chroma_coll = self._store._get_collection(coll)
+            anchor_result = chroma_coll.get(
+                ids=[anchor_id], include=["embeddings"]
+            )
+            if not anchor_result["ids"] or not anchor_result["embeddings"]:
+                return self._apply_recency_decay(candidates)
+            anchor_emb = anchor_result["embeddings"][0]
+
+            # Batch-fetch candidate embeddings
+            candidate_ids = [c.id for c in candidates]
+            cand_result = chroma_coll.get(
+                ids=candidate_ids, include=["embeddings"]
+            )
+        except Exception:
+            return self._apply_recency_decay(candidates)
+
+        # Build id → embedding lookup (some candidates may not have embeddings)
+        emb_lookup: dict[str, list[float]] = {}
+        if cand_result["ids"] and cand_result["embeddings"]:
+            for cid, cemb in zip(cand_result["ids"], cand_result["embeddings"]):
+                if cemb is not None:
+                    emb_lookup[cid] = cemb
+
+        # Score each candidate: cosine similarity
+        def _cosine_sim(a: list[float], b: list[float]) -> float:
+            dot = sum(x * y for x, y in zip(a, b))
+            norm_a = math.sqrt(sum(x * x for x in a))
+            norm_b = math.sqrt(sum(x * x for x in b))
+            if norm_a == 0 or norm_b == 0:
+                return 0.0
+            return dot / (norm_a * norm_b)
+
+        for item in candidates:
+            emb = emb_lookup.get(item.id)
+            if emb is not None:
+                item.score = _cosine_sim(anchor_emb, emb)
+            else:
+                item.score = 0.0
+
+        # Apply recency decay to the similarity scores
+        candidates = self._apply_recency_decay(candidates)
+
+        # Sort by score descending
+        candidates.sort(key=lambda x: x.score or 0.0, reverse=True)
+        return candidates
+
     def query_fulltext(
         self,
         query: str,
@@ -1115,8 +1584,12 @@ class Keeper:
         if since is not None:
             items = _filter_by_date(items, since)
 
-        return items[:limit]
-    
+        final = items[:limit]
+        # Touch accessed_at for returned items
+        if final:
+            self._document_store.touch_many(coll, [i.id for i in final])
+        return final
+
     def query_tag(
         self,
         key: Optional[str] = None,
@@ -1224,16 +1697,18 @@ class Keeper:
     def get(self, id: str, *, collection: Optional[str] = None) -> Optional[Item]:
         """
         Retrieve a specific item by ID.
-        
+
         Reads from document store (canonical), falls back to ChromaDB for legacy data.
+        Touches accessed_at on successful retrieval.
         """
         coll = self._resolve_collection(collection)
-        
+
         # Try document store first (canonical)
         doc_record = self._document_store.get(coll, id)
         if doc_record:
+            self._document_store.touch(coll, id)
             return _record_to_item(doc_record)
-        
+
         # Fall back to ChromaDB for legacy data
         result = self._store.get(coll, id)
         if result is None:
@@ -1360,20 +1835,67 @@ class Keeper:
         chroma_deleted = self._store.delete(coll, id, delete_versions=delete_versions)
         return doc_deleted or chroma_deleted
 
+    def revert(self, id: str, *, collection: Optional[str] = None) -> Optional[Item]:
+        """
+        Revert to the previous version, or delete if no versions exist.
+
+        Returns the restored item, or None if the item was fully deleted.
+        """
+        coll = self._resolve_collection(collection)
+
+        version_count = self._document_store.version_count(coll, id)
+
+        if version_count == 0:
+            # No history — full delete
+            self.delete(id, collection=collection)
+            return None
+
+        # Get the versioned ChromaDB ID we need to promote
+        versioned_chroma_id = f"{id}@v{version_count}"
+
+        # Get the archived embedding from ChromaDB
+        archived_embedding = self._store.get_embedding(coll, versioned_chroma_id)
+
+        # Restore in DocumentStore (promotes latest version to current)
+        restored = self._document_store.restore_latest_version(coll, id)
+
+        if restored is None:
+            # Shouldn't happen given version_count > 0, but be safe
+            self.delete(id, collection=collection)
+            return None
+
+        # Update ChromaDB: replace current with restored version's data
+        if archived_embedding:
+            self._store.upsert(
+                collection=coll, id=id,
+                embedding=archived_embedding,
+                summary=restored.summary,
+                tags=restored.tags,
+            )
+
+        # Delete the versioned entry from ChromaDB
+        chroma_coll = self._store._get_collection(coll)
+        try:
+            chroma_coll.delete(ids=[versioned_chroma_id])
+        except Exception:
+            pass  # May not exist if it was a tag-only change
+
+        return self.get(id, collection=collection)
+
     # -------------------------------------------------------------------------
     # Current Working Context (Now)
     # -------------------------------------------------------------------------
 
     def get_now(self) -> Item:
         """
-        Get the current working context.
+        Get the current working intentions.
 
         A singleton document representing what you're currently working on.
         If it doesn't exist, creates one with default content and tags from
         the bundled system now.md file.
 
         Returns:
-            The current context Item (never None - auto-creates if missing)
+            The current intentions Item (never None - auto-creates if missing)
         """
         item = self.get(NOWDOC_ID)
         if item is None:
@@ -1394,13 +1916,13 @@ class Keeper:
         tags: Optional[dict[str, str]] = None,
     ) -> Item:
         """
-        Set the current working context.
+        Set the current working intentions.
 
-        Updates the singleton context with new content. Uses remember()
+        Updates the singleton intentions with new content. Uses remember()
         internally with the fixed NOWDOC_ID.
 
         Args:
-            content: New content for the current context
+            content: New content for the current intentions
             tags: Optional additional tags to apply
 
         Returns:
@@ -1440,6 +1962,7 @@ class Keeper:
         from .config import SYSTEM_DOCS_VERSION, save_config
 
         stats = {"reset": 0}
+        coll = self._resolve_collection(None)
 
         for path in SYSTEM_DOC_DIR.glob("*.md"):
             new_id = SYSTEM_DOC_IDS.get(path.name)
@@ -1448,11 +1971,18 @@ class Keeper:
 
             try:
                 content, tags = _load_frontmatter(path)
+                bundled_hash = _content_hash(content)
                 tags["category"] = "system"
+                tags["bundled_hash"] = bundled_hash
 
                 # Delete existing (if any) and create fresh
                 self.delete(new_id)
                 self.remember(content, id=new_id, tags=tags)
+                self._document_store.upsert(
+                    collection=coll, id=new_id, summary=content,
+                    tags=self._document_store.get(coll, new_id).tags,
+                    content_hash=bundled_hash,
+                )
                 stats["reset"] += 1
                 logger.info("Reset system doc: %s", new_id)
 
@@ -1555,24 +2085,26 @@ class Keeper:
         limit: int = 10,
         *,
         since: Optional[str] = None,
+        order_by: str = "updated",
         collection: Optional[str] = None,
     ) -> list[Item]:
         """
-        List recent items ordered by update time.
+        List recent items ordered by timestamp.
 
         Args:
             limit: Maximum number to return (default 10)
             since: Only include items updated since (ISO duration like P3D, or date)
+            order_by: Sort order - "updated" (default) or "accessed"
             collection: Collection to query (uses default if not specified)
 
         Returns:
-            List of Items, most recently updated first
+            List of Items, most recent first
         """
         coll = self._resolve_collection(collection)
 
         # Fetch extra when filtering by date
         fetch_limit = limit * 3 if since is not None else limit
-        records = self._document_store.list_recent(coll, fetch_limit)
+        records = self._document_store.list_recent(coll, fetch_limit, order_by=order_by)
         items = [_record_to_item(rec) for rec in records]
 
         # Apply date filter if specified
@@ -1598,12 +2130,15 @@ class Keeper:
     # Pending Summaries
     # -------------------------------------------------------------------------
 
-    def process_pending(self, limit: int = 10) -> int:
+    def process_pending(self, limit: int = 10) -> dict:
         """
         Process pending summaries queued by lazy update/remember.
 
         Generates real summaries for items that were indexed with
         truncated placeholders. Updates the stored items in place.
+
+        When items have user tags (non-system tags), context is gathered
+        from similar items with matching tags to produce contextual summaries.
 
         Items that fail MAX_SUMMARY_ATTEMPTS times are removed from
         the queue (the truncated placeholder remains in the store).
@@ -1612,10 +2147,10 @@ class Keeper:
             limit: Maximum number of items to process in this batch
 
         Returns:
-            Number of items successfully processed
+            Dict with: processed (int), failed (int), abandoned (int), errors (list)
         """
         items = self._pending_queue.dequeue(limit=limit)
-        processed = 0
+        result = {"processed": 0, "failed": 0, "abandoned": 0, "errors": []}
 
         for item in items:
             # Skip items that have failed too many times
@@ -1623,11 +2158,29 @@ class Keeper:
             if item.attempts >= MAX_SUMMARY_ATTEMPTS:
                 # Give up - remove from queue, keep truncated placeholder
                 self._pending_queue.complete(item.id, item.collection)
+                result["abandoned"] += 1
+                logger.warning(
+                    "Abandoned pending summary after %d attempts: %s",
+                    item.attempts, item.id
+                )
                 continue
 
             try:
-                # Generate real summary
-                summary = self._get_summarization_provider().summarize(item.content)
+                # Get item's tags for contextual summarization
+                doc = self._document_store.get(item.collection, item.id)
+                context = None
+                if doc:
+                    # Filter to user tags (non-system)
+                    user_tags = filter_non_system_tags(doc.tags)
+                    if user_tags:
+                        context = self._gather_context(
+                            item.id, item.collection, user_tags
+                        )
+
+                # Generate real summary (with optional context)
+                summary = self._get_summarization_provider().summarize(
+                    item.content, context=context
+                )
 
                 # Update summary in both stores
                 self._document_store.update_summary(item.collection, item.id, summary)
@@ -1635,13 +2188,17 @@ class Keeper:
 
                 # Remove from queue
                 self._pending_queue.complete(item.id, item.collection)
-                processed += 1
+                result["processed"] += 1
 
-            except Exception:
+            except Exception as e:
                 # Leave in queue for retry (attempt counter already incremented)
-                pass
+                result["failed"] += 1
+                error_msg = f"{item.id}: {type(e).__name__}: {e}"
+                result["errors"].append(error_msg)
+                logger.warning("Failed to summarize %s (attempt %d): %s",
+                             item.id, item.attempts, e)
 
-        return processed
+        return result
 
     def pending_count(self) -> int:
         """Get count of pending summaries awaiting processing."""
@@ -1661,36 +2218,35 @@ class Keeper:
         return self._store_path / "processor.pid"
 
     def _is_processor_running(self) -> bool:
-        """Check if a processor is already running."""
-        pid_path = self._processor_pid_path
-        if not pid_path.exists():
-            return False
+        """Check if a processor is already running via lock probe."""
+        from .model_lock import ModelLock
 
-        try:
-            pid = int(pid_path.read_text().strip())
-            # Check if process is alive by sending signal 0
-            os.kill(pid, 0)
-            return True
-        except (ValueError, ProcessLookupError, PermissionError):
-            # PID file invalid, process dead, or permission issue
-            # Clean up stale PID file
-            try:
-                pid_path.unlink()
-            except OSError:
-                pass
-            return False
+        lock = ModelLock(self._store_path / ".processor.lock")
+        return lock.is_locked()
 
     def _spawn_processor(self) -> bool:
         """
         Spawn a background processor if not already running.
 
+        Uses an exclusive file lock to prevent TOCTOU race conditions
+        where two processes could both check, find no processor, and
+        both spawn one.
+
         Returns True if a new processor was spawned, False if one was
         already running or spawn failed.
         """
-        if self._is_processor_running():
+        from .model_lock import ModelLock
+
+        spawn_lock = ModelLock(self._store_path / ".processor_spawn.lock")
+
+        # Non-blocking: if another process is already spawning, let it handle it
+        if not spawn_lock.acquire(blocking=False):
             return False
 
         try:
+            if self._is_processor_running():
+                return False
+
             # Spawn detached process
             # Use sys.executable to ensure we use the same Python
             cmd = [
@@ -1721,6 +2277,8 @@ class Keeper:
             # Spawn failed - log for debugging, queue will be processed later
             logger.warning("Failed to spawn background processor: %s", e)
             return False
+        finally:
+            spawn_lock.release()
 
     def reconcile(
         self,
@@ -1784,10 +2342,30 @@ class Keeper:
 
     def close(self) -> None:
         """
-        Close resources (embedding cache connection, pending queue, etc.).
+        Close resources (stores, caches, queues).
 
-        Good practice to call when done, though Python's GC will clean up eventually.
+        Releases model locks (freeing GPU memory) before releasing file locks,
+        ensuring the next process gets a clean GPU.
         """
+        # Release locked model providers (frees GPU memory + gc before flock release)
+        if self._embedding_provider is not None:
+            # The locked provider may be inside a CachingEmbeddingProvider
+            inner = getattr(self._embedding_provider, '_provider', None)
+            if hasattr(inner, 'release'):
+                inner.release()
+
+        if self._summarization_provider is not None:
+            if hasattr(self._summarization_provider, 'release'):
+                self._summarization_provider.release()
+
+        # Close ChromaDB store
+        if hasattr(self, '_store') and self._store is not None:
+            self._store.close()
+
+        # Close document store (SQLite)
+        if hasattr(self, '_document_store') and self._document_store is not None:
+            self._document_store.close()
+
         # Close embedding cache if it was loaded
         if self._embedding_provider is not None:
             if hasattr(self._embedding_provider, '_cache'):
@@ -1810,4 +2388,7 @@ class Keeper:
 
     def __del__(self):
         """Cleanup on deletion."""
-        self.close()
+        try:
+            self.close()
+        except Exception:
+            pass  # Suppress errors during garbage collection

@@ -3,11 +3,16 @@
   "slug": "polt-skill",
   "displayName": "Polt",
   "latest": {
-    "version": "0.1.1",
-    "publishedAt": 1770398285291,
-    "commit": "https://github.com/openclaw/skills/commit/ca22629d09906dedf1051520efcfee5f0c2113fa"
+    "version": "0.1.2",
+    "publishedAt": 1770548529455,
+    "commit": "https://github.com/openclaw/skills/commit/6cfe2e53be28212f7550ab6d63f8a72122adf3a6"
   },
   "history": [
+    {
+      "version": "0.1.1",
+      "publishedAt": 1770398285291,
+      "commit": "https://github.com/openclaw/skills/commit/ca22629d09906dedf1051520efcfee5f0c2113fa"
+    },
     {
       "version": "0.1.0",
       "publishedAt": 1770298105291,

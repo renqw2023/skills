@@ -1,6 +1,6 @@
 {
   "name": "memory-tools",
-  "version": "1.0.0",
+  "version": "1.1.1",
   "description": "Memory-as-Tools plugin for OpenClaw - Agent-controlled persistent memory with confidence scoring and decay",
   "type": "module",
   "main": "dist/index.js",
@@ -16,12 +16,12 @@
   "dependencies": {
     "@lancedb/lancedb": "^0.23.0",
     "@sinclair/typebox": "0.34.48",
-    "better-sqlite3": "^11.7.0",
-    "openai": "^6.17.0"
+    "openai": "^6.17.0",
+    "sql.js": "^1.13.0"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^7.6.11",
     "@types/node": "^22.0.0",
+    "@types/sql.js": "^1.4.9",
     "@vitest/coverage-v8": "^2.1.0",
     "typescript": "^5.7.0",
     "vitest": "^2.1.0"
@@ -54,6 +54,6 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/purple-horizons/openclaw-memory-tools.git"
+    "url": "https://github.com/Purple-Horizons/memory-tools.git"
   }
 }

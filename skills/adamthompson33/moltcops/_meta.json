@@ -1,0 +1,11 @@
+{
+  "owner": "adamthompson33",
+  "slug": "moltcops",
+  "displayName": "MoltCops Security Scanner",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1770618523768,
+    "commit": "https://github.com/openclaw/skills/commit/c99215430b55edf59f0a90226b38c12811f4f34e"
+  },
+  "history": []
+}

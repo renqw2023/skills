@@ -1,7 +1,7 @@
 ---
 name: context-clean-up
 license: MIT
-description: Audit and slim OpenClaw prompt context to prevent context overflow and reduce cost. Use when the user says /context-clean-up, or asks to reduce prompt bloat, shrink session history, tame noisy cron or heartbeat output, or investigate a Context overflow error.
+description: Audit and slim OpenClaw prompt context to prevent context overflow and reduce cost. Use when the user says /context-clean-up, or asks to reduce prompt bloat, shrink session history, digest/dismiss inactive sessions, tame noisy cron or heartbeat output, or investigate a Context overflow error.
 allowed-tools:
   - read
   - write
@@ -45,7 +45,7 @@ bash -lc 'echo "$HOME" && ls -ld ~/.openclaw'
 Run the bundled audit script (short stdout; writes detailed JSON to file):
 
 ```bash
-bash -lc 'cd "${WORKDIR:-.}" && python3 context-clean-up/scripts/context_cleanup_audit.py --out memory/context-cleanup-audit.json'
+bash -lc 'cd "${WORKDIR:-.}" && uv run --python 3.13 -- python skills/context-clean-up/scripts/context_cleanup_audit.py --out memory/context-cleanup-audit.json'
 ```
 
 If the repo is not in the current workdir, adapt the path accordingly.
@@ -91,6 +91,26 @@ If the injected bootstrap docs are large:
 
 Always create `.bak.<date>` backups before edits.
 
+#### Lever D — Session store hygiene (digest + dismiss inactive sessions)
+Goal: keep `~/.openclaw/agents/main/sessions` from accumulating stale cron session keys and orphan transcript files.
+
+Use bundled script:
+
+```bash
+bash -lc 'cd "${WORKDIR:-.}" && uv run --python 3.13 -- python skills/context-clean-up/scripts/session_gc.py --retention-days 7 --stale-days 3 --json --report-out memory/session-gc/latest-report.json'
+```
+
+Policy:
+- Start with **dry-run report only**.
+- Apply only after explicit confirmation.
+- In apply mode, use **backup-first** and reversible moves (not hard delete).
+
+Conservative apply example:
+
+```bash
+bash -lc 'cd "${WORKDIR:-.}" && uv run --python 3.13 -- python skills/context-clean-up/scripts/session_gc.py --retention-days 7 --active-cron-id <id1,id2,...> --apply --prune-stale-keys --move-orphan-jsonl --json --report-out memory/session-gc/latest-apply.json'
+```
+
 ### Step 3 — Apply (only when user asked for apply)
 If the user ran `/context-clean-up apply`:
 
@@ -98,11 +118,17 @@ If the user ran `/context-clean-up apply`:
 - Convert success/no-op outputs to `NO_REPLY`
 - Leave user-facing reports alone unless the user explicitly agrees
 
-2) (Optional) Propose a bootstrap docs compaction PR:
+2) Apply session-store hygiene (optional but recommended for long-running agents):
+- Prune stale cron session keys from `sessions.json`
+- Move old orphan `*.jsonl` to backup folder (do not hard delete)
+- Record report JSON under `memory/session-gc/`
+
+3) (Optional) Propose a bootstrap docs compaction PR:
 - Only do this with explicit confirmation because it edits the user’s rules/persona.
 
 ### Step 4 — Verify
 - Confirm the next cron run no longer injects `Cron: ok` / `Cron: HEARTBEAT_OK` noise.
+- Confirm session GC changed the expected counts (stale keys/orphans) and preserved backups.
 - Watch for compaction events in the session (context ratio should drop).
 
 ## Notes / best-practice hints
@@ -112,3 +138,4 @@ If the user ran `/context-clean-up apply`:
 ## References
 - `references/out-of-band-delivery.md`
 - `references/cron-noise-checklist.md`
+- `references/session-store-hygiene.md`

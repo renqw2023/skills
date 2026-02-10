@@ -7,17 +7,17 @@ CONFIG_FILE="${HOME}/.config/neutron/credentials.json"
 # Load credentials - env vars first, then credentials file
 API_KEY="${NEUTRON_API_KEY:-}"
 APP_ID="${NEUTRON_AGENT_ID:-}"
-EXTERNAL_USER_ID="${NEUTRON_EXTERNAL_USER_ID:-}"
+EXTERNAL_USER_ID="${YOUR_AGENT_IDENTIFIER:-}"
 
 if [[ -z "$API_KEY" || -z "$APP_ID" ]] && [[ -f "$CONFIG_FILE" ]]; then
     if command -v jq &> /dev/null; then
         [[ -z "$API_KEY" ]] && API_KEY=$(jq -r '.api_key // empty' "$CONFIG_FILE" 2>/dev/null)
-        [[ -z "$APP_ID" ]] && APP_ID=$(jq -r '.app_id // empty' "$CONFIG_FILE" 2>/dev/null)
-        [[ -z "$EXTERNAL_USER_ID" ]] && EXTERNAL_USER_ID=$(jq -r '.external_user_id // empty' "$CONFIG_FILE" 2>/dev/null)
+        [[ -z "$APP_ID" ]] && APP_ID=$(jq -r '.agent_id // empty' "$CONFIG_FILE" 2>/dev/null)
+        [[ -z "$EXTERNAL_USER_ID" ]] && EXTERNAL_USER_ID=$(jq -r '.your_agent_identifier // empty' "$CONFIG_FILE" 2>/dev/null)
     else
         [[ -z "$API_KEY" ]] && API_KEY=$(grep '"api_key"' "$CONFIG_FILE" | sed 's/.*"api_key"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/')
-        [[ -z "$APP_ID" ]] && APP_ID=$(grep '"app_id"' "$CONFIG_FILE" | sed 's/.*"app_id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/')
-        [[ -z "$EXTERNAL_USER_ID" ]] && EXTERNAL_USER_ID=$(grep '"external_user_id"' "$CONFIG_FILE" | sed 's/.*"external_user_id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/')
+        [[ -z "$APP_ID" ]] && APP_ID=$(grep '"agent_id"' "$CONFIG_FILE" | sed 's/.*"agent_id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/')
+        [[ -z "$EXTERNAL_USER_ID" ]] && EXTERNAL_USER_ID=$(grep '"your_agent_identifier"' "$CONFIG_FILE" | sed 's/.*"your_agent_identifier"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/')
     fi
 fi
 
@@ -29,18 +29,18 @@ if [[ -z "$API_KEY" || "$API_KEY" == "null" ]]; then
     echo ""
     echo "Option 1 - Environment variables:"
     echo "  export NEUTRON_API_KEY=your_key"
-    echo "  export NEUTRON_AGENT_ID=your_app_id"
-    echo "  export NEUTRON_EXTERNAL_USER_ID=1  # optional, defaults to 1"
+    echo "  export NEUTRON_AGENT_ID=your_agent_id"
+    echo "  export YOUR_AGENT_IDENTIFIER=1  # optional, defaults to 1"
     echo ""
     echo "Option 2 - Credentials file:"
     echo "  mkdir -p ~/.config/neutron"
-    echo '  echo '"'"'{"api_key":"your_key","app_id":"your_app_id","external_user_id":"1"}'"'"' > ~/.config/neutron/credentials.json'
+    echo '  echo '"'"'{"api_key":"your_key","agent_id":"your_agent_id","your_agent_identifier":"1"}'"'"' > ~/.config/neutron/credentials.json'
     exit 1
 fi
 
 if [[ -z "$APP_ID" || "$APP_ID" == "null" ]]; then
     echo "Error: NEUTRON_AGENT_ID not found"
-    echo "Set NEUTRON_AGENT_ID env var or add app_id to ~/.config/neutron/credentials.json"
+    echo "Set NEUTRON_AGENT_ID env var or add agent_id to ~/.config/neutron/credentials.json"
     exit 1
 fi
 

@@ -1,0 +1,17 @@
+{
+  "owner": "eyebots",
+  "slug": "eyebot-launchbot",
+  "displayName": "Eyebot Launchbot",
+  "latest": {
+    "version": "1.8.0",
+    "publishedAt": 1770638984494,
+    "commit": "https://github.com/openclaw/skills/commit/099cedcb31ae88973be6ece2bc43be81c71241b3"
+  },
+  "history": [
+    {
+      "version": "1.0.3",
+      "publishedAt": 1770580786733,
+      "commit": "https://github.com/openclaw/skills/commit/cfd846837aa0793dc6de285a6587d66d1b870739"
+    }
+  ]
+}

@@ -13,6 +13,7 @@
  *   --rpc <url>           RPC URL (default: https://mainnet.base.org)
  *   --interactive         Prompt before signing each request
  *   --audit               Enable audit logging
+ *   --allow-eth-sign      Allow dangerous eth_sign method (⚠️ security risk!)
  * 
  * Environment Variables (REQUIRED):
  *   PRIVATE_KEY           Wallet private key
@@ -24,6 +25,7 @@
  *   - NEVER pass private key as command line argument (shell history risk!)
  *   - ALWAYS use environment variables for sensitive data
  *   - Use a dedicated wallet with limited funds
+ *   - eth_sign is BLOCKED by default (can sign arbitrary data = phishing risk)
  */
 
 const { Core } = require('@walletconnect/core');
@@ -91,6 +93,7 @@ function parseArgs() {
     projectId: process.env.WC_PROJECT_ID || DEFAULT_PROJECT_ID,
     interactive: false,
     audit: true, // Always audit by default
+    allowEthSign: false, // Block dangerous eth_sign by default
   };
 
   for (let i = 0; i < args.length; i++) {
@@ -123,6 +126,9 @@ function parseArgs() {
       config.interactive = true;
     } else if (arg === '--no-audit') {
       config.audit = false;
+    } else if (arg === '--allow-eth-sign') {
+      config.allowEthSign = true;
+      console.warn('⚠️  Warning: eth_sign enabled - this allows signing arbitrary data!');
     }
   }
 
@@ -156,6 +162,7 @@ async function main() {
     console.log('  --rpc <url>        RPC URL');
     console.log('  --interactive      Prompt before signing');
     console.log('  --no-audit         Disable audit logging');
+    console.log('  --allow-eth-sign   Allow dangerous eth_sign (⚠️ security risk!)');
     console.log('');
     console.log('Environment Variables:');
     console.log('  PRIVATE_KEY        Wallet private key (REQUIRED)');
@@ -238,17 +245,22 @@ async function main() {
     }
 
     if (shouldApprove) {
+      // Only include eth_sign if explicitly allowed (security risk)
+      const methods = [
+        'eth_sendTransaction',
+        'eth_signTransaction',
+        'personal_sign',
+        'eth_signTypedData',
+        'eth_signTypedData_v4',
+      ];
+      if (config.allowEthSign) {
+        methods.push('eth_sign');
+      }
+      
       const namespaces = {
         eip155: {
           accounts: [`eip155:${config.chainId}:${address}`],
-          methods: [
-            'eth_sendTransaction',
-            'eth_signTransaction',
-            'eth_sign',
-            'personal_sign',
-            'eth_signTypedData',
-            'eth_signTypedData_v4',
-          ],
+          methods,
           events: ['chainChanged', 'accountsChanged'],
           chains: [`eip155:${config.chainId}`],
         },
@@ -381,16 +393,25 @@ async function main() {
         case 'eth_sign': {
           const [from, message] = request.params;
           console.log(`   From: ${from}`);
-          console.log(`   ⚠️  Warning: eth_sign is dangerous!`);
+          console.log(`   ⚠️  eth_sign is DANGEROUS - can sign arbitrary data!`);
+          
+          // Block by default unless explicitly allowed
+          if (!config.allowEthSign) {
+            console.log('   ❌ Blocked: eth_sign is disabled by default for security');
+            console.log('   Use --allow-eth-sign to enable (not recommended)');
+            throw new Error('eth_sign blocked for security - use --allow-eth-sign to enable');
+          }
 
           if (config.interactive) {
-            const answer = await prompt('\nSign this raw message? (yes/no): ');
+            console.log(`   Message (hex): ${message}`);
+            const answer = await prompt('\n⚠️  Sign this raw message? This is dangerous! (yes/no): ');
             if (answer !== 'yes' && answer !== 'y') {
               throw new Error('User rejected');
             }
           }
 
           result = await wallet.signMessage(ethers.getBytes(message));
+          console.log('   ⚠️  Signed (eth_sign) - be cautious!');
           break;
         }
 

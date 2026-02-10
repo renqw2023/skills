@@ -3,11 +3,16 @@
   "slug": "messari-btc-eth-tracker-teneo",
   "displayName": "Messari BTC & ETH Tracker - powered by Teneo Protocol",
   "latest": {
-    "version": "1.0.10",
-    "publishedAt": 1770302200889,
-    "commit": "https://github.com/clawdbot/skills/commit/3d9ec95677e7c85d0191719ecde61c4bbbbab4c5"
+    "version": "1.0.13",
+    "publishedAt": 1770643215664,
+    "commit": "https://github.com/openclaw/skills/commit/d83f1444c692179f4fc920629a1900d33be9b3ac"
   },
   "history": [
+    {
+      "version": "1.0.10",
+      "publishedAt": 1770302200889,
+      "commit": "https://github.com/clawdbot/skills/commit/3d9ec95677e7c85d0191719ecde61c4bbbbab4c5"
+    },
     {
       "version": "1.0.9",
       "publishedAt": 1770216652695,

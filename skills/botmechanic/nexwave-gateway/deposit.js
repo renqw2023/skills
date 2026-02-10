@@ -1,31 +1,38 @@
-import { account, ethereum, base, arc } from "./setup-gateway.js";
+import {
+  circleWallet,
+  walletAddress,
+  ethereum,
+  arc,
+} from "./setup-gateway.js";
 
 ///////////////////////////////////////////////////////////////////////////////
 // Deposit USDC into Circle Gateway
 // This script deposits USDC into the Gateway Wallet contract on each chain,
 // creating a unified crosschain USDC balance.
 //
+// Uses Circle Programmable Wallets for transaction signing — no raw private keys.
 // IMPORTANT: Do NOT use ERC-20 transfer() directly — that will lose funds.
 // The correct flow is: approve() → deposit() on the Gateway Wallet contract.
 
-const DEPOSIT_AMOUNT = 10_000000n; // 10 USDC (6 decimals)
+const DEPOSIT_AMOUNT = "10000000"; // 10 USDC (6 decimals, as string for Circle SDK)
+const DEPOSIT_DISPLAY = "10";
 
 console.log("═══════════════════════════════════════════════");
 console.log("  Nexwave Gateway — Deposit USDC");
 console.log("═══════════════════════════════════════════════");
-console.log(`Account: ${account.address}`);
-console.log(`Deposit amount: ${Number(DEPOSIT_AMOUNT) / 1e6} USDC per chain\n`);
+console.log(`Account: ${walletAddress}`);
+console.log(`Deposit amount: ${DEPOSIT_DISPLAY} USDC per chain\n`);
 
 for (const chain of [ethereum, arc]) {
   console.log(`\n🔗 ${chain.name} (Domain ${chain.domain})`);
   console.log("─".repeat(40));
 
-  // Check USDC balance
+  // Check USDC balance (read-only via viem)
   console.log("   Checking USDC balance...");
-  const balance = await chain.usdc.read.balanceOf([account.address]);
+  const balance = await chain.usdc.read.balanceOf([walletAddress]);
   console.log(`   Balance: ${Number(balance) / 1e6} USDC`);
 
-  if (balance < DEPOSIT_AMOUNT) {
+  if (balance < BigInt(DEPOSIT_AMOUNT)) {
     console.error(`   ❌ Insufficient USDC on ${chain.name}!`);
     console.error("   Please top up at https://faucet.circle.com");
     process.exit(1);
@@ -34,29 +41,23 @@ for (const chain of [ethereum, arc]) {
   try {
     // Step 1: Approve Gateway Wallet to spend USDC
     console.log("   Approving Gateway Wallet for USDC...");
-    const approvalTx = await chain.usdc.write.approve([
-      chain.gatewayWallet.address,
-      DEPOSIT_AMOUNT,
-    ]);
-    await chain.client.waitForTransactionReceipt({ hash: approvalTx });
-    console.log(`   ✅ Approved — tx: ${approvalTx}`);
+    const approveTx = await circleWallet.executeContract(chain.chainName, {
+      contractAddress: chain.usdcAddress,
+      functionSignature: "approve(address,uint256)",
+      params: [chain.gatewayWalletAddress, DEPOSIT_AMOUNT],
+    });
+    console.log(`   ✅ Approved — tx: ${approveTx.txHash}`);
 
     // Step 2: Deposit USDC into Gateway Wallet
     console.log("   Depositing USDC into Gateway Wallet...");
-    const depositTx = await chain.gatewayWallet.write.deposit([
-      chain.usdc.address,
-      DEPOSIT_AMOUNT,
-    ]);
-    await chain.client.waitForTransactionReceipt({ hash: depositTx });
-    console.log(`   ✅ Deposited — tx: ${depositTx}`);
-
+    const depositTx = await circleWallet.executeContract(chain.chainName, {
+      contractAddress: chain.gatewayWalletAddress,
+      functionSignature: "deposit(address,uint256)",
+      params: [chain.usdcAddress, DEPOSIT_AMOUNT],
+    });
+    console.log(`   ✅ Deposited — tx: ${depositTx.txHash}`);
   } catch (error) {
-    if (error.details && error.details.includes("insufficient funds")) {
-      console.error(`   ❌ Not enough ${chain.currency} for gas on ${chain.name}!`);
-      console.error("   Please top up using a testnet faucet.");
-    } else {
-      console.error("   ❌ Error:", error.message || error);
-    }
+    console.error("   ❌ Error:", error.message || error);
     process.exit(1);
   }
 }

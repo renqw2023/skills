@@ -18,6 +18,12 @@ All API calls require the header:
 Authorization: Bearer $TUDUDI_API_TOKEN
 ```
 
+## API Route Convention
+
+- **Plural nouns** (`/tasks`, `/projects`, `/inbox`) for **GET** (list)
+- **Singular nouns** (`/task`, `/project`) for **POST/PUT/DELETE** (create/update/delete)
+- Use **UID** (not numeric ID) for update/delete operations
+
 ## Common Operations
 
 ### List tasks
@@ -28,23 +34,31 @@ curl -s $TUDUDI_URL/api/v1/tasks \
 
 ### Create a task
 ```bash
-curl -s -X POST $TUDUDI_URL/api/v1/tasks \
+curl -s -X POST $TUDUDI_URL/api/v1/task \
   -H "Authorization: Bearer $TUDUDI_API_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"name": "Task title", "due_date": "2026-02-10", "priority": 2}'
+  -d '{"name": "Task title", "due_date": "2026-02-10", "priority": 2, "project_id": 1, "tags": [{"name": "bug"}]}'
 ```
 
 Priority: 1 (low) to 4 (urgent)
+Tags: `[{"name": "tagname"}, ...]`
 
 ### Update a task
 ```bash
-curl -s -X PUT $TUDUDI_URL/api/v1/tasks/{id} \
+curl -s -X PATCH $TUDUDI_URL/api/v1/task/{uid} \
   -H "Authorization: Bearer $TUDUDI_API_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"status": 1}'
+  -d '{"status": 1, "tags": [{"name": "bug"}]}'
 ```
 
 Status: 0=not_started, 1=in_progress, 2=completed, 6=archived
+Tags: `[{"name": "tagname"}, ...]`
+
+### Delete a task
+```bash
+curl -s -X DELETE $TUDUDI_URL/api/v1/task/{uid} \
+  -H "Authorization: Bearer $TUDUDI_API_TOKEN"
+```
 
 ### List projects
 ```bash
@@ -54,10 +68,27 @@ curl -s $TUDUDI_URL/api/v1/projects \
 
 ### Create project
 ```bash
-curl -s -X POST $TUDUDI_URL/api/v1/projects \
+curl -s -X POST $TUDUDI_URL/api/v1/project \
   -H "Authorization: Bearer $TUDUDI_API_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"name": "Project name"}'
+```
+
+### Inbox
+```bash
+# List inbox items
+curl -s $TUDUDI_URL/api/v1/inbox \
+  -H "Authorization: Bearer $TUDUDI_API_TOKEN"
+
+# Delete inbox item (use UID)
+curl -s -X DELETE $TUDUDI_URL/api/v1/inbox/{uid} \
+  -H "Authorization: Bearer $TUDUDI_API_TOKEN"
+```
+
+### Tags
+```bash
+curl -s $TUDUDI_URL/api/v1/tags \
+  -H "Authorization: Bearer $TUDUDI_API_TOKEN"
 ```
 
 ## Task Statuses

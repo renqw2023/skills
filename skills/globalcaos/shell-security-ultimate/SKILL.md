@@ -1,6 +1,6 @@
 ---
 name: shell-security-ultimate
-version: 1.0.0
+version: 1.0.1
 description: Security-first command execution for AI agents. Classifies commands by risk level (SAFE→CRITICAL), enforces transparency, prevents dangerous operations. Includes enforcement scripts and agent integration patterns.
 homepage: https://github.com/globalcaos/clawdbot-moltbot-openclaw
 repository: https://github.com/globalcaos/clawdbot-moltbot-openclaw
@@ -169,5 +169,9 @@ Add to your `SOUL.md` or `AGENTS.md`:
 Prompted behaviors are suggestions. Coded behaviors are laws. This skill provides both — use the prompts now, upgrade to coded enforcement when the plugin is ready.
 
 ---
+
+## Credits
+
+Created by **Oscar Serra** with the help of **Claude** (Anthropic).
 
 *Security is not optional. Every command an agent runs should be classified, justified, and auditable.*

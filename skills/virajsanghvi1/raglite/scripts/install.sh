@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Install raglite into a local venv inside the skill folder.
-# This keeps skill dependencies isolated.
+# Minimal installer: creates a venv inside the skill folder and installs raglite.
+# By default installs from PyPI. For TestPyPI, set RAGLITE_PIP_INDEX_URL.
 
 SKILL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 VENV_DIR="$SKILL_DIR/.venv"
@@ -14,7 +14,10 @@ fi
 source "$VENV_DIR/bin/activate"
 python -m pip install --upgrade pip setuptools wheel >/dev/null
 
-# Install from GitHub main (or tag) so this skill works anywhere.
-python -m pip install --upgrade "git+https://github.com/VirajSanghvi1/raglite.git@main" 
+if [[ -n "${RAGLITE_PIP_INDEX_URL:-}" ]]; then
+  python -m pip install --upgrade -i "$RAGLITE_PIP_INDEX_URL" --extra-index-url https://pypi.org/simple raglite-chromadb
+else
+  python -m pip install --upgrade raglite-chromadb
+fi
 
-echo "Installed raglite into $VENV_DIR"
+echo "Installed raglite (raglite-chromadb) into $VENV_DIR"

@@ -166,13 +166,28 @@ function hasSpecificCheck(options: any): boolean {
 function calculateWeeklyStats(logs: any[]): WeeklyStats {
   const dailyCompletions = getLastLogPerDay(logs);
   const now = new Date();
-  const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-  const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
-
-  const thisWeek = dailyCompletions.filter(d => new Date(d.date) >= weekAgo);
+  
+  // Get the start of THIS week (Monday 00:00)
+  const dayOfWeek = now.getDay(); // 0=Sun, 1=Mon, ...
+  const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  const thisMonday = new Date(now);
+  thisMonday.setHours(0, 0, 0, 0);
+  thisMonday.setDate(now.getDate() - daysFromMonday);
+  
+  // Previous week boundaries (Mon-Sun before this Monday)
+  const previousMonday = new Date(thisMonday.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const previousPreviousMonday = new Date(thisMonday.getTime() - 14 * 24 * 60 * 60 * 1000);
+  
+  // "This week" for check-in = previous calendar week (Mon-Sun completed)
+  const thisWeek = dailyCompletions.filter(d => {
+    const date = new Date(d.date);
+    return date >= previousMonday && date < thisMonday;
+  });
+  
+  // "Last week" for comparison = week before that
   const lastWeek = dailyCompletions.filter(d => {
     const date = new Date(d.date);
-    return date >= twoWeeksAgo && date < weekAgo;
+    return date >= previousPreviousMonday && date < previousMonday;
   });
 
   const thisWeekCompleted = thisWeek.filter(d => d.isCompleted).length;

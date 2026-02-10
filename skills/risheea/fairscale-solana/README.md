@@ -1,101 +1,107 @@
 # FairScale Solana Skill
 
-Check Solana wallet reputation scores before any transaction. Detect Sybils, assess creditworthiness, and analyze connected wallets.
+Reputation intelligence for Solana wallets. Ask anything in plain English — "is this a bot?", "whale?", "diamond hands?" — and get instant, data-backed answers.
+
+## Two Access Methods
+
+| Method | Best For | Setup |
+|--------|----------|-------|
+| **API Key** | Most users | Get key from sales.fairscale.xyz |
+| **x402 Payments** | Agents with wallets | No setup, pay $0.05/call |
 
 ## Features
 
 - **FairScore (0-100)** — Overall wallet reputation
-- **Risk Tiers** — Bronze/Silver/Gold/Diamond
-- **Badges** — LST Staker, Diamond Hands, Veteran, etc.
-- **Connected Wallet Analysis** — Check who the wallet transacts with
+- **Tiers** — Bronze / Silver / Gold / Platinum
+- **Natural Language** — Ask questions like "is this a whale?"
+- **Custom Criteria** — Define your own rules
 - **Sybil Detection** — Bot and fake account detection
 
 ## Install
 
-### Option 1: ClawHub (Recommended)
+### ClawHub
 
 ```bash
 npx clawhub@latest install fairscale-solana
 ```
 
-### Option 2: GitHub
+### GitHub
 
 ```bash
 npx skills add RisheeA/fairscale-solana-skill
 ```
 
-### Option 3: Manual
-
-```bash
-git clone https://github.com/RisheeA/fairscale-solana-skill.git
-cp -r fairscale-solana-skill ~/.openclaw/skills/
-```
-
 ## Setup
+
+### Option A: API Key (Recommended)
 
 1. Get your API key at https://sales.fairscale.xyz
 
-2. Configure the key:
-
+2. Configure:
 ```bash
-# OpenClaw
 openclaw config set skills.entries.fairscale-solana.env.FAIRSCALE_API_KEY "your_key"
-
-# Or set as environment variable
-export FAIRSCALE_API_KEY="your_key"
 ```
 
-3. Restart your agent
+3. Restart:
+```bash
+openclaw gateway restart
+```
+
+### Option B: x402 Payments
+
+No setup needed! If your agent has a Solana wallet with USDC, it can pay per request automatically.
+
+- Single wallet: $0.05 USDC
+- Batch (10 wallets): $0.40 USDC
 
 ## Usage
 
 Ask your agent:
 
-- "Check wallet `5G5HDvbib4CyHxVgm4RHiVY5RfbDuFfp6BiH5xgZXczT`"
+- "Check wallet GFTVQdZumAnBRbmaRgN9n3Z5qH5nXvjMZXJ3EyqP32Tn"
 - "Is this wallet trustworthy?"
-- "Should I trade with this address?"
-- "Who does this wallet interact with?"
+- "Is this a bot?"
+- "Is this a whale?"
+- "Diamond hands?"
+- "Airdrop eligible?"
+- "Only allow wallets with conviction > 70"
 
-## Example Response
+## Example Responses
 
+**Quick check:**
 ```
-📊 FairScore: 43/100 | Tier: Silver
+📊 FairScore: 90/100 | Tier: platinum
 
-⚡ MODERATE — Standard precautions
+✅ TRUSTED
 
-🏅 Badges: LST Staker, Diamond Hands, Veteran, Active Trader
-
-📈 Stats: 75 txns | 81 active days | 97% platform diversity
-
-💡 Improve: Increase LST Holdings
-
-🔗 Connected Wallets:
-• 4mtV...txot — 62 (Silver) — https://orb.helius.dev/address/4mtV...
-• 8u7v...ua3E — 78 (Gold) — https://orb.helius.dev/address/8u7v...
-• 9xKz...ab2F — 15 (Bronze) — https://orb.helius.dev/address/9xKz...
-
-Network: 🟡 Mixed
+🏅 Badges: LST Staker, Diamond Hands, Veteran
 ```
 
-## File Structure
-
+**"Is this a whale?"**
 ```
-fairscale-solana-skill/
-├── SKILL.md          # Main skill instructions
-├── README.md         # This file
-├── LICENSE           # MIT
-├── scripts/
-│   └── check_wallet.sh   # Sample bash script
-└── references/
-    └── API.md        # Full API documentation
+🐋 Whale Check: GFTVQd...P32Tn
+
+💰 LST Holdings: 97.7% — Top 3% 
+💵 Stablecoins: 27.5% — Low
+
+Verdict: 🟡 PARTIAL WHALE — Heavy DeFi, not cash-rich.
+```
+
+**"Is this a bot?"**
+```
+🤖 Bot Check: GFTVQd...P32Tn
+
+⚡ Burst Ratio: 16.8% — Organic ✅
+🌐 Platforms: 96.6% — Diverse ✅
+
+Verdict: ✅ HUMAN — Not a bot.
 ```
 
 ## Links
 
-- **Get API Key:** https://sales.fairscale.xyz
-- **API Docs:** https://api2.fairscale.xyz/docs
+- **Docs:** https://docs.fairscale.xyz
+- **API Key:** https://sales.fairscale.xyz
 - **Twitter:** [@FairScaleXYZ](https://twitter.com/FairScaleXYZ)
-- **Website:** https://fairscale.xyz
 
 ## License
 

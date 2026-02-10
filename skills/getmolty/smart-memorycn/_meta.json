@@ -1,0 +1,11 @@
+{
+  "owner": "getmolty",
+  "slug": "smart-memorycn",
+  "displayName": "Smart Memory v2.1 - Focus Agent Edition",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770674136871,
+    "commit": "https://github.com/openclaw/skills/commit/09d885021bd1300a13ce24a3482355f04e3cae31"
+  },
+  "history": []
+}

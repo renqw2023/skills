@@ -1,0 +1,11 @@
+{
+  "owner": "ivangdavila",
+  "slug": "nodejs",
+  "displayName": "NodeJS",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770682873852,
+    "commit": "https://github.com/openclaw/skills/commit/cc7d0aa561bea427b9070f99c439e788f03c6abf"
+  },
+  "history": []
+}

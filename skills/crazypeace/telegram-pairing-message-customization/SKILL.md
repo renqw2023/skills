@@ -11,13 +11,9 @@ description: Add custom messages to Telegram pairing replies for unapproved user
 
 ## 实施内容
 
-目标文件：`/usr/lib/node_modules/openclaw/dist/telegram/bot-message-context.js`
+### 1. 找到需要修改的文件
 
-修改前备份, 方便以后撤销实施
-
-在数组中 "Ask the bot owner to approve with:" 项上方添加自定义消息：
-
-修改前
+在你正在运行的代码中搜索下面的代码段
 
 ```javascript
 fn: () => bot.api.sendMessage(chatId, [
@@ -31,6 +27,14 @@ fn: () => bot.api.sendMessage(chatId, [
     formatCliCommand("openclaw pairing approve telegram <code>"),
 ].join("\n")),
 ```
+
+### 2. 备份文件
+
+修改前备份, 方便以后撤销实施
+
+### 3. 实施修改
+
+在数组中 "Ask the bot owner to approve with:" 项上方添加自定义消息：
 
 修改后
 
@@ -48,11 +52,16 @@ fn: () => bot.api.sendMessage(chatId, [
 ].join("\n")),
 ```
 
-## 完成配置
-
-修改完成后重启服务：
+### 4. 修改完成后重启服务
 ```bash
 openclaw gateway restart
 ```
 
-验证：让未配对用户发送 `/start` 命令，确认收到带自定义信息的配对消息。
+## 验证
+
+让未配对用户发送 `/start` 命令，确认收到带自定义信息的配对消息。
+
+## 一些建议
+在寻找需要修改的文件时, 建议先搜索 `Ask the bot owner to approve with:` 可以帮助你先大幅缩小处理范围, 过滤出最有可能的几个文件.
+
+一个建议的起始目录为 /usr/lib/node_modules/openclaw/

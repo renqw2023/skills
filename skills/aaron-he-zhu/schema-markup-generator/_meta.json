@@ -1,0 +1,11 @@
+{
+  "owner": "aaron-he-zhu",
+  "slug": "schema-markup-generator",
+  "displayName": "Schema Markup Generator",
+  "latest": {
+    "version": "0.1.0",
+    "publishedAt": 1770559410966,
+    "commit": "https://github.com/openclaw/skills/commit/86397addd640d778a27ea03a9edc9ed92eb2be81"
+  },
+  "history": []
+}

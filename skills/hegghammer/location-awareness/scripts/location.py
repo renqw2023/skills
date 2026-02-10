@@ -14,28 +14,16 @@ import urllib.request
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from abc import ABC, abstractmethod
-import subprocess
-
 SCRIPT_DIR = Path(__file__).parent
 CONFIG_FILE = SCRIPT_DIR / "config.json"
 GEOFENCES_FILE = SCRIPT_DIR / "geofences.json"
 STATE_FILE = SCRIPT_DIR / ".location_state.json"
 
 def resolve_secret(value: str) -> str:
-    """Resolve secret: plain, env:VAR, pass:path, or cmd:command"""
+    """Resolve secret: plain string or env:VAR_NAME"""
     if not value: return ""
     if value.startswith("env:"):
         return os.environ.get(value[4:], "")
-    elif value.startswith("pass:"):
-        try:
-            r = subprocess.run(["pass", "show", value[5:]], capture_output=True, text=True, timeout=5)
-            return r.stdout.strip().split("\n")[0]
-        except: return ""
-    elif value.startswith("cmd:"):
-        try:
-            r = subprocess.run(value[4:], shell=True, capture_output=True, text=True, timeout=5)
-            return r.stdout.strip()
-        except: return ""
     return value
 
 
@@ -195,37 +183,44 @@ class GPSLoggerProvider(LocationProvider):
 # PROVIDER FACTORY
 # =============================================================================
 
+def _env_or_config(env_key: str, config_val: str = None, default: str = "") -> str:
+    """Env var wins, then config.json value (with secret resolution), then default."""
+    return os.environ.get(env_key) or resolve_secret(config_val or "") or default
+
+
 def create_provider(config: dict) -> LocationProvider:
     """Create a location provider from config."""
-    provider_type = config.get("provider", "homeassistant")
+    provider_type = os.environ.get("LOCATION_PROVIDER") or config.get("provider", "homeassistant")
     
     if provider_type == "homeassistant":
         ha = config.get("homeassistant", {})
         return HomeAssistantProvider(
-            url=resolve_secret(ha.get("url")) or os.environ.get("HA_URL", ""),
-            token=resolve_secret(ha.get("token")) or os.environ.get("HA_TOKEN", ""),
-            entity_id=ha.get("entity_id", "device_tracker.phone"),
+            url=_env_or_config("HA_URL", ha.get("url")),
+            token=_env_or_config("HA_TOKEN", ha.get("token")),
+            entity_id=_env_or_config("HA_ENTITY_ID", ha.get("entity_id"), "device_tracker.phone"),
         )
     
     elif provider_type == "http":
         http = config.get("http", {})
         return HTTPProvider(
-            url=http.get("url"),
+            url=_env_or_config("LOCATION_HTTP_URL", http.get("url")),
             headers=http.get("headers", {}),
         )
     
     elif provider_type == "owntracks":
         ot = config.get("owntracks", {})
         return OwnTracksProvider(
-            url=ot.get("url"),
-            user=ot.get("user"),
-            device=ot.get("device"),
-            token=resolve_secret(ot.get("token")),
+            url=_env_or_config("OWNTRACKS_URL", ot.get("url")),
+            user=_env_or_config("OWNTRACKS_USER", ot.get("user")),
+            device=_env_or_config("OWNTRACKS_DEVICE", ot.get("device")),
+            token=_env_or_config("OWNTRACKS_TOKEN", ot.get("token")),
         )
     
     elif provider_type == "gpslogger":
         gl = config.get("gpslogger", {})
-        return GPSLoggerProvider(file_path=gl.get("file"))
+        return GPSLoggerProvider(
+            file_path=_env_or_config("GPSLOGGER_FILE", gl.get("file")),
+        )
     
     else:
         raise ValueError(f"Unknown provider: {provider_type}")

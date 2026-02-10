@@ -1,0 +1,11 @@
+{
+  "owner": "byungkyu",
+  "slug": "cognito-forms",
+  "displayName": "Cognito Forms",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770637989835,
+    "commit": "https://github.com/openclaw/skills/commit/2ac9d756a43acad79fc0c336a27519571192fcb9"
+  },
+  "history": []
+}

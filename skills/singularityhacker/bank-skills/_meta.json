@@ -1,0 +1,11 @@
+{
+  "owner": "singularityhacker",
+  "slug": "bank-skills",
+  "displayName": "Bank Skills",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770593503346,
+    "commit": "https://github.com/openclaw/skills/commit/63b32da6d5b2261f7aea62a8ea6f8738f38cd53d"
+  },
+  "history": []
+}

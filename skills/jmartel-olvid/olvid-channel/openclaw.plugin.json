@@ -1,5 +1,5 @@
 {
-  "id": "olvid",
+  "id": "olvid-channel",
   "channels": ["olvid"],
   "name": "Olvid Channel",
   "openclaw": {

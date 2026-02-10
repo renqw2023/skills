@@ -3,11 +3,16 @@
   "slug": "csdn-publisher",
   "displayName": "Csdn Publisher",
   "latest": {
-    "version": "0.1.0",
-    "publishedAt": 1770107046427,
-    "commit": "https://github.com/clawdbot/skills/commit/47ea86c1cead2670f549a32aab81a01ae93e789e"
+    "version": "2.2.0",
+    "publishedAt": 1770703699429,
+    "commit": "https://github.com/openclaw/skills/commit/30979c7bce2f18e569df1bff5a8985b90696dc01"
   },
   "history": [
+    {
+      "version": "0.1.0",
+      "publishedAt": 1770107046427,
+      "commit": "https://github.com/clawdbot/skills/commit/47ea86c1cead2670f549a32aab81a01ae93e789e"
+    },
     {
       "version": "1.3.1",
       "publishedAt": 1769786970787,

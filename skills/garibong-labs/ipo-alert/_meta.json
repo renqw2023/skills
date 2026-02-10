@@ -1,0 +1,11 @@
+{
+  "owner": "garibong-labs",
+  "slug": "ipo-alert",
+  "displayName": "IPO Alert (한국 공모주)",
+  "latest": {
+    "version": "0.1.0",
+    "publishedAt": 1770556219294,
+    "commit": "https://github.com/openclaw/skills/commit/48e01dd5eb0f57cf5c7246a6d52b289a4ffe8eb2"
+  },
+  "history": []
+}

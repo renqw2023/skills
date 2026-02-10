@@ -1,0 +1,11 @@
+{
+  "owner": "datadrivenconstruction",
+  "slug": "pptx-construction",
+  "displayName": "Pptx Construction",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770476181732,
+    "commit": "https://github.com/openclaw/skills/commit/34cfdf051279d9279bc90fe1c4b70b81f744914a"
+  },
+  "history": []
+}

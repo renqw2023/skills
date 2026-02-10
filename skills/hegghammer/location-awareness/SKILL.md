@@ -1,5 +1,6 @@
 ---
 name: location-awareness
+version: 1.2.0
 description: Location awareness via privacy-friendly GPS tracking (Home Assistant, OwnTracks, GPS Logger). Set location-based reminders and ask about movement history, travel time, and nearby POIs. 
 metadata: {"clawdbot":{"emoji":"📍","requires":{"bins":["python3"]}}}
 ---
@@ -137,9 +138,19 @@ Edit `scripts/config.json`:
 }
 ```
 
-Secrets support: `"env:VAR"`, `"pass:path"`, `"cmd:command"`, or plain string.
+Secrets support: `"env:VAR_NAME"` (reads from environment variable) or plain string.
 
-**Alternative:** Set `HA_URL` and `HA_TOKEN` environment variables instead of editing config.json.
+**Alternative:** Configure entirely via environment variables (no config.json needed):
+
+| Provider | Env variables |
+|----------|--------------|
+| `LOCATION_PROVIDER` | `homeassistant`, `owntracks`, `http`, or `gpslogger` (default: `homeassistant`) |
+| **Home Assistant** | `HA_URL`, `HA_TOKEN`, `HA_ENTITY_ID` |
+| **OwnTracks** | `OWNTRACKS_URL`, `OWNTRACKS_USER`, `OWNTRACKS_DEVICE`, `OWNTRACKS_TOKEN` |
+| **HTTP** | `LOCATION_HTTP_URL` |
+| **GPSLogger** | `GPSLOGGER_FILE` |
+
+Env vars take precedence over config.json values. Set them in `~/.openclaw/.env` or your shell environment.
 
 **Output format:** Most query commands output human-readable text by default. Add `--json` for JSON output (useful for scripting).
 
@@ -181,39 +192,19 @@ Edit `scripts/geofences.json`:
 }
 ```
 
-### Cron Setup (Automatic Notifications)
+### Automatic Notifications (OpenClaw Cron)
 
-For automatic location-based notifications, set up a systemd timer:
+Use OpenClaw's built-in cron to run periodic location checks. Add a job to `~/.openclaw/cron/jobs.json`:
 
-1. **Configure notification target** (env var):
-```bash
-export CLAWDBOT_NOTIFY_TARGET="+1234567890"  # or @telegram_user, etc.
+```json
+{
+  "name": "Location Check",
+  "schedule": "*/5 * * * *",
+  "prompt": "Run scripts/location.sh check --json and notify me of any triggered actions, reminders, or proximity alerts.",
+  "channel": "signal",
+  "to": "+1234567890",
+  "wakeMode": "now"
+}
 ```
 
-2. **Create systemd service** (`~/.config/systemd/user/location-check.service`):
-```ini
-[Unit]
-Description=Location check
-
-[Service]
-Type=oneshot
-Environment=CLAWDBOT_NOTIFY_TARGET=+1234567890
-ExecStart=%h/clawd/skills/location-awareness/scripts/location_cron.sh
-```
-
-3. **Create timer** (`~/.config/systemd/user/location-check.timer`):
-```ini
-[Unit]
-Description=Run location check every 5 minutes
-
-[Timer]
-OnBootSec=2min
-OnUnitActiveSec=5min
-
-[Install]
-WantedBy=timers.target
-```
-
-4. **Enable**: `systemctl --user enable --now location-check.timer`
-
-Notifications use `clawdbot message send`, so they work with any configured channel (Signal, Telegram, etc.).
+This keeps scheduling within OpenClaw rather than requiring external systemd services.

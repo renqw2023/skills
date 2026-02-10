@@ -1,0 +1,11 @@
+{
+  "owner": "easonc13",
+  "slug": "sui-decompile",
+  "displayName": "Sui Decompile",
+  "latest": {
+    "version": "1.0.2",
+    "publishedAt": 1770643201013,
+    "commit": "https://github.com/openclaw/skills/commit/ff77af919a12b9032173cfb1e974a236ac6b7845"
+  },
+  "history": []
+}

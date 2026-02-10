@@ -1,0 +1,11 @@
+{
+  "owner": "aenjoy",
+  "slug": "lybic-sandbox",
+  "displayName": "A skill for controlling Lybic cloud sandboxes(computer).",
+  "latest": {
+    "version": "0.1.0",
+    "publishedAt": 1770688555180,
+    "commit": "https://github.com/openclaw/skills/commit/a52c7bd9065560d4e2fd5009b3976478cc5235e9"
+  },
+  "history": []
+}

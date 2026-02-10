@@ -1,0 +1,11 @@
+{
+  "owner": "datadrivenconstruction",
+  "slug": "xlsx-construction",
+  "displayName": "Xlsx Construction",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770476191617,
+    "commit": "https://github.com/openclaw/skills/commit/4f5f1946ee30c186ac6a80f3b49d4f3bd3ece57e"
+  },
+  "history": []
+}

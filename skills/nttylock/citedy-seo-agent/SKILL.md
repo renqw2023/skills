@@ -195,7 +195,7 @@ Without extensions: same as before (mini=15, standard=20, full=33, pillar=48 cre
 
 ### Create Social Adaptations
 
-```
+```http
 POST /api/agent/adapt
 {
   "article_id": "uuid-of-article",
@@ -237,7 +237,7 @@ Response:
 
 ### Create Autopilot Session
 
-```
+```http
 POST /api/agent/session
 {
   "categories": ["AI marketing", "SEO tools"],
@@ -322,7 +322,7 @@ Use `connected_platforms` to decide which platforms to pass to `/api/agent/adapt
 
 Turn any web page into an SEO article with social media posts:
 
-```
+```text
 1. GET /api/agent/me → get referral URL + connected platforms
 2. POST /api/agent/autopilot { "source_urls": ["https://..."] } → poll until done → get article_id
 3. POST /api/agent/adapt { "article_id": "...", "platforms": ["linkedin", "x_thread"], "include_ref_link": true }
@@ -332,11 +332,84 @@ Turn any web page into an SEO article with social media posts:
 
 Automate content generation on a schedule:
 
-```
+```text
 1. POST /api/agent/session { "categories": ["..."], "interval_minutes": 720 }
 2. Periodically: GET /api/agent/articles → find new articles
 3. POST /api/agent/adapt for each new article
 ```
+
+---
+
+## Examples
+
+### User sends a link
+
+> User: "Write an article based on this: https://example.com/ai-trends"
+
+1. `POST /api/agent/autopilot` with `{ "source_urls": ["https://example.com/ai-trends"], "size": "mini" }`
+2. Poll `GET /api/agent/autopilot/{id}` until done
+3. `POST /api/agent/adapt` with `{ "article_id": "...", "platforms": ["linkedin", "x_thread"], "include_ref_link": true }`
+
+Reply to user:
+
+> Done! Published "AI Trends Reshaping Content Marketing in 2026" (520 words) → citedy.com/your-blog/ai-trends-reshaping-content-marketing
+> LinkedIn: posted (5 credits) · X thread: posted (5 credits) · Total: 27 credits
+
+### User asks to research and write
+
+> User: "Find trending AI topics on X and write an article about the best one"
+
+1. `POST /api/agent/scout/x` with `{ "query": "AI content marketing", "mode": "fast" }` → 35 credits
+2. Pick the top trend from results
+3. `POST /api/agent/autopilot` with `{ "topic": "<top trend>", "size": "standard" }`
+4. Poll until done, then adapt if user wants social posts
+
+Reply to user:
+
+> Scanned X for "AI content marketing" — top 5 trends:
+>
+> 1. AI-generated video scripts outperform text posts (engagement +340%)
+> 2. Google's March update rewards AI+human hybrid content
+>    ...
+>    Writing a standard article on #1. This will cost 20 credits.
+
+### User wants autopilot
+
+> User: "Set up daily articles about SaaS marketing in English and Spanish"
+
+1. `POST /api/agent/session` with `{ "categories": ["SaaS marketing"], "languages": ["en", "es"], "interval_minutes": 720, "article_size": "mini" }`
+
+Reply to user:
+
+> Autopilot session started! Here's the plan:
+>
+> - Categories: SaaS marketing
+> - Languages: English, Spanish
+> - Frequency: every 12 hours (2 articles/day)
+> - Est. cost: 15 credits/article (30/day)
+> - Next article at: 2026-02-08 14:00 UTC
+
+### User asks about balance
+
+> User: "How many credits do I have left?"
+
+1. `GET /api/agent/me`
+
+Reply to user:
+
+> Balance: 4,250 credits ($42.50) — status: healthy
+> Rate limits: 58/60 general, 9/10 scout, 10/10 gaps
+> Connected platforms: LinkedIn (John Doe), X (not connected)
+
+### Choosing the right path
+
+| User intent                   | Best path         | Why                                     |
+| ----------------------------- | ----------------- | --------------------------------------- |
+| "Write about this link"       | `source_urls`     | Lowest effort, source material provided |
+| "Write about AI marketing"    | `topic`           | Direct topic, no scraping needed        |
+| "What's trending on X?"       | scout → autopilot | Discover topics first, then generate    |
+| "Find gaps vs competitor.com" | gaps → autopilot  | Data-driven content strategy            |
+| "Post 2 articles daily"       | session           | Set-and-forget automation               |
 
 ---
 
@@ -354,22 +427,22 @@ Call `GET /api/agent/me` every 4 hours as a keep-alive. This updates `last_activ
 
 ## API Quick Reference
 
-| Endpoint                          | Method | Cost              |
-| --------------------------------- | ------ | ----------------- |
-| `/api/agent/register`             | POST   | free              |
-| `/api/agent/me`                   | GET    | free              |
-| `/api/agent/scout/x`              | POST   | 35-70 credits     |
-| `/api/agent/scout/reddit`         | POST   | 30 credits        |
-| `/api/agent/gaps`                 | GET    | free              |
-| `/api/agent/gaps/generate`        | POST   | 40 credits        |
-| `/api/agent/gaps-status/{id}`     | GET    | free              |
-| `/api/agent/competitors/discover` | POST   | 20 credits        |
-| `/api/agent/competitors/scout`    | POST   | 25-50 credits     |
-| `/api/agent/autopilot`            | POST   | 7-139 credits     |
-| `/api/agent/autopilot/{id}`       | GET    | free              |
-| `/api/agent/adapt`                | POST   | ~5 credits/platform |
+| Endpoint                          | Method | Cost                                 |
+| --------------------------------- | ------ | ------------------------------------ |
+| `/api/agent/register`             | POST   | free                                 |
+| `/api/agent/me`                   | GET    | free                                 |
+| `/api/agent/scout/x`              | POST   | 35-70 credits                        |
+| `/api/agent/scout/reddit`         | POST   | 30 credits                           |
+| `/api/agent/gaps`                 | GET    | free                                 |
+| `/api/agent/gaps/generate`        | POST   | 40 credits                           |
+| `/api/agent/gaps-status/{id}`     | GET    | free                                 |
+| `/api/agent/competitors/discover` | POST   | 20 credits                           |
+| `/api/agent/competitors/scout`    | POST   | 25-50 credits                        |
+| `/api/agent/autopilot`            | POST   | 7-139 credits                        |
+| `/api/agent/autopilot/{id}`       | GET    | free                                 |
+| `/api/agent/adapt`                | POST   | ~5 credits/platform                  |
 | `/api/agent/session`              | POST   | free (articles billed on generation) |
-| `/api/agent/articles`             | GET    | free              |
+| `/api/agent/articles`             | GET    | free                                 |
 
 **1 credit = $0.01 USD**
 
@@ -416,4 +489,4 @@ On `429`, read `retry_after` from the body and `X-RateLimit-Reset` header.
 
 ---
 
-_Citedy SEO Agent Skill v2.0.0_
+_Citedy SEO Agent Skill v2.1.0_

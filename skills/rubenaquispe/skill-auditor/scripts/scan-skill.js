@@ -1,313 +1,61 @@
 #!/usr/bin/env node
 /**
- * Skill Auditor — Static security scanner for Moltbot skills
- * Usage: node scan-skill.js <skill-directory> [--json <output-path>]
- * Exit codes: 0 = clean, 1 = findings, 2 = error
+ * Skill Auditor v2.0 — Enhanced security scanner for OpenClaw skills
+ * Usage: node scan-skill.js <skill-directory> [options]
+ * 
+ * Options:
+ *   --json <file>         Output results in JSON format
+ *   --format sarif        Output in SARIF format for GitHub Code Scanning
+ *   --mode <mode>         Detection mode: strict|balanced|permissive (default: balanced)
+ *   --use-virustotal     Enable VirusTotal binary scanning (requires VIRUSTOTAL_API_KEY)
+ *   --use-llm           Enable LLM semantic analysis (requires OpenClaw gateway)
+ *   --custom-rules <dir> Additional YARA rules directory
+ *   --fail-on-findings  Exit with code 1 if HIGH/CRITICAL findings found
+ *   --help              Show this help message
+ * 
+ * Exit codes: 0 = clean/low findings, 1 = significant findings, 2 = error
  */
 
 const fs = require('fs');
 const path = require('path');
 
-// ─── Threat Patterns ───────────────────────────────────────────────
+// ─── Import Analyzers (with graceful fallback) ─────────────────────
 
-const PATTERNS = [
-  // === FILE ACCESS ===
-  {
-    id: 'path-traversal',
-    category: 'File Access',
-    severity: 'high',
-    regex: /\.\.[\/\\]|['"]\.\.['"]\s*,\s*['"]\.\.['"]/g,
-    description: 'Path traversal — attempts to access files outside skill directory'
-  },
-  {
-    id: 'absolute-path-windows',
-    category: 'File Access',
-    severity: 'medium',
-    regex: /[A-Z]:\\(?:Users|Windows|Program\s*Files|ProgramData|System32)[\w\\\s]/gi,
-    description: 'Absolute Windows path to sensitive directory',
-    contextNote: 'Lower severity in reference docs — may be legitimate documentation'
-  },
-  {
-    id: 'absolute-path-unix',
-    category: 'File Access',
-    severity: 'high',
-    regex: /(?<!#!.*)(?<!file:\/\/)(?:^|[^.a-z])\/(etc|home|root|var)\/\S+/gm,
-    description: 'Absolute Unix path — accesses system directories'
-  },
-  {
-    id: 'homedir-access',
-    category: 'File Access',
-    severity: 'high',
-    regex: /(?:os\.homedir\(\)|process\.env\.(?:HOME|USERPROFILE)\b)/g,
-    description: 'Home directory access in code — may reach user files outside workspace'
-  },
-  {
-    id: 'memory-file-access',
-    category: 'Sensitive File Access',
-    severity: 'critical',
-    regex: /(?:readFile|writeFile|openSync|readFileSync|writeFileSync|fs\.\w+|open\(|cat\s+|type\s+|Get-Content|Set-Content).*(?:MEMORY\.md|TOOLS\.md|SOUL\.md|USER\.md|AGENTS\.md|HEARTBEAT\.md|moltbot\.json|clawdbot\.json)|(?:MEMORY\.md|TOOLS\.md|SOUL\.md|USER\.md|AGENTS\.md|HEARTBEAT\.md|moltbot\.json|clawdbot\.json).*(?:readFile|writeFile|open|read|write|fs\.\w+)/gi,
-    description: 'Code that reads/writes Moltbot core files — could access agent memory or config'
-  },
-  {
-    id: 'credential-file-access',
-    category: 'Sensitive File Access',
-    severity: 'critical',
-    regex: /(?:\.ssh[\/\\]|[\/\\]\.env\b|\.aws[\/\\]credentials|[\/\\]id_rsa\b|[\/\\]id_ed25519\b|\.gnupg[\/\\]|[\/\\]\.npmrc\b|[\/\\]\.pypirc\b)/g,
-    description: 'Access to credential/key files'
-  },
+const staticAnalyzer = require('./analyzers/static.js');
 
-  {
-    id: 'env-sensitive-access',
-    category: 'Sensitive File Access',
-    severity: 'high',
-    regex: /(?:os\.environ(?:\.get)?\s*[\[(]|process\.env\s*[\[.]|getenv\s*\()\s*['"]?(?:API_KEY|SECRET|TOKEN|PASSWORD|CREDENTIALS|AWS_|GITHUB_TOKEN|OPENAI|ANTHROPIC)/gi,
-    description: 'Reads sensitive environment variables — could harvest API keys or secrets'
-  },
+let astAnalyzer, vtAnalyzer, llmAnalyzer, sarifUtils;
+let yaraSupport = false;
 
-  // === NETWORK ===
-  {
-    id: 'http-url',
-    category: 'Network',
-    severity: 'medium',
-    regex: /https?:\/\/(?!(?:example\.com|localhost|127\.0\.0\.1|your[\w-]*\.example))[^\s"'`)>\]]+/g,
-    description: 'HTTP URL — skill makes or references external network calls',
-    extractMatch: true
-  },
-  {
-    id: 'fetch-call',
-    category: 'Network',
-    severity: 'high',
-    regex: /\b(?:axios|needle|superagent|XMLHttpRequest|urllib|requests\.(?:get|post|put|delete))\s*\(|(?:^|[^.\w])fetch\s*\(\s*['"`h]/gm,
-    description: 'HTTP library call — makes outbound network requests'
-  },
-  {
-    id: 'curl-wget',
-    category: 'Network',
-    severity: 'high',
-    regex: /\b(?:curl|wget|Invoke-WebRequest|Invoke-RestMethod)\s+['"`\-h$]/g,
-    description: 'CLI HTTP tool — makes outbound network requests'
-  },
-  {
-    id: 'webhook-exfil',
-    category: 'Data Exfiltration',
-    severity: 'critical',
-    regex: /(?:webhook\.site|requestbin|pipedream|ngrok|burpcollaborator|interact\.sh|oastify)/gi,
-    description: 'Known data capture service — likely exfiltration endpoint'
-  },
-  {
-    id: 'dns-exfil',
-    category: 'Data Exfiltration',
-    severity: 'high',
-    regex: /\b(?:nslookup|dig|host)\s+.*\$|dns.*exfil/gi,
-    description: 'Possible DNS exfiltration technique'
-  },
+try {
+  astAnalyzer = require('./analyzers/ast-python.js');
+} catch (e) {
+  astAnalyzer = null;
+}
 
-  // === SHELL EXECUTION ===
-  {
-    id: 'shell-exec-node',
-    category: 'Shell Execution',
-    severity: 'high',
-    regex: /\brequire\s*\(\s*['"]child_process['"]\s*\)|(?:^|[^.])(?:execSync|spawnSync|execFile|execFileSync)\s*\(/gm,
-    description: 'Node.js shell execution — can run arbitrary system commands'
-  },
-  {
-    id: 'shell-exec-python',
-    category: 'Shell Execution',
-    severity: 'high',
-    regex: /\b(?:os\.system\s*\(|os\.popen\s*\(|subprocess\.(?:run|call|Popen|check_output)\s*\(|__import__\s*\(\s*['"](?:subprocess|os|shutil)['"]\s*\))/g,
-    description: 'Python shell execution — can run arbitrary system commands'
-  },
-  {
-    id: 'shell-exec-generic',
-    category: 'Shell Execution',
-    severity: 'high',
-    regex: /(?:^|[^.\w])eval\s*\(\s*[^)]+\)|new\s+Function\s*\(/gm,
-    description: 'Dynamic code evaluation — could execute arbitrary code'
-  },
-  {
-    id: 'powershell-invoke',
-    category: 'Shell Execution',
-    severity: 'high',
-    regex: /\b(?:Invoke-Expression|iex|Start-Process|\.Invoke)\b/gi,
-    description: 'PowerShell execution — can run arbitrary commands'
-  },
+try {
+  vtAnalyzer = require('./analyzers/virustotal.js');
+} catch (e) {
+  vtAnalyzer = null;
+}
 
-  // === OBFUSCATION ===
-  {
-    id: 'base64-encode',
-    category: 'Obfuscation',
-    severity: 'high',
-    regex: /(?:btoa|atob|Buffer\.from\([^)]+,\s*['"]base64['"]\)|base64\.(?:b64encode|b64decode|encode|decode)|Convert\]::(?:ToBase64|FromBase64))/g,
-    description: 'Base64 encoding/decoding — may hide malicious payloads'
-  },
-  {
-    id: 'base64-string',
-    category: 'Obfuscation',
-    severity: 'medium',
-    regex: /(?<![\w:\/\-.])(?![0-9a-f]{40,})[A-Za-z0-9+\/]{80,}={0,2}(?![\w\-])/g,
-    description: 'Long base64-like string — could be an encoded payload',
-    maxMatches: 3
-  },
-  {
-    id: 'hex-string',
-    category: 'Obfuscation',
-    severity: 'medium',
-    regex: /(?:\\x[0-9a-fA-F]{2}){4,}/g,
-    description: 'Hex-encoded string — may hide file paths or URLs'
-  },
-  {
-    id: 'unicode-escape',
-    category: 'Obfuscation',
-    severity: 'medium',
-    regex: /(?:\\u[0-9a-fA-F]{4}){3,}/g,
-    description: 'Unicode escape sequence — may hide instructions or paths'
-  },
-  {
-    id: 'string-concat-obfuscation',
-    category: 'Obfuscation',
-    severity: 'high',
-    regex: /["'][A-Z]{1,4}["']\s*\+\s*["'][A-Z]{1,4}["']/g,
-    description: 'String concatenation of short uppercase fragments — may be building sensitive names'
-  },
-  {
-    id: 'zero-width-chars',
-    category: 'Obfuscation',
-    severity: 'critical',
-    regex: /[\u200B\u200C\u200D\uFEFF\u00AD\u2060\u180E]/g,
-    description: 'Zero-width/invisible characters — hidden content that renders invisible'
-  },
-  {
-    id: 'html-comment-instructions',
-    category: 'Obfuscation',
-    severity: 'high',
-    regex: /<!--[\s\S]*?(?:ignore|disregard|instruction|important|system|read|send|fetch|execute|include|also|override)[\s\S]*?-->/gi,
-    description: 'HTML comment with suspicious instructions — hidden directives'
-  },
+try {
+  llmAnalyzer = require('./analyzers/llm-semantic.js');
+} catch (e) {
+  llmAnalyzer = null;
+}
 
-  // === PROMPT INJECTION ===
-  {
-    id: 'prompt-injection-ignore',
-    category: 'Prompt Injection',
-    severity: 'critical',
-    regex: /(?:ignore|disregard|forget)\s+(?:all\s+)?(?:previous|prior|above|earlier)\s+(?:instructions?|prompts?|rules?|context)/gi,
-    description: 'Prompt injection — attempts to override agent instructions'
-  },
-  {
-    id: 'prompt-injection-new-instructions',
-    category: 'Prompt Injection',
-    severity: 'critical',
-    regex: /(?:new|updated|revised|real|actual|true)\s+(?:instructions?|system\s*prompt|directives?|rules?)\s*:/gi,
-    description: 'Prompt injection — attempts to inject new instructions'
-  },
-  {
-    id: 'prompt-injection-role',
-    category: 'Prompt Injection',
-    severity: 'critical',
-    regex: /(?:you\s+are\s+now|act\s+as|pretend\s+(?:to\s+be|you\s+are)|your\s+new\s+role|from\s+now\s+on\s+you)/gi,
-    description: 'Prompt injection — attempts to change agent identity/role'
-  },
-  {
-    id: 'prompt-injection-system',
-    category: 'Prompt Injection',
-    severity: 'critical',
-    regex: /(?:^|\s)(?:\[SYSTEM\]|SYSTEM:|<\|system\|>|<system>)/gm,
-    description: 'Prompt injection — fake system message delimiter'
-  },
-  {
-    id: 'prompt-injection-delimiter',
-    category: 'Prompt Injection',
-    severity: 'high',
-    regex: /(?:```system|<\|im_start\|>|<\|endoftext\|>|<\|separator\|>|\[INST\]|\[\/INST\])/g,
-    description: 'Prompt injection — LLM delimiter manipulation'
-  },
+try {
+  sarifUtils = require('./utils/sarif.js');
+} catch (e) {
+  sarifUtils = null;
+}
 
-  // === DATA EXFILTRATION TECHNIQUES ===
-  {
-    id: 'markdown-image-exfil',
-    category: 'Data Exfiltration',
-    severity: 'critical',
-    regex: /!\[.*?\]\(https?:\/\/.*?[?&].*?(?:data|token|key|secret|content|payload|q)=/gi,
-    description: 'Markdown image with query parameters — possible data exfiltration via image URL'
-  },
-  {
-    id: 'message-tool-abuse',
-    category: 'Data Exfiltration',
-    severity: 'high',
-    regex: /\b(?:sessions_send|sessions_spawn)\b.*(?:send|target|to)\b/gi,
-    description: 'References Moltbot session tools — could exfiltrate data via messaging'
-  },
-
-  // === PERSISTENCE ===
-  {
-    id: 'memory-write',
-    category: 'Persistence',
-    severity: 'critical',
-    regex: /(?:writeFile|appendFile|fs\.write|Set-Content|Out-File|>>?\s*).*(?:MEMORY\.md|HEARTBEAT\.md|AGENTS\.md|SOUL\.md|memory\/)|(?:MEMORY\.md|HEARTBEAT\.md|AGENTS\.md|SOUL\.md|memory\/).*(?:writeFile|appendFile|write|>)/gi,
-    description: 'Writes to agent memory/config files — persistence attack vector'
-  },
-  {
-    id: 'cron-manipulation',
-    category: 'Persistence',
-    severity: 'critical',
-    regex: /\b(?:schtasks\s+\/create|crontab\s+-[ew]|cron\.add|cron\.update)\b/gi,
-    description: 'Creates scheduled tasks — could establish persistent execution'
-  },
-  {
-    id: 'startup-persistence',
-    category: 'Persistence',
-    severity: 'critical',
-    regex: /(?:autorun|HKLM\\|HKCU\\|\\Run\\|init\.d\/|systemd\s+enable|launchctl\s+load|\.plist\b|schtasks\s+\/create)/gi,
-    description: 'System startup/persistence mechanism'
-  },
-
-  // === PRIVILEGE ESCALATION ===
-  {
-    id: 'browser-tool',
-    category: 'Privilege Escalation',
-    severity: 'high',
-    regex: /\brequire\s*\(\s*['"](?:puppeteer|playwright|selenium)['"]\s*\)|\.(?:newPage|goto|navigate)\s*\(/g,
-    description: 'Browser automation — could access authenticated sessions'
-  },
-  {
-    id: 'node-control',
-    category: 'Privilege Escalation',
-    severity: 'high',
-    regex: /\b(?:camera_snap|screen_record|location_get)\s*\(|nodes\s*\.\s*(?:run|camera|screen|location)/g,
-    description: 'Calls Moltbot node control — accesses paired devices'
-  },
-  {
-    id: 'config-modification',
-    category: 'Privilege Escalation',
-    severity: 'critical',
-    regex: /\b(?:config\.apply|config\.patch|gateway\.restart)\s*\(/g,
-    description: 'Calls Moltbot gateway config — could modify system configuration'
-  }
-];
-
-// ─── Binary Detection ──────────────────────────────────────────────
-
-const BINARY_EXTENSIONS = new Set([
-  '.exe', '.dll', '.so', '.dylib', '.bin', '.dat', '.db', '.sqlite',
-  '.png', '.jpg', '.jpeg', '.gif', '.webp', '.ico', '.bmp', '.svg',
-  '.mp3', '.mp4', '.wav', '.ogg', '.webm', '.avi',
-  '.zip', '.tar', '.gz', '.7z', '.rar', '.skill',
-  '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx',
-  '.woff', '.woff2', '.ttf', '.otf', '.eot'
-]);
-
-function isBinary(filePath) {
-  const ext = path.extname(filePath).toLowerCase();
-  if (BINARY_EXTENSIONS.has(ext)) return true;
-  try {
-    const buf = Buffer.alloc(512);
-    const fd = fs.openSync(filePath, 'r');
-    const bytesRead = fs.readSync(fd, buf, 0, 512, 0);
-    fs.closeSync(fd);
-    for (let i = 0; i < bytesRead; i++) {
-      if (buf[i] === 0) return true;
-    }
-  } catch { }
-  return false;
+// Check for YARA support
+try {
+  require('yara');
+  yaraSupport = true;
+} catch (e) {
+  yaraSupport = false;
 }
 
 // ─── File Discovery ────────────────────────────────────────────────
@@ -331,132 +79,7 @@ function discoverFiles(dir) {
   return files;
 }
 
-// ─── Scanner ───────────────────────────────────────────────────────
-
-// Files that are documentation, not executable code
-const DOC_EXTENSIONS = new Set(['.md', '.txt', '.rst', '.html', '.css', '.json', '.yaml', '.yml', '.toml', '.xml', '.xsd', '.xsl', '.dtd', '.svg', '.csv']);
-
-// Files where URLs are purely metadata/documentation (not executable)
-const METADATA_FILES = new Set(['readme.md', 'package.json', 'origin.json', 'license', 'license.md', 'license.txt', 'changelog.md', 'contributing.md']);
-
-// Safe URL patterns that are never threats (badges, registries, repos)
-const SAFE_URL_PATTERNS = [
-  /img\.shields\.io/i,
-  /shields\.io\/badge/i,
-  /badge\.fury\.io/i,
-  /badgen\.net/i,
-  /github\.com\/[\w-]+\/[\w-]+(?:\.git)?$/i,
-  /clawhub\.ai/i,
-  /npmjs\.com/i,
-  /pypi\.org/i,
-  /crates\.io/i,
-];
-
-function isDocFile(filePath) {
-  return DOC_EXTENSIONS.has(path.extname(filePath).toLowerCase());
-}
-
-function isMetadataFile(filePath) {
-  const basename = path.basename(filePath).toLowerCase();
-  // Check direct match or if inside .clawhub directory
-  if (METADATA_FILES.has(basename)) return true;
-  if (filePath.includes('.clawhub')) return true;
-  return false;
-}
-
-function isSafeUrl(url) {
-  return SAFE_URL_PATTERNS.some(pattern => pattern.test(url));
-}
-
-// Downgrade severity for findings in documentation files
-function adjustSeverityForContext(severity, filePath) {
-  if (!isDocFile(filePath)) return severity;
-  // Doc files get one level downgrade (patterns in docs are less dangerous than in scripts)
-  const downgrade = { critical: 'high', high: 'medium', medium: 'low', low: 'low' };
-  return downgrade[severity] || severity;
-}
-
-function scanFile(filePath, skillDir) {
-  const findings = [];
-  const relativePath = path.relative(skillDir, filePath);
-
-  if (isBinary(filePath)) {
-    findings.push({
-      id: 'binary-file',
-      category: 'Binary File',
-      severity: 'medium',
-      file: relativePath,
-      line: 0,
-      snippet: `[Binary file: ${path.basename(filePath)}]`,
-      explanation: `Binary file detected — cannot be statically analyzed. Review manually.`
-    });
-    return findings;
-  }
-
-  let content;
-  try {
-    content = fs.readFileSync(filePath, 'utf-8');
-  } catch (e) {
-    findings.push({
-      id: 'read-error',
-      category: 'Error',
-      severity: 'medium',
-      file: relativePath,
-      line: 0,
-      snippet: '',
-      explanation: `Could not read file: ${e.message}`
-    });
-    return findings;
-  }
-
-  const lines = content.split('\n');
-
-  for (const pattern of PATTERNS) {
-    let matchCount = 0;
-    const maxMatches = pattern.maxMatches || 5;
-
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-      // Reset regex lastIndex for global patterns
-      pattern.regex.lastIndex = 0;
-      let match;
-      while ((match = pattern.regex.exec(line)) !== null) {
-        matchCount++;
-        if (matchCount > maxMatches) break;
-
-        const snippet = line.trim().substring(0, 200);
-
-        // Skip HTTP URL findings in metadata/doc files entirely
-        if (pattern.id === 'http-url' && isMetadataFile(filePath)) continue;
-        // Skip safe URLs (badges, registries, repo links) everywhere
-        if (pattern.id === 'http-url' && match[0] && isSafeUrl(match[0])) continue;
-
-        const adjustedSeverity = adjustSeverityForContext(pattern.severity, filePath);
-        findings.push({
-          id: pattern.id,
-          category: pattern.category,
-          severity: adjustedSeverity,
-          originalSeverity: pattern.severity !== adjustedSeverity ? pattern.severity : undefined,
-          file: relativePath,
-          line: i + 1,
-          snippet: snippet,
-          explanation: pattern.description + (pattern.severity !== adjustedSeverity ? ' (downgraded — in documentation file)' : ''),
-          match: pattern.extractMatch ? match[0] : undefined
-        });
-
-        // Avoid infinite loops on zero-length matches
-        if (match.index === pattern.regex.lastIndex) {
-          pattern.regex.lastIndex++;
-        }
-      }
-      if (matchCount > maxMatches) break;
-    }
-  }
-
-  return findings;
-}
-
-// ─── Declared Purpose Analysis ─────────────────────────────────────
+// ─── Skill Metadata Parsing ───────────────────────────────────────
 
 function parseSkillMd(skillDir) {
   const skillMdPath = path.join(skillDir, 'SKILL.md');
@@ -484,11 +107,6 @@ function parseSkillMd(skillDir) {
 
 // ─── Intent-Aware Finding Analysis ─────────────────────────────────
 
-/**
- * Cross-references findings against the skill's declared purpose.
- * If a finding matches what the skill says it does, it's downgraded
- * and marked as intentMatch: true.
- */
 function applyIntentMatching(findings, skillMeta) {
   if (!skillMeta.hasSkillMd || !skillMeta.fullContent) return findings;
 
@@ -510,35 +128,30 @@ function applyIntentMatching(findings, skillMeta) {
     { fileRef: /copilot-instructions/i, descMatch: /copilot-instructions/i },
   ];
 
-  // Purpose-keyword patterns: if the skill describes a purpose, related behaviors are expected
+  // Purpose-keyword patterns
   const PURPOSE_PATTERNS = [
     {
-      // Token optimization / file compression skills → file read/write + AGENTS.md modification expected
       purposeMatch: /\b(?:compress|optimi[zs]e|reduce\s*tokens?|token\s*sav|minif|compact|shrink|ai.?efficient)\b/i,
       expectedCategories: ['File Access', 'Sensitive File Access', 'Persistence'],
       expectedIds: ['memory-file-access', 'memory-write', 'path-traversal', 'homedir-access']
     },
     {
-      // Behavior modification / persistent mode skills → writing to config files expected
       purposeMatch: /\b(?:modif(?:y|ies)\s*(?:ai\s*)?behavio[ur]|persistent\s*mode|ai.?writing|notation|instruction)\b/i,
       expectedCategories: ['Persistence', 'Sensitive File Access', 'Prompt Injection'],
       expectedIds: ['memory-write', 'prompt-injection-system', 'prompt-injection-new-instructions']
     },
     {
-      // Model audit / detection skills → reading config files expected
       purposeMatch: /\b(?:audit\s*model|detect\s*model|model\s*(?:audit|detect|cost|compar)|cost\s*(?:analy|calculat|compar))\b/i,
       expectedCategories: ['File Access', 'Sensitive File Access'],
       expectedIds: ['memory-file-access', 'homedir-access', 'config-modification']
     },
     {
-      // Workspace tools → file access expected
       purposeMatch: /\b(?:workspace|organiz|clean\s*up|restructur|format\s*files?)\b/i,
       expectedCategories: ['File Access', 'Sensitive File Access'],
       expectedIds: ['memory-file-access', 'path-traversal', 'homedir-access']
     }
   ];
 
-  // Check which purpose patterns match the skill's description
   const matchedPurposes = PURPOSE_PATTERNS.filter(pp => pp.purposeMatch.test(desc));
   const purposeExpectedCategories = new Set();
   const purposeExpectedIds = new Set();
@@ -550,10 +163,9 @@ function applyIntentMatching(findings, skillMeta) {
   const severityDowngrade = { critical: 'medium', high: 'low', medium: 'low', low: 'low' };
 
   return findings.map(f => {
-    // Check if the finding's snippet or explanation references something the skill discloses
     let matched = false;
 
-    // Method 1: Direct file-reference matching (existing logic)
+    // Method 1: Direct file-reference matching
     for (const ip of INTENT_PATTERNS) {
       if (ip.fileRef.test(f.snippet) || ip.fileRef.test(f.explanation)) {
         if (ip.descMatch.test(desc)) {
@@ -563,7 +175,7 @@ function applyIntentMatching(findings, skillMeta) {
       }
     }
 
-    // Method 2: Purpose-keyword matching (new)
+    // Method 2: Purpose-keyword matching
     if (!matched && (purposeExpectedCategories.has(f.category) || purposeExpectedIds.has(f.id))) {
       matched = true;
     }
@@ -577,7 +189,6 @@ function applyIntentMatching(findings, skillMeta) {
         explanation: f.explanation + ' ⚡ Expected behavior — matches skill\'s stated purpose'
       };
     } else {
-      // For sensitive file access / persistence findings, mark as undisclosed
       const sensitiveCategories = ['Sensitive File Access', 'Persistence', 'Data Exfiltration', 'Privilege Escalation'];
       const note = sensitiveCategories.includes(f.category)
         ? ' ⚠️ Undisclosed — not mentioned in skill description'
@@ -594,7 +205,6 @@ function applyIntentMatching(findings, skillMeta) {
 // ─── Risk Scoring ──────────────────────────────────────────────────
 
 function calculateRisk(findings) {
-  // Only count non-intent-matched findings for risk assessment
   const unmatched = findings.filter(f => !f.intentMatch);
   const counts = { critical: 0, high: 0, medium: 0, low: 0 };
   const categories = new Set();
@@ -604,7 +214,6 @@ function calculateRisk(findings) {
     categories.add(f.category);
   }
 
-  // Check for obfuscation + data access combo (auto-critical) — only for undisclosed behaviors
   const hasObfuscation = categories.has('Obfuscation');
   const hasDataAccess = categories.has('Sensitive File Access') || categories.has('Data Exfiltration');
   const hasPromptInjection = categories.has('Prompt Injection');
@@ -636,36 +245,7 @@ function summarizeCapabilities(findings) {
   return Array.from(caps);
 }
 
-// ─── Description Accuracy Score ────────────────────────────────────
-
-// Keywords that suggest a skill mentions certain capabilities in its description
-const DESC_CAPABILITY_KEYWORDS = {
-  'Makes network requests': [
-    /\b(?:fetch|download|upload|sync|cloud|api|web|url|http|online|remote|server|connect|request|send|receive|internet)\b/i
-  ],
-  'Accesses files outside skill directory': [
-    /\b(?:system\s*files?|user\s*files?|documents?|config|settings?|memory|workspace|home\s*dir|browse\s*files?)\b/i
-  ],
-  'Executes shell commands': [
-    /\b(?:shell|command|terminal|exec|run\s*(?:program|process|command)|cli|system\s*command|script)\b/i
-  ],
-  'Uses obfuscation techniques': [],  // Should never be described — always undisclosed
-  'Contains prompt injection attempts': [],  // Should never be described
-  'Potential data exfiltration': [],  // Should never be described
-  'Attempts persistence mechanisms': [
-    /\b(?:schedul|cron|autostart|background|persist|always.?on|daemon|service)\b/i
-  ],
-  'Attempts privilege escalation': [
-    /\b(?:browser|device|camera|screen|node|control|automat)/i
-  ]
-};
-
-// Capabilities that are always suspicious if undisclosed
-const ALWAYS_SUSPICIOUS = new Set([
-  'Uses obfuscation techniques',
-  'Contains prompt injection attempts',
-  'Potential data exfiltration'
-]);
+// ─── Accuracy Score Calculation ───────────────────────────────────
 
 function calculateAccuracyScore(description, actualCapabilities, findings = [], fullContent = '') {
   if (!description || description === 'No SKILL.md found' || description === 'No frontmatter' || description === 'No description') {
@@ -676,17 +256,39 @@ function calculateAccuracyScore(description, actualCapabilities, findings = [], 
     return { score: 10, disclosed: [], undisclosed: [], reason: 'Skill does what it says and nothing more' };
   }
 
-  // Check against FULL SKILL.md content, not just the YAML description field
   const fullText = (description + '\n' + (fullContent || '')).toLowerCase();
-
   const disclosed = [];
   const undisclosed = [];
 
+  const DESC_CAPABILITY_KEYWORDS = {
+    'Makes network requests': [
+      /\b(?:fetch|download|upload|sync|cloud|api|web|url|http|online|remote|server|connect|request|send|receive|internet)\b/i
+    ],
+    'Accesses files outside skill directory': [
+      /\b(?:system\s*files?|user\s*files?|documents?|config|settings?|memory|workspace|home\s*dir|browse\s*files?)\b/i
+    ],
+    'Executes shell commands': [
+      /\b(?:shell|command|terminal|exec|run\s*(?:program|process|command)|cli|system\s*command|script)\b/i
+    ],
+    'Uses obfuscation techniques': [],
+    'Contains prompt injection attempts': [],
+    'Potential data exfiltration': [],
+    'Attempts persistence mechanisms': [
+      /\b(?:schedul|cron|autostart|background|persist|always.?on|daemon|service)\b/i
+    ],
+    'Attempts privilege escalation': [
+      /\b(?:browser|device|camera|screen|node|control|automat)/i
+    ]
+  };
+
+  const ALWAYS_SUSPICIOUS = new Set([
+    'Uses obfuscation techniques',
+    'Contains prompt injection attempts',
+    'Potential data exfiltration'
+  ]);
+
   for (const cap of actualCapabilities) {
-    // Always-suspicious capabilities are never "disclosed" — they're inherently deceptive
-    // UNLESS the finding was intent-matched (purpose-keyword recognized the behavior)
     if (ALWAYS_SUSPICIOUS.has(cap)) {
-      // Check if all findings in this category are intent-matched
       const capCategories = {
         'Contains prompt injection attempts': 'Prompt Injection',
         'Uses obfuscation techniques': 'Obfuscation',
@@ -712,15 +314,11 @@ function calculateAccuracyScore(description, actualCapabilities, findings = [], 
     }
   }
 
-  // Count intent-matched findings — these reduce penalty for undisclosed caps
   const intentMatchedCategories = new Set();
   for (const f of findings) {
     if (f.intentMatch) intentMatchedCategories.add(f.category);
   }
 
-  // Score calculation:
-  // Start at 10
-  // Each undisclosed capability deducts points based on severity
   const DEDUCTIONS = {
     'Uses obfuscation techniques': 4,
     'Contains prompt injection attempts': 5,
@@ -732,7 +330,6 @@ function calculateAccuracyScore(description, actualCapabilities, findings = [], 
     'Attempts privilege escalation': 2
   };
 
-  // Map capabilities to categories for intent matching
   const CAP_TO_CATEGORIES = {
     'Accesses files outside skill directory': ['File Access', 'Sensitive File Access'],
     'Attempts persistence mechanisms': ['Persistence'],
@@ -743,19 +340,16 @@ function calculateAccuracyScore(description, actualCapabilities, findings = [], 
 
   let score = 10;
   for (const cap of undisclosed) {
-    // If most findings in this category are intent-matched, reduce deduction
     const relatedCats = CAP_TO_CATEGORIES[cap] || [];
     const hasIntentMatch = relatedCats.some(c => intentMatchedCategories.has(c));
     if (hasIntentMatch) {
-      score -= (DEDUCTIONS[cap] || 1) * 0.25; // Only 25% penalty if intent-matched
+      score -= (DEDUCTIONS[cap] || 1) * 0.25;
     } else {
       score -= (DEDUCTIONS[cap] || 1);
     }
   }
 
-  // Bonus: if capabilities ARE disclosed, slight boost for honesty
   score += disclosed.length * 0.25;
-
   score = Math.max(1, Math.min(10, Math.round(score)));
 
   let reason;
@@ -772,7 +366,7 @@ function calculateAccuracyScore(description, actualCapabilities, findings = [], 
   return { score, disclosed, undisclosed, reason };
 }
 
-// ─── Deduplicate Findings ──────────────────────────────────────────
+// ─── Deduplication ─────────────────────────────────────────────────
 
 function deduplicateFindings(findings) {
   const seen = new Set();
@@ -784,103 +378,336 @@ function deduplicateFindings(findings) {
   });
 }
 
-// ─── Main ──────────────────────────────────────────────────────────
+// ─── Multi-Analyzer Scanner ───────────────────────────────────────
 
-function main() {
-  const args = process.argv.slice(2);
-  let skillDir = null;
-  let jsonOutput = null;
+async function scanFileWithAnalyzers(filePath, skillDir, options) {
+  let allFindings = [];
 
-  for (let i = 0; i < args.length; i++) {
-    if (args[i] === '--json' && args[i + 1]) {
-      jsonOutput = args[++i];
-    } else if (!skillDir) {
-      skillDir = args[i];
+  // 1. Static analysis (always available)
+  try {
+    const staticFindings = staticAnalyzer.scanFile(filePath, skillDir, options);
+    allFindings.push(...staticFindings);
+  } catch (e) {
+    allFindings.push({
+      id: 'static-analyzer-error',
+      category: 'Error',
+      severity: 'medium',
+      file: path.relative(skillDir, filePath),
+      line: 0,
+      snippet: '',
+      explanation: `Static analysis failed: ${e.message}`,
+      analyzer: 'static'
+    });
+  }
+
+  // 2. Python AST analysis (optional)
+  if (astAnalyzer && path.extname(filePath).toLowerCase() === '.py') {
+    try {
+      const astFindings = astAnalyzer.scanFile(filePath, skillDir, options);
+      allFindings.push(...astFindings);
+    } catch (e) {
+      allFindings.push({
+        id: 'ast-analyzer-error',
+        category: 'Error',
+        severity: 'low',
+        file: path.relative(skillDir, filePath),
+        line: 0,
+        snippet: '',
+        explanation: `AST analysis failed: ${e.message}`,
+        analyzer: 'ast-python'
+      });
     }
   }
 
-  if (!skillDir) {
-    console.error('Usage: node scan-skill.js <skill-directory> [--json <output-path>]');
+  // 3. VirusTotal scanning (optional)
+  if (vtAnalyzer && options.useVirusTotal) {
+    try {
+      const vtFindings = await vtAnalyzer.scanFile(filePath, skillDir, options);
+      allFindings.push(...vtFindings);
+    } catch (e) {
+      allFindings.push({
+        id: 'virustotal-error',
+        category: 'Error',
+        severity: 'low',
+        file: path.relative(skillDir, filePath),
+        line: 0,
+        snippet: '',
+        explanation: `VirusTotal scan failed: ${e.message}`,
+        analyzer: 'virustotal'
+      });
+    }
+  }
+
+  return allFindings;
+}
+
+// ─── Command Line Parsing ──────────────────────────────────────────
+
+function parseArgs(args) {
+  const options = {
+    skillDir: null,
+    jsonOutput: null,
+    jsonStdout: false,
+    format: 'json',
+    mode: 'balanced',
+    useVirusTotal: false,
+    useLLM: false,
+    customRules: null,
+    failOnFindings: false,
+    help: false
+  };
+
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    switch (arg) {
+      case '--json':
+        options.jsonOutput = args[++i];
+        break;
+      case '--json-stdout':
+        options.jsonStdout = true;
+        break;
+      case '--format':
+        options.format = args[++i];
+        break;
+      case '--mode':
+        options.mode = args[++i];
+        break;
+      case '--use-virustotal':
+        options.useVirusTotal = true;
+        break;
+      case '--use-llm':
+        options.useLLM = true;
+        break;
+      case '--custom-rules':
+        options.customRules = args[++i];
+        break;
+      case '--fail-on-findings':
+        options.failOnFindings = true;
+        break;
+      case '--help':
+      case '-h':
+        options.help = true;
+        break;
+      default:
+        if (!options.skillDir && !arg.startsWith('--')) {
+          options.skillDir = arg;
+        }
+        break;
+    }
+  }
+
+  return options;
+}
+
+function showHelp() {
+  console.log(`
+Skill Auditor v2.0 — Enhanced security scanner for OpenClaw skills
+
+Usage: node scan-skill.js <skill-directory> [options]
+
+Options:
+  --json <file>         Output results in JSON format
+  --format sarif        Output in SARIF format for GitHub Code Scanning
+  --mode <mode>         Detection mode: strict|balanced|permissive (default: balanced)
+  --use-virustotal     Enable VirusTotal binary scanning (requires VIRUSTOTAL_API_KEY)
+  --use-llm           Enable LLM semantic analysis (requires OpenClaw gateway)
+  --custom-rules <dir> Additional YARA rules directory
+  --fail-on-findings  Exit with code 1 if HIGH/CRITICAL findings found
+  --help              Show this help message
+
+Detection Modes:
+  strict      - All patterns, higher false positive rate
+  balanced    - Default mode with optimized accuracy
+  permissive  - Only critical patterns, lower false positive rate
+
+Optional Features (require npm install):
+  Python AST Analysis: npm install tree-sitter tree-sitter-python
+  YARA Rules Support: npm install yara
+  VirusTotal Scanning: Set VIRUSTOTAL_API_KEY environment variable
+  LLM Semantic Analysis: Requires OpenClaw gateway running
+
+Exit codes: 0 = clean/low findings, 1 = significant findings, 2 = error
+`);
+}
+
+// ─── Main Function ─────────────────────────────────────────────────
+
+async function main() {
+  const options = parseArgs(process.argv.slice(2));
+
+  if (options.help) {
+    showHelp();
+    process.exit(0);
+  }
+
+  if (!options.skillDir) {
+    console.error('Error: Skill directory required');
+    showHelp();
     process.exit(2);
   }
 
-  skillDir = path.resolve(skillDir);
+  const skillDir = path.resolve(options.skillDir);
 
   if (!fs.existsSync(skillDir)) {
     console.error(`Error: Directory not found: ${skillDir}`);
     process.exit(2);
   }
 
-  // Parse skill metadata
-  const skillMeta = parseSkillMd(skillDir);
+  try {
+    // Parse skill metadata
+    const skillMeta = parseSkillMd(skillDir);
 
-  // Discover and scan files
-  const files = discoverFiles(skillDir);
-  let allFindings = [];
+    // Discover and scan files
+    const files = discoverFiles(skillDir);
+    let allFindings = [];
 
-  for (const file of files) {
-    const findings = scanFile(file, skillDir);
-    allFindings.push(...findings);
-  }
+    for (const file of files) {
+      const findings = await scanFileWithAnalyzers(file, skillDir, options);
+      allFindings.push(...findings);
+    }
 
-  allFindings = deduplicateFindings(allFindings);
+    allFindings = deduplicateFindings(allFindings);
 
-  // Apply intent matching BEFORE risk calculation so matched findings are downgraded
-  allFindings = applyIntentMatching(allFindings, skillMeta);
+    // Apply intent matching BEFORE LLM analysis and risk calculation
+    allFindings = applyIntentMatching(allFindings, skillMeta);
 
-  // Calculate risk (uses intent-matched findings)
-  const riskLevel = calculateRisk(allFindings);
-  const capabilities = summarizeCapabilities(allFindings);
-
-  // URLs found
-  const urls = allFindings
-    .filter(f => f.id === 'http-url' && f.match)
-    .map(f => f.match);
-  const uniqueUrls = [...new Set(urls)];
-
-  // Build report
-  const report = {
-    skill: {
-      name: skillMeta.name,
-      description: skillMeta.description,
-      hasSkillMd: skillMeta.hasSkillMd,
-      directory: skillDir
-    },
-    scan: {
-      timestamp: new Date().toISOString(),
-      filesScanned: files.map(f => path.relative(skillDir, f)),
-      fileCount: files.length
-    },
-    riskLevel,
-    reputation: { publisher: 'Local install', tier: 'local', note: 'Installed from local source', warning: 'No publisher info available — verify source yourself.' },
-    accuracyScore: calculateAccuracyScore(skillMeta.description, capabilities, allFindings, skillMeta.fullContent),
-    findings: allFindings,
-    findingCount: allFindings.length,
-    summary: {
-      declaredPurpose: skillMeta.description,
-      actualCapabilities: capabilities,
-      externalUrls: uniqueUrls,
-      severityCounts: {
-        critical: allFindings.filter(f => f.severity === 'critical').length,
-        high: allFindings.filter(f => f.severity === 'high').length,
-        medium: allFindings.filter(f => f.severity === 'medium').length,
-        low: allFindings.filter(f => f.severity === 'low').length
+    // Apply LLM semantic analysis if enabled
+    if (llmAnalyzer && options.useLLM) {
+      try {
+        const llmFindings = await llmAnalyzer.analyzeFindings(skillMeta, allFindings.filter(f => !f.analyzer || f.analyzer !== 'llm-semantic'), options);
+        // Replace original findings with LLM-analyzed versions
+        const llmFindingIds = new Set(llmFindings.map(f => `${f.id}:${f.file}:${f.line}`));
+        allFindings = allFindings.filter(f => !llmFindingIds.has(`${f.id}:${f.file}:${f.line}`));
+        allFindings.push(...llmFindings);
+      } catch (e) {
+        allFindings.push({
+          id: 'llm-analysis-error',
+          category: 'Error',
+          severity: 'low',
+          file: '',
+          line: 0,
+          snippet: '',
+          explanation: `LLM semantic analysis failed: ${e.message}`,
+          analyzer: 'llm-semantic'
+        });
       }
     }
-  };
 
-  // Output
-  const json = JSON.stringify(report, null, 2);
+    // Calculate risk and capabilities
+    const riskLevel = calculateRisk(allFindings);
+    const capabilities = summarizeCapabilities(allFindings);
 
-  if (jsonOutput) {
-    fs.writeFileSync(jsonOutput, json);
-    console.log(`Report saved to: ${jsonOutput}`);
-  } else {
-    console.log(json);
+    // Extract URLs
+    const urls = allFindings
+      .filter(f => f.id === 'http-url' && f.match)
+      .map(f => f.match);
+    const uniqueUrls = [...new Set(urls)];
+
+    // Build report
+    const report = {
+      skill: {
+        name: skillMeta.name,
+        description: skillMeta.description,
+        hasSkillMd: skillMeta.hasSkillMd,
+        directory: skillDir
+      },
+      scan: {
+        timestamp: new Date().toISOString(),
+        filesScanned: files.map(f => path.relative(skillDir, f)),
+        fileCount: files.length,
+        version: '2.0.0',
+        mode: options.mode,
+        analyzers: ['static']
+      },
+      riskLevel,
+      reputation: { 
+        publisher: 'Local install', 
+        tier: 'local', 
+        note: 'Installed from local source', 
+        warning: 'No publisher info available — verify source yourself.' 
+      },
+      accuracyScore: calculateAccuracyScore(skillMeta.description, capabilities, allFindings, skillMeta.fullContent),
+      findings: allFindings,
+      findingCount: allFindings.length,
+      summary: {
+        declaredPurpose: skillMeta.description,
+        actualCapabilities: capabilities,
+        externalUrls: uniqueUrls,
+        severityCounts: {
+          critical: allFindings.filter(f => f.severity === 'critical').length,
+          high: allFindings.filter(f => f.severity === 'high').length,
+          medium: allFindings.filter(f => f.severity === 'medium').length,
+          low: allFindings.filter(f => f.severity === 'low').length
+        },
+        analyzersUsed: getAllUsedAnalyzers(allFindings, options)
+      }
+    };
+
+    // Add analyzer info to scan metadata
+    if (astAnalyzer?.isAvailable) report.scan.analyzers.push('ast-python');
+    if (options.useVirusTotal) report.scan.analyzers.push('virustotal');
+    if (options.useLLM) report.scan.analyzers.push('llm-semantic');
+    if (yaraSupport) report.scan.analyzers.push('yara');
+
+    // Output report
+    if (options.format === 'sarif' && sarifUtils) {
+      const sarif = sarifUtils.generateSarif(report);
+      const output = sarifUtils.formatSarif(sarif);
+      
+      if (options.jsonOutput) {
+        fs.writeFileSync(options.jsonOutput, output);
+        console.log(`SARIF report saved to: ${options.jsonOutput}`);
+      } else {
+        console.log(output);
+      }
+
+      // Exit with appropriate code
+      const exitCode = sarifUtils.calculateExitCode(report, options);
+      process.exit(exitCode);
+    } else {
+      const json = JSON.stringify(report, null, 2);
+
+      if (options.jsonStdout) {
+        // Clean JSON output only - for programmatic parsing
+        process.stdout.write(json);
+      } else if (options.jsonOutput) {
+        fs.writeFileSync(options.jsonOutput, json);
+        console.log(`Report saved to: ${options.jsonOutput}`);
+      } else {
+        console.log(json);
+      }
+
+      // Exit code based on findings
+      if (options.failOnFindings) {
+        const significantFindings = allFindings.filter(f => 
+          f.severity && ['critical', 'high'].includes(f.severity)
+        );
+        process.exit(significantFindings.length > 0 ? 1 : 0);
+      } else {
+        process.exit(allFindings.length > 0 ? 1 : 0);
+      }
+    }
+
+  } catch (e) {
+    console.error(`Scan failed: ${e.message}`);
+    if (process.env.DEBUG) {
+      console.error(e.stack);
+    }
+    process.exit(2);
   }
-
-  // Exit code
-  process.exit(allFindings.length > 0 ? 1 : 0);
 }
 
-main();
+function getAllUsedAnalyzers(findings, options) {
+  const analyzers = new Set();
+  for (const finding of findings) {
+    if (finding.analyzer) analyzers.add(finding.analyzer);
+  }
+  return Array.from(analyzers);
+}
+
+// ─── Run Main ──────────────────────────────────────────────────────
+
+main().catch(e => {
+  console.error(`Fatal error: ${e.message}`);
+  process.exit(2);
+});

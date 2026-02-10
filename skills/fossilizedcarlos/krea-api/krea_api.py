@@ -12,6 +12,7 @@ Or use as a module:
 """
 
 import json
+import os
 import time
 import urllib.request
 import urllib.error
@@ -49,36 +50,54 @@ class KreaAPI:
         Initialize the Krea API client.
         
         Args:
-            key_id: Your API key ID (or set via config)
-            secret: Your API secret (or set via config)
+            key_id: Your API key ID (or set via config file)
+            secret: Your API secret (or set via config file)
         """
-        # Try config if not provided
+        # Use provided credentials or read from file
         if not key_id or not secret:
-            key_id = key_id or self._get_config("key_id")
-            secret = secret or self._get_config("secret")
+            key_id, secret = self._get_credentials_from_file()
         
         if not key_id or not secret:
-            raise ValueError("API credentials required. Set via args or clawdbot config.")
+            raise ValueError(
+                "API credentials required. Set via:\n"
+                "  1. Arguments: --key-id ID --secret SECRET\n"
+                "  2. File: ~/.clawdbot/credentials/krea.json\n"
+                "     Format: {\"apiKey\": \"KEY_ID:SECRET\"}\n"
+                "     Permissions: chmod 600 ~/.clawdbot/credentials/krea.json"
+            )
         
         self.token = f"{key_id}:{secret}"
         self.headers = {
             "Authorization": f"Bearer {self.token}",
             "Content-Type": "application/json",
             "Accept": "application/json",
-            "User-Agent": "Mozilla/5.0 (compatible; Klawf/1.0; +https://clawdhub.com/FossilizedCarlos/krea-api)"
+            "User-Agent": "Mozilla/5.0 (compatible; Krea-API/1.0)"
         }
     
-    def _get_config(self, key: str) -> Optional[str]:
-        """Get config from clawdbot config if available."""
-        try:
-            import subprocess
-            result = subprocess.run(
-                ["clawdbot", "config", "get", f"skill.krea_api.{key}"],
-                capture_output=True, text=True
-            )
-            return result.stdout.strip() if result.returncode == 0 else None
-        except Exception:
-            return None
+    def _get_credentials_from_file(self) -> tuple:
+        """Read credentials from ~/.clawdbot/credentials/krea.json or ~/.openclaw/credentials/krea.json"""
+        # Check multiple possible locations
+        possible_paths = [
+            "~/.clawdbot/credentials/krea.json",
+            "~/.openclaw/credentials/krea.json",
+        ]
+        
+        for creds_path in possible_paths:
+            expanded_path = os.path.expanduser(creds_path)
+            
+            try:
+                if os.path.exists(expanded_path):
+                    with open(expanded_path, 'r') as f:
+                        creds = json.load(f)
+                    
+                    api_key = creds.get("apiKey", "")
+                    if api_key and ":" in api_key:
+                        key_id, secret = api_key.split(":", 1)
+                        return key_id, secret
+            except (json.JSONDecodeError, OSError, PermissionError):
+                continue  # Try next path
+        
+        return None, None
     
     def generate_image(
         self,
@@ -89,7 +108,6 @@ class KreaAPI:
         steps: int = 25,
         guidance_scale: float = 3.0,
         seed: Optional[str] = None,
-        webhook_url: Optional[str] = None,
     ) -> dict:
         """
         Create an image generation job.
@@ -102,7 +120,6 @@ class KreaAPI:
             steps: Generation steps (1-100, default: 25)
             guidance_scale: Guidance scale (0-24, default: 3.0)
             seed: Random seed for reproducibility
-            webhook_url: URL to receive completion notification
             
         Returns:
             dict with job_id, status, created_at
@@ -125,13 +142,9 @@ class KreaAPI:
         
         if seed:
             payload["seed"] = seed
-            
-        headers = self.headers.copy()
-        if webhook_url:
-            headers["X-Webhook-URL"] = webhook_url
         
         req = urllib.request.Request(url, data=json.dumps(payload).encode(), method="POST")
-        for k, v in headers.items():
+        for k, v in self.headers.items():
             req.add_header(k, v)
         
         with urllib.request.urlopen(req, timeout=60) as response:
@@ -142,7 +155,6 @@ class KreaAPI:
         url = f"{self.BASE_URL}/jobs/{job_id}"
         req = urllib.request.Request(url, method="GET")
         for k, v in self.headers.items():
-            # Content-Type is harmless on GET but unnecessary.
             if k.lower() == "content-type":
                 continue
             req.add_header(k, v)
@@ -177,9 +189,49 @@ class KreaAPI:
         """Generate an image and wait for the result."""
         job = self.generate_image(prompt, **kwargs)
         print(f"Job created: {job['job_id']} (status: {job['status']})")
-        
+
         result = self.wait_for_completion(job["job_id"])
         return result.get("result", {}).get("urls", [])
+
+    def list_jobs(self, limit: int = 100, job_type: str = None) -> dict:
+        """List your recent jobs."""
+        url = f"{self.BASE_URL}/jobs"
+        params = [f"limit={limit}"]
+        if job_type:
+            params.append(f"types={job_type}")
+
+        full_url = f"{url}?{'&'.join(params)}"
+        req = urllib.request.Request(full_url, method="GET")
+        for k, v in self.headers.items():
+            if k.lower() == "content-type":
+                continue
+            req.add_header(k, v)
+
+        with urllib.request.urlopen(req, timeout=60) as response:
+            return json.loads(response.read().decode())
+
+    def get_usage_summary(self) -> str:
+        """
+        Get a summary of recent API usage.
+        Note: Krea doesn't provide a usage API, so we list recent jobs.
+        For accurate compute unit usage, check the web dashboard.
+        """
+        summary = []
+        summary.append("Recent API Jobs:")
+        summary.append("-" * 40)
+
+        for model_name, endpoint in self.IMAGE_MODELS.items():
+            # Extract job type from endpoint
+            job_type = endpoint.strip("/").split("/")[-1]
+            result = self.list_jobs(limit=5, job_type=job_type)
+            items = result.get("items", [])
+            if items:
+                summary.append(f"\n{model_name}: {len(items)} recent jobs")
+
+        summary.append("\n" + "=" * 40)
+        summary.append("For accurate compute unit usage, visit:")
+        summary.append("https://www.krea.ai/settings/usage-statistics")
+        return "\n".join(summary)
 
 
 def main():
@@ -191,6 +243,8 @@ def main():
     parser.add_argument("--key-id", help="API key ID")
     parser.add_argument("--secret", help="API secret")
     parser.add_argument("--list-models", action="store_true", help="List available models")
+    parser.add_argument("--usage", action="store_true", help="Open usage statistics page")
+    parser.add_argument("--jobs", type=int, metavar="N", help="List N recent jobs (default: 10)")
 
     args = parser.parse_args()
 
@@ -198,6 +252,31 @@ def main():
         print("Available models:")
         for name in KreaAPI.IMAGE_MODELS:
             print(f"  - {name}")
+        return
+
+    if args.usage:
+        print("Opening Krea.ai usage statistics...")
+        import subprocess
+        subprocess.run(["open", "https://www.krea.ai/settings/usage-statistics"])
+        print("Check your browser for the usage dashboard.")
+        return
+
+    if args.jobs is not None:
+        api = KreaAPI(key_id=args.key_id, secret=args.secret)
+        limit = min(args.jobs, 100)  # Cap at 100
+        result = api.list_jobs(limit=limit)
+        items = result.get("items", [])
+        if not items:
+            print("No recent jobs found.")
+        else:
+            print(f"Recent jobs (last {len(items)}):")
+            for i, job in enumerate(items, 1):
+                status = job.get("status", "unknown")
+                created = job.get("created_at", "")[:19].replace("T", " ")
+                summary = f"{i}. [{status}] {created}"
+                if job.get("result", {}).get("urls"):
+                    summary += " ✓ Generated"
+                print(summary)
         return
 
     if not args.prompt:

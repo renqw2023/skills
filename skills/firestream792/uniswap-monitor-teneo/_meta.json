@@ -3,11 +3,16 @@
   "slug": "uniswap-monitor-teneo",
   "displayName": "Uniswap Monitor - powered by Teneo Protocol",
   "latest": {
-    "version": "1.0.6",
-    "publishedAt": 1770448424851,
-    "commit": "https://github.com/openclaw/skills/commit/640564cbd6ce0eaa91e49e1e08aec22adc5d3c9e"
+    "version": "1.0.10",
+    "publishedAt": 1770643221786,
+    "commit": "https://github.com/openclaw/skills/commit/cf66680799160440e1253ae7256408ad22d2e267"
   },
   "history": [
+    {
+      "version": "1.0.6",
+      "publishedAt": 1770448424851,
+      "commit": "https://github.com/openclaw/skills/commit/640564cbd6ce0eaa91e49e1e08aec22adc5d3c9e"
+    },
     {
       "version": "1.0.5",
       "publishedAt": 1770302211249,

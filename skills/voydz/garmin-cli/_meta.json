@@ -1,0 +1,17 @@
+{
+  "owner": "voydz",
+  "slug": "garmin-cli",
+  "displayName": "Garmin Cli",
+  "latest": {
+    "version": "1.0.2",
+    "publishedAt": 1770651035170,
+    "commit": "https://github.com/openclaw/skills/commit/ba450f013046b748c2c1e12088bb05cc97fd3160"
+  },
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1770480350754,
+      "commit": "https://github.com/openclaw/skills/commit/91c0a473d3738531480a479570d00d5b02ffcad5"
+    }
+  ]
+}

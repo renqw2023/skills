@@ -4,32 +4,111 @@
  * Refreshes the ClawBrain memory system on gateway startup
  * and saves session context to brain on /new command.
  */
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import path from 'node:path';
 import os from 'node:os';
 import fs from 'node:fs';
 
-// Find clawbrain skill directory - check multiple possible locations
-function findSkillsDir() {
+// Find brain_bridge.py using Python to locate the package
+function findBridgeScriptViaPython() {
+  try {
+    const result = spawnSync('python3', ['-c', `
+import sys
+try:
+    import clawbrain
+    import os
+    pkg_dir = os.path.dirname(clawbrain.__file__)
+    # Check multiple possible locations
+    candidates = [
+        os.path.join(pkg_dir, 'scripts', 'brain_bridge.py'),
+        os.path.join(os.path.dirname(pkg_dir), 'brain', 'scripts', 'brain_bridge.py'),
+        os.path.join(os.path.dirname(pkg_dir), 'scripts', 'brain_bridge.py'),
+    ]
+    for c in candidates:
+        if os.path.exists(c):
+            print(c)
+            sys.exit(0)
+    # Fallback to package dir
+    print(pkg_dir)
+except Exception as e:
+    print('', file=sys.stderr)
+    sys.exit(1)
+`], { encoding: 'utf-8', timeout: 5000 });
+    
+    if (result.status === 0 && result.stdout.trim()) {
+      return result.stdout.trim();
+    }
+  } catch (e) {
+    // Python not available or clawbrain not installed
+  }
+  return null;
+}
+
+// Find brain_bridge.py - check multiple possible locations
+function findBridgeScript() {
   const home = os.homedir();
+  
+  // Possible locations for brain_bridge.py
   const possiblePaths = [
-    path.join(home, 'clawd', 'skills', 'clawbrain'),           // ClawdBot standard
-    path.join(home, '.openclaw', 'skills', 'clawbrain'),       // OpenClaw standard
-    path.join(home, '.clawdbot', 'skills', 'clawbrain'),       // ClawdBot alt
+    // Skills directory locations (manual/git installs)
+    path.join(home, 'clawd', 'skills', 'clawbrain', 'scripts', 'brain_bridge.py'),
+    path.join(home, 'clawd', 'skills', 'clawbrain', 'brain', 'scripts', 'brain_bridge.py'),
+    path.join(home, '.openclaw', 'skills', 'clawbrain', 'scripts', 'brain_bridge.py'),
+    path.join(home, '.openclaw', 'skills', 'clawbrain', 'brain', 'scripts', 'brain_bridge.py'),
+    path.join(home, '.clawdbot', 'skills', 'clawbrain', 'scripts', 'brain_bridge.py'),
+    path.join(home, '.clawdbot', 'skills', 'clawbrain', 'brain', 'scripts', 'brain_bridge.py'),
+    // Pip installed locations (common paths)
+    path.join(home, '.local', 'lib', 'python3.10', 'site-packages', 'brain', 'scripts', 'brain_bridge.py'),
+    path.join(home, '.local', 'lib', 'python3.11', 'site-packages', 'brain', 'scripts', 'brain_bridge.py'),
+    path.join(home, '.local', 'lib', 'python3.12', 'site-packages', 'brain', 'scripts', 'brain_bridge.py'),
+    path.join(home, '.local', 'lib', 'python3.13', 'site-packages', 'brain', 'scripts', 'brain_bridge.py'),
+    // System site-packages
+    '/usr/local/lib/python3.10/site-packages/brain/scripts/brain_bridge.py',
+    '/usr/local/lib/python3.11/site-packages/brain/scripts/brain_bridge.py',
+    '/usr/local/lib/python3.12/site-packages/brain/scripts/brain_bridge.py',
   ];
   
   for (const p of possiblePaths) {
-    if (fs.existsSync(path.join(p, 'scripts', 'brain_bridge.py'))) {
+    if (fs.existsSync(p)) {
       return p;
     }
   }
   
-  // Fallback to first option
+  // Fallback: use Python to find it dynamically
+  const pythonPath = findBridgeScriptViaPython();
+  if (pythonPath && fs.existsSync(pythonPath)) {
+    return pythonPath;
+  }
+  
+  return null;
+}
+
+// Find clawbrain directory for working directory
+function findClawbrainDir() {
+  const bridgeScript = findBridgeScript();
+  if (bridgeScript) {
+    // Go up to clawbrain root (2 levels: scripts/brain_bridge.py -> scripts -> clawbrain)
+    return path.dirname(path.dirname(bridgeScript));
+  }
+  
+  const home = os.homedir();
+  const possiblePaths = [
+    path.join(home, 'clawd', 'skills', 'clawbrain'),
+    path.join(home, '.openclaw', 'skills', 'clawbrain'),
+    path.join(home, '.clawdbot', 'skills', 'clawbrain'),
+  ];
+  
+  for (const p of possiblePaths) {
+    if (fs.existsSync(p)) {
+      return p;
+    }
+  }
+  
   return possiblePaths[0];
 }
 
-const SKILLS_DIR = findSkillsDir();
-const BRIDGE_SCRIPT = path.join(SKILLS_DIR, 'scripts', 'brain_bridge.py');
+const BRIDGE_SCRIPT = findBridgeScript();
+const CLAWBRAIN_DIR = findClawbrainDir();
 
 // Agent ID from environment variable, defaults to "default"
 // Set BRAIN_AGENT_ID in your service config for per-instance storage
@@ -43,9 +122,13 @@ const AGENT_ID = process.env.BRAIN_AGENT_ID || 'default';
  */
 async function runBrainCommand(command, args = {}) {
   return new Promise((resolve, reject) => {
+    if (!BRIDGE_SCRIPT) {
+      return reject(new Error('brain_bridge.py not found. Run: pip install clawbrain[all] && clawbrain setup'));
+    }
+    
     const input = JSON.stringify({ command, args, config: {} });
     const proc = spawn('python3', [BRIDGE_SCRIPT], {
-      cwd: SKILLS_DIR,
+      cwd: CLAWBRAIN_DIR,
       stdio: ['pipe', 'pipe', 'pipe'],
     });
 

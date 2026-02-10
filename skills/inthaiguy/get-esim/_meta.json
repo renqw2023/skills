@@ -1,0 +1,11 @@
+{
+  "owner": "inthaiguy",
+  "slug": "get-esim",
+  "displayName": "Get a travel eSIM - USDC Wallet ( testnet )",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770577230542,
+    "commit": "https://github.com/openclaw/skills/commit/5ae043a4eeb42badfeb6d8432eb8c3b86e6b8c52"
+  },
+  "history": []
+}

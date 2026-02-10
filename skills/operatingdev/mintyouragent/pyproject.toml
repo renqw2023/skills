@@ -1,0 +1,82 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mintyouragent"
+version = "3.1.3"
+description = "Launch Solana tokens on pump.fun - CLI for AI agents"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.9"
+authors = [
+    {name = "MintYourAgent", email = "hello@mintyouragent.com"}
+]
+keywords = ["solana", "token", "pump.fun", "crypto", "ai", "cli"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+dependencies = [
+    "solders>=0.20.0",
+    "requests>=2.28.0",
+]
+
+[project.optional-dependencies]
+clipboard = ["pyperclip>=1.8.0"]
+qrcode = ["qrcode>=7.0"]
+all = ["pyperclip>=1.8.0", "qrcode>=7.0"]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "mypy>=1.0.0",
+    "black>=23.0.0",
+    "isort>=5.12.0",
+    "bandit>=1.7.0",
+]
+
+[project.scripts]
+mya = "mintyouragent:main"
+mintyouragent = "mintyouragent:main"
+
+[project.urls]
+Homepage = "https://mintyouragent.com"
+Documentation = "https://mintyouragent.com/docs"
+Repository = "https://github.com/operatingdev/mintyouragent"
+Issues = "https://github.com/operatingdev/mintyouragent/issues"
+
+[tool.setuptools]
+py-modules = ["mya"]
+
+[tool.black]
+line-length = 120
+target-version = ['py39', 'py310', 'py311', 'py312']
+
+[tool.isort]
+profile = "black"
+line_length = 120
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-v --cov=mya --cov-report=term-missing"
+
+[tool.bandit]
+exclude_dirs = ["tests"]
+skips = ["B101"]  # assert usage

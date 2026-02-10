@@ -49,11 +49,11 @@ def markdown_to_html(md_text: str) -> str:
         
         # Headers
         if line.startswith('# '):
-            html_lines.append(f'<h1>{escape_html(line[2:])}</h1>')
+            html_lines.append(f'<h1>{process_inline_formatting(line[2:])}</h1>')
         elif line.startswith('## '):
-            html_lines.append(f'<h2>{escape_html(line[3:])}</h2>')
+            html_lines.append(f'<h2>{process_inline_formatting(line[3:])}</h2>')
         elif line.startswith('### '):
-            html_lines.append(f'<h3>{escape_html(line[4:])}</h3>')
+            html_lines.append(f'<h3>{process_inline_formatting(line[4:])}</h3>')
         elif line.startswith('---'):
             html_lines.append('<hr>')
         elif line.startswith('|'):
@@ -69,7 +69,7 @@ def markdown_to_html(md_text: str) -> str:
             cells = [c.strip() for c in line.split('|')[1:-1]]
             # First row before separator = <th>, all rows after = <td>
             tag = 'td' if table_past_separator else 'th'
-            row = ''.join(f'<{tag}>{escape_html(c)}</{tag}>' for c in cells)
+            row = ''.join(f'<{tag}>{process_inline_formatting(c)}</{tag}>' for c in cells)
             html_lines.append(f'<tr>{row}</tr>')
         elif line.strip() == '':
             if in_table:
@@ -110,34 +110,47 @@ def escape_html(text: str) -> str:
             .replace('&', '&amp;')
             .replace('<', '&lt;')
             .replace('>', '&gt;')
-            .replace('"', '&quot;'))
+            .replace('"', '&quot;')
+            .replace("'", '&#39;'))
 
 
 def process_inline_formatting(text: str) -> str:
     """Process inline markdown formatting with XSS protection."""
-    # FIRST: Escape HTML to prevent XSS (before processing markdown)
+    # Extract links BEFORE escaping so URLs don't get double-encoded
+    link_placeholders = {}
+    link_counter = 0
+
+    def extract_link(match):
+        nonlocal link_counter
+        link_text, url = match.groups()
+        placeholder = f"\x00LINK{link_counter}\x00"
+        link_counter += 1
+        link_placeholders[placeholder] = (link_text, url)
+        return placeholder
+
+    text = re.sub(r'\[([^\]]+)\]\(([^)]+)\)', extract_link, text)
+
+    # Escape HTML to prevent XSS
     text = escape_html(text)
-    
+
     # Bold: **text** or __text__
     text = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', text)
     text = re.sub(r'__(.+?)__', r'<strong>\1</strong>', text)
-    
+
     # Italic: *text* or _text_
     text = re.sub(r'\*(.+?)\*', r'<em>\1</em>', text)
     text = re.sub(r'(?<!\w)_(.+?)_(?!\w)', r'<em>\1</em>', text)
-    
-    # Links: [text](url) — only allow safe URLs
-    # Note: URLs are already escaped, so we need to handle &amp; etc.
-    def safe_link(match):
-        link_text, url = match.groups()
-        # Only allow http, https, and relative URLs (prevent javascript: etc.)
-        # URL is already escaped, so check for escaped versions too
-        if url.startswith(('http://', 'https://', '/')) or url.startswith(('http://', 'https://')):
-            return f'<a href="{url}" target="_blank">{link_text}</a>'
-        return f'{link_text} ({url})'  # Don't make unsafe URLs clickable
-    
-    text = re.sub(r'\[([^\]]+)\]\(([^)]+)\)', safe_link, text)
-    
+
+    # Restore links with safe URL validation
+    for placeholder, (link_text, url) in link_placeholders.items():
+        safe_text = escape_html(link_text)
+        if url.startswith(('http://', 'https://', '/')):
+            safe_url = url.replace('&', '&amp;').replace('"', '&quot;')
+            link_html = f'<a href="{safe_url}" target="_blank">{safe_text}</a>'
+        else:
+            link_html = f'{safe_text} ({escape_html(url)})'
+        text = text.replace(placeholder, link_html)
+
     return text
 
 

@@ -1,13 +1,18 @@
 {
   "owner": "g9pedro",
   "slug": "clawvault",
-  "displayName": "Clawvault",
+  "displayName": "ClawVault",
   "latest": {
-    "version": "1.5.1",
-    "publishedAt": 1770378436001,
-    "commit": "https://github.com/openclaw/skills/commit/149becd54940afc3b3720ddb9dcbd16d7c457b8c"
+    "version": "1.8.3",
+    "publishedAt": 1770686102488,
+    "commit": "https://github.com/openclaw/skills/commit/90a5960b6dbfc3de3e9164721b547e3414d99bce"
   },
   "history": [
+    {
+      "version": "1.5.1",
+      "publishedAt": 1770378436001,
+      "commit": "https://github.com/openclaw/skills/commit/149becd54940afc3b3720ddb9dcbd16d7c457b8c"
+    },
     {
       "version": "1.4.2",
       "publishedAt": 1770344636643,

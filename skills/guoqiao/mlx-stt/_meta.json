@@ -3,11 +3,16 @@
   "slug": "mlx-stt",
   "displayName": "MLX STT",
   "latest": {
-    "version": "1.0.6",
-    "publishedAt": 1770462332671,
-    "commit": "https://github.com/openclaw/skills/commit/3a0ac08300320438583afcf7bd2f11921f1318c0"
+    "version": "1.0.7",
+    "publishedAt": 1770686109778,
+    "commit": "https://github.com/openclaw/skills/commit/4ddd662ebe44aca4991da70fcaf8df2b6e762228"
   },
   "history": [
+    {
+      "version": "1.0.6",
+      "publishedAt": 1770462332671,
+      "commit": "https://github.com/openclaw/skills/commit/3a0ac08300320438583afcf7bd2f11921f1318c0"
+    },
     {
       "version": "1.0.5",
       "publishedAt": 1770186070036,

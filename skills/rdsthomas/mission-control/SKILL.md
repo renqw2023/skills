@@ -1,29 +1,8 @@
 ---
 name: mission-control
-version: 2.0.0
 description: Kanban-style task management dashboard for AI assistants. Manage tasks via CLI or dashboard UI. Use when user mentions tasks, kanban, task board, mission control, or wants to track work items with status columns (backlog, in progress, review, done).
-author: rdsthomas
 homepage: https://github.com/rdsthomas/mission-control
-repository: https://github.com/rdsthomas/mission-control
-license: MIT
-tags:
-  - kanban
-  - tasks
-  - dashboard
-  - project-management
-  - github-pages
-  - automation
-keywords:
-  - task management
-  - kanban board
-  - AI workflow
-  - GitHub Pages
-  - webhook automation
-screenshot: https://raw.githubusercontent.com/rdsthomas/mission-control/main/docs/images/dashboard.png
-metadata:
-  clawdbot:
-    emoji: "🎛️"
-    minVersion: "1.0.0"
+metadata: {"clawdbot": {"emoji": "🎛️"}}
 ---
 
 # Mission Control — Task Management for AI Assistants
@@ -203,6 +182,30 @@ See `docs/TROUBLESHOOTING.md` for common issues:
 - Dashboard shows sample data → Connect GitHub token
 - Webhook not triggering → Check Tailscale Funnel
 - Changes not appearing → GitHub Pages cache (wait 1-2 min)
+
+---
+
+## Security
+
+Mission Control is a task management system **for** AI agents — its core purpose is to pass human-authored task descriptions to an agent for execution. This is by design, not a vulnerability.
+
+### Trust Model
+
+- **Single-user / trusted-user setup:** Task authors are the same people who control the agent. The trust boundary is identical to typing a message directly to your assistant.
+- **Multi-user setups:** If multiple users can create tasks on the dashboard, treat task content as untrusted input. Use Clawdbot's agent sandbox and permission model to limit what the agent can do.
+
+### Mitigations
+
+- **Input sanitization:** `mc-update.sh` validates all inputs against injection patterns before passing them to Python or git.
+- **No credential storage:** The dashboard stores no tokens or secrets — all auth is handled by Clawdbot's config.
+- **Webhook HMAC verification:** The transform module validates webhook signatures using `timingSafeEqual` to prevent tampering.
+- **Security scan on sync:** The `sync-to-opensource.sh` script scans for leaked credentials before publishing.
+
+### Recommendations
+
+- Keep your dashboard repository **private** if you don't want others to see your task data.
+- Review task descriptions before moving them to "In Progress" if the task was created by someone else.
+- Use Clawdbot's `groupPolicy` and `allowFrom` settings to restrict who can interact with the agent.
 
 ---
 

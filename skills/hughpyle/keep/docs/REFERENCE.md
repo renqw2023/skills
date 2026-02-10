@@ -2,7 +2,7 @@
 
 **Purpose:** Persistent memory for documents with semantic search.
 
-**Default store:** `.keep/` at git repo root (auto-created)
+**Default store:** `~/.keep/` in user home (auto-created)
 
 **Key principle:** Lightweight but extremely flexible functionality.  A minimal and extensible metaschema.
 
@@ -23,13 +23,13 @@ Three output formats, consistent across all commands:
 One line per item: `id@V{N} date summary`
 ```
 file:///path/to/doc.md@V{0} 2026-01-15 Document about authentication patterns...
-_text:a1b2c3d4@V{0} 2026-01-14 URI detection should use proper scheme validation...
+%a1b2c3d4@V{0} 2026-01-14 URI detection should use proper scheme validation...
 ```
 
 ### With `--ids`: Versioned IDs Only
 ```
 file:///path/to/doc.md@V{0}
-_text:a1b2c3d4@V{0}
+%a1b2c3d4@V{0}
 ```
 
 ### With `--full`: YAML Frontmatter
@@ -41,6 +41,8 @@ tags: {project: myapp, status: reviewed}
 similar:
   - doc:related-auth@V{0} (0.89) 2026-01-14 Related authentication...
   - doc:token-notes@V{0} (0.85) 2026-01-13 Token handling notes...
+meta/todo:
+  - %a1b2c3d4 Update auth docs for new flow
 score: 0.823
 prev:
   - @V{1} 2026-01-14 Previous summary text...
@@ -60,30 +62,38 @@ Version numbers are **offsets**: @V{0} = current, @V{1} = previous, @V{2} = two 
 ### Pipe Composition
 
 ```bash
-keep --ids find "auth" | xargs keep get              # Get full details
+keep --ids find "auth" | xargs keep get              # Get full details for all matches
+keep --ids list -n 5 | xargs keep get                # Get details for recent items
 keep --ids list --tag project=foo | xargs keep tag-update --tag status=done
 keep --json --ids find "query"                       # JSON array: ["id@V{0}", ...]
 
 # Version history composition
 keep --ids now --history | xargs -I{} keep get "{}"  # Get all versions
-keep --ids list | xargs -I{} keep get "{}"           # Get details for recent items
 diff <(keep get doc:1) <(keep get "doc:1@V{1}")      # Diff current vs previous
 ```
 
 ## CLI
 ```bash
-keep                                 # Show current working context
+keep                                 # Show current working intentions
 keep --help                          # Show all commands
 
-# Current context (now)
-keep now                             # Show current context with version nav
-keep now "What's important now"      # Update context
+# Current intentions (now)
+keep now                             # Show current intentions with version nav
+keep now "What's important now"      # Update intentions
 keep now -f context.md -t project=x  # Read content from file with tags
-keep now -V 1                        # Previous version
+keep now -V 1                        # Previous intentions
 keep now --history                   # List all versions
+keep reflect                         # Deep structured reflection practice
+
+# Add or update documents
+keep put "inline text" -t topic=auth  # Text mode (content-addressed ID)
+keep put file:///path/to/doc.pdf      # URI mode
+keep put -                            # Stdin mode
+keep put "note" --suggest-tags        # Show tag suggestions from similar items
 
 # Get with versioning and similar items
 keep get ID                          # Current version with similar items
+keep get ID1 ID2 ID3                 # Multiple items
 keep get ID -V 1                     # Previous version with prev/next nav
 keep get "ID@V{1}"                   # Same as -V 1 (version identifier syntax)
 keep get ID --history                # List all versions (default 10, -n to override)
@@ -108,61 +118,38 @@ keep find "query" --since 2026-01-15 # Since specific date
 keep find --id ID --since P30D       # Similar items from last 30 days
 keep search "text" --since P3D       # Full-text search, last 3 days
 
-# Tag filtering (via list)
+# Tag filtering
 keep list --tags=                    # List all tag keys
 keep list --tags=project             # List values for 'project' tag
 keep list --tag project=myapp        # Find docs with project=myapp
 keep list --tag project --since P7D  # Filter by tag and recency
 keep list --tag foo --tag bar        # Items with both tags
 
+# Tag filtering on search commands
+keep find "auth" -t project=myapp    # Semantic search + tag filter
+keep find "auth" -t project -t done  # Multiple tags (AND logic)
+keep get ID -t project=myapp         # Verify item has tag (error if not)
+keep now -t project=myapp            # Find recent now version with tag
+
 keep tag-update ID --tag key=value   # Add/update tag
 keep tag-update ID --remove key      # Remove tag
 keep tag-update ID1 ID2 --tag k=v    # Tag multiple docs
+
+# Delete / revert
+keep del ID                       # Remove item (or revert to previous version)
 ```
 
 ## Python API
+
+See [PYTHON-API.md](PYTHON-API.md) for complete Python API reference.
+
+Quick example:
 ```python
-from keep import Keeper, Item
-from keep.document_store import VersionInfo  # for version history
-kp = Keeper()  # uses default store
-
-# Core indexing
-kp.update(uri, tags={}, summary=None)   # Index document from URI → Item
-kp.remember(content, summary=None, ...) # Index inline content → Item
-# Note: If summary provided, skips auto-summarization
-# Note: remember() uses content verbatim if short (≤max_summary_length)
-
-# Search (since: ISO duration like "P7D", "PT1H" or date "2026-01-15")
-kp.find(query, limit=10, since=None)       # Semantic search → list[Item]
-kp.find_similar(uri, limit=10, since=None) # Similar items → list[Item]
-kp.get_similar_for_display(id, limit=3)    # Similar items using stored embedding → list[Item]
-kp.query_tag(key, value=None, since=None)  # Tag lookup → list[Item]
-kp.query_fulltext(query, since=None)       # Text search → list[Item]
-
-# Tags
-kp.tag(id, tags={})                     # Update tags only → Item | None
-kp.list_tags(key=None)                  # List tag keys or values → list[str]
-
-# Item access
-kp.get(id)                              # Fetch by ID → Item | None
-kp.exists(id)                           # Check existence → bool
-kp.list_recent(limit=10)                # Recent items by update time → list[Item]
-kp.list_collections()                   # All collections → list[str]
-
-# Version history
-kp.get_version(id, offset=1)            # Get previous version (1=prev, 2=two ago) → Item | None
-kp.list_versions(id, limit=10)          # List archived versions → list[VersionInfo]
-kp.get_version_nav(id)                  # Get prev/next for display → dict
-
-# Current context (now)
-kp.get_now()                            # Get current context (auto-creates if missing) → Item
-kp.set_now(content, tags={})            # Set current context → Item
+from keep import Keeper
+kp = Keeper()
+kp.remember("note", tags={"project": "myapp"})
+results = kp.find("authentication", limit=5)
 ```
-
-## Item Fields
-`id`, `summary`, `tags` (dict), `score` (searches only)
-
-Timestamps accessed via properties: `item.created`, `item.updated` (read from tags)
 
 ## Tags
 
@@ -182,7 +169,7 @@ Set tags via environment variables with the `KEEP_TAG_` prefix:
 ```bash
 export KEEP_TAG_PROJECT=myapp
 export KEEP_TAG_OWNER=alice
-keep update "deployment note"  # auto-tagged with project=myapp, owner=alice
+keep put "deployment note"  # auto-tagged with project=myapp, owner=alice
 ```
 
 ### Config-Based Default Tags
@@ -208,11 +195,93 @@ kp.list_tags()                               # All distinct tag keys
 kp.list_tags("project")                      # All values for 'project'
 ```
 
+### Organizing by Project and Topic
+
+Two tags help organize work across boundaries:
+
+| Tag | Scope | Examples |
+|-----|-------|----------|
+| `project` | Bounded work context | `myapp`, `api-v2`, `migration` |
+| `topic` | Cross-project subject area | `auth`, `testing`, `performance` |
+
+**Usage patterns:**
+```bash
+# Project-specific knowledge
+keep put "OAuth2 with PKCE chosen" -t project=myapp -t topic=auth
+
+# Cross-project knowledge (topic only)
+keep put "Token refresh needs clock sync" -t topic=auth
+
+# Search within a project
+keep find "authentication" -t project=myapp
+
+# Search across projects by topic
+keep find "authentication" -t topic=auth
+
+# Big picture (no project filter)
+keep find "recent work" --since P1D
+```
+
+**For complete segregation**, use collections with `KEEP_COLLECTION`:
+```bash
+export KEEP_COLLECTION=work
+keep now "work context"
+
+export KEEP_COLLECTION=personal
+keep now "personal context"
+```
+
+Collections are separate stores. Tags are overlays within a store.
+
+### Speech-Act Tags
+
+Two tags make the commitment structure of work visible:
+
+**`act` — speech-act category:**
+
+| Value | What it marks | Example |
+|-------|---------------|---------|
+| `commitment` | A promise to act | "I'll fix auth by Friday" |
+| `request` | Asking someone to act | "Please review the PR" |
+| `offer` | Proposing to act | "I could refactor the cache" |
+| `assertion` | A claim of fact | "The tests pass on main" |
+| `assessment` | A judgment | "This approach is risky" |
+| `declaration` | Changing reality | "Released v2.0" |
+
+**`status` — lifecycle state (for commitments, requests, offers):**
+
+| Value | Meaning |
+|-------|---------|
+| `open` | Active, unfulfilled |
+| `fulfilled` | Completed and satisfied |
+| `declined` | Not accepted |
+| `withdrawn` | Cancelled by originator |
+| `renegotiated` | Terms changed |
+
+**Usage:**
+```bash
+# Track a commitment
+keep put "I'll fix the auth bug" -t act=commitment -t status=open -t project=myapp
+
+# Query open commitments and requests
+keep list -t act=commitment -t status=open
+keep list -t act=request -t status=open
+
+# Mark fulfilled
+keep tag-update ID --tag status=fulfilled
+
+# Record an assertion or assessment (no lifecycle)
+keep put "The tests pass" -t act=assertion
+keep put "This approach is risky" -t act=assessment -t topic=architecture
+```
+
+For full details: `keep get .tag/act` and `keep get .tag/status`.
+
 ## System Tags (auto-managed)
 
 Protected tags prefixed with `_`. Users cannot modify these directly.
 
-**Implemented:** `_created`, `_updated`, `_updated_date`, `_content_type`, `_source`
+**Implemented:** `_created`, `_updated`, `_updated_date`, `_accessed`, `_accessed_date`, `_content_type`, `_source`
 
 ```python
 kp.query_tag("_updated_date", "2026-01-30")  # Temporal query
@@ -250,7 +319,7 @@ Append `@V{N}` to any ID to specify a version by offset:
 
 ```bash
 keep get "doc:1@V{1}"          # Previous version of doc:1
-keep get "_now:default@V{2}"   # Two versions ago of nowdoc
+keep get "now@V{2}"            # Two versions ago of nowdoc
 ```
 
 ### Version Access
@@ -281,21 +350,32 @@ Archived:
 With `--ids`, outputs version identifiers for piping:
 ```bash
 keep --ids now --history
-# _now:default@V{0}
-# _now:default@V{1}
-# _now:default@V{2}
+# now@V{0}
+# now@V{1}
+# now@V{2}
 ```
 
 ### Content-Addressed IDs
 
 Text-mode updates use content-addressed IDs for versioning:
 ```bash
-keep update "my note"              # Creates _text:a1b2c3d4e5f6
-keep update "my note" -t done      # Same ID, new version (tag change)
-keep update "different note"       # Different ID (new document)
+keep put "my note"              # Creates %a1b2c3d4e5f6
+keep put "my note" -t done      # Same ID, new version (tag change)
+keep put "different note"       # Different ID (new document)
 ```
 
 Same content = same ID = enables versioning via tag changes.
+
+## Environment Variables
+
+```bash
+KEEP_STORE_PATH=/path/to/store       # Override store location
+KEEP_CONFIG=/path/to/.keep           # Override config directory
+KEEP_COLLECTION=name                 # Collection name (default: "default")
+KEEP_TAG_PROJECT=myapp               # Auto-apply tags (any KEEP_TAG_* variable)
+KEEP_VERBOSE=1                       # Debug logging to stderr
+KEEP_NO_SETUP=1                      # Skip auto-install of tool integrations
+```
 
 ## When to Use
 - `update()` — when referencing any file/URL worth remembering
@@ -303,6 +383,26 @@ Same content = same ID = enables versioning via tag changes.
 - `find()` — before searching filesystem; may already be indexed
 - `find(since="P7D")` — filter to recent items when recency matters
 
+## Contextual Summarization
+
+When you provide user tags during indexing, LLM-based summarizers use context from related items to produce more relevant summaries.
+
+**How it works:**
+1. When processing pending summaries, the system finds similar items sharing your tags
+2. Items with more matching tags rank higher (+20% score boost per additional tag)
+3. Top 5 related summaries are passed as context to the LLM
+4. The summary highlights relevance to that context
+
+**Tag changes trigger re-summarization:**
+```bash
+keep put doc.pdf                    # Generic summary
+keep put doc.pdf -t domain=practice # Re-queued for contextual summary
+```
+
+When tags change (add, remove, or value change), the document is re-queued for summarization with the new context. The existing summary is preserved until the new one is ready.
+
+**Provider note:** Only LLM-based summarizers (anthropic, openai, ollama, mlx) use context. Simple providers (truncate, first_paragraph) ignore it.
+
 ## Domain Patterns
-See `_system:domains` for organization templates (`keep get _system:domains`).
-See `_system:conversations` for process knowledge (`keep get _system:conversations`).
+See `.domains` for organization templates (`keep get .domains`).
+See `.conversations` for process knowledge (`keep get .conversations`).

@@ -3,7 +3,7 @@ name: skillfence
 description: "Runtime security monitor for OpenClaw skills. Watches what your installed skills actually DO — network calls, file access, credential reads, process activity. Not a scanner. A watchdog."
 user-invocable: true
 homepage: https://cascadeai.dev/skillfence
-metadata: {"openclaw":{"emoji":"🛡️","requires":{"bins":["node"]},"install":[{"id":"node","kind":"node","package":"skillfence-engine","bins":["skillfence"],"label":"Install SkillFence engine (npm)"}]}}
+metadata: {"openclaw":{"emoji":"🛡️"}}
 ---
 
 # SkillFence — Runtime Skill Monitor

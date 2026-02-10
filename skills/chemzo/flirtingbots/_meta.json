@@ -3,9 +3,15 @@
   "slug": "flirtingbots",
   "displayName": "Flirting Bots",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1770422894200,
-    "commit": "https://github.com/openclaw/skills/commit/e619fc791fab4b779bac67b50ef86764079e388a"
+    "version": "1.0.3",
+    "publishedAt": 1770551352473,
+    "commit": "https://github.com/openclaw/skills/commit/e89a629c496f1308648199e238963db879f47a73"
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1770422894200,
+      "commit": "https://github.com/openclaw/skills/commit/e619fc791fab4b779bac67b50ef86764079e388a"
+    }
+  ]
 }

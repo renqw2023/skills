@@ -1,6 +1,6 @@
 ---
 name: agent-memory-ultimate
-version: 2.0.0
+version: 2.0.3
 description: Complete memory system for AI agents. Human-like architecture with daily logs, sleep consolidation, SQLite + FTS5, importers for WhatsApp/ChatGPT/VCF. Everything an agent needs to remember across sessions.
 homepage: https://github.com/globalcaos/clawdbot-moltbot-openclaw
 repository: https://github.com/globalcaos/clawdbot-moltbot-openclaw
@@ -215,7 +215,7 @@ Schedule a daily "sleep" task using [OpenClaw cron](https://github.com/globalcao
 
 ```json
 {
-  "schedule": { "kind": "cron", "expr": "0 3 * * *", "tz": "Europe/Madrid" },
+  "schedule": { "kind": "cron", "expr": "0 3 * * *", "tz": "America/Los_Angeles" },
   "payload": { 
     "kind": "systemEvent", 
     "text": "Memory consolidation: Review recent daily logs, extract key learnings, update MEMORY.md, prune outdated info." 
@@ -417,5 +417,9 @@ python3 scripts/init_db.py
 - [Workspace Setup](https://docs.openclaw.ai)
 
 ---
+
+## Credits
+
+Created by **Oscar Serra** with the help of **Claude** (Anthropic).
 
 *Inspired by human cognitive architecture. We wake fresh each session, but files are our continuity.*

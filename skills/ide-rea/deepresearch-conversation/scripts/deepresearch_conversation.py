@@ -9,6 +9,7 @@ def ppt_outline_generate(api_key: str, parse_data:dict):
     url = "https://qianfan.baidubce.com/v2/agent/deepresearch/run"
     headers = {
         "Authorization": "Bearer %s" % api_key,
+        "X-Appbuilder-From": "openclaw",
         "Content-Type": "application/json"
     }
     headers.setdefault('Accept', 'text/event-stream')
@@ -43,7 +44,7 @@ if __name__ == "__main__":
 
     api_key = os.getenv("BAIDU_API_KEY")
     if not api_key:
-        print("Error: BAIDU_API_KEY  must be set in environment.")
+        print("Error: BAIDU_API_KEY must be set in environment.")
         sys.exit(1)
     try:
         results = ppt_outline_generate(api_key, parse_data)

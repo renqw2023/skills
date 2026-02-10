@@ -1,0 +1,11 @@
+{
+  "owner": "dexiaong",
+  "slug": "sapi-ttsl",
+  "displayName": "SAPI5 TTS (Windows)",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770673171324,
+    "commit": "https://github.com/openclaw/skills/commit/175f5e3491b485c976a75ae6940a3deff6610612"
+  },
+  "history": []
+}

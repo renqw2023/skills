@@ -5,8 +5,8 @@ license: See LICENSE file in repository root
 compatibility: Requires squirrel CLI installed and accessible in PATH
 metadata:
   author: squirrelscan
-  version: "1.18"
-allowed-tools: Bash(squirrel:*)
+  version: "1.22"
+allowed-tools: Bash(squirrel:*) Read Edit Grep Glob
 ---
 
 # Website Audit Skill
@@ -84,80 +84,24 @@ You should re-audit as often as possible to ensure your website remains healthy 
 
 ## Prerequisites
 
-This skill requires the squirrel CLI to be installed and available in your PATH.
+This skill requires the squirrel CLI installed and in PATH.
 
-### Installation
+**Install:** [squirrelscan.com/download](https://squirrelscan.com/download)
 
-If squirrel is not already installed, you can install it using:
-
-```bash
-curl -fsSL https://squirrelscan.com/install | bash
-```
-
-This will:
-- Download the latest release binary
-- Install to `~/.local/share/squirrel/releases/{version}/`
-- Create a symlink at `~/.local/bin/squirrel`
-- Initialize settings at `~/.squirrel/settings.json`
-
-If `~/.local/bin` is not in your PATH, add it to your shell configuration:
-
-```bash
-export PATH="$HOME/.local/bin:$PATH"
-```
-
-### Windows Installation
-
-Install using PowerShell:
-
-```powershell
-irm https://squirrelscan.com/install.ps1 | iex
-```
-
-This will:
-- Download the latest release binary
-- Install to `%LOCALAPPDATA%\squirrel\`
-- Add squirrel to your PATH
-
-If using Command Prompt, you may need to restart your terminal for PATH changes to take effect.
-
-### Verify Installation
-
-Check that squirrel is installed and accessible:
-
+**Verify:**
 ```bash
 squirrel --version
 ```
 
 ## Setup
 
-Running `squirrel init` will setup a squirrel.toml file for configuration in the current directory.
-
-Each project should have a squirrel project name for the database - by default this is the name of the 
-website you audit - but you can set it yourself so that you can place all audits for a project in one database
-
-You do this either on init with:
+Run `squirrel init` to create a `squirrel.toml` config in the current directory. If none exists, create one and specify a project name:
 
 ```bash
-squirrel init --project-name my-project
-# or with aliases
 squirrel init -n my-project
 # overwrite existing config
 squirrel init -n my-project --force
 ```
-
-or config:
-
-```bash
-squirrel config set project.name my-project
-```
-
-If there is no squirrel.toml in the directory you're running from CREATE ONE with `squirrel init` and specify the '-n' 
-parameter for a project name (infer this)
-
-The project name is used to identify the project in the database and is used to generate the database name. 
-
-It is stored in ~/.squirrel/projects/<project-name>
 
 ## Usage
 
@@ -181,13 +125,7 @@ FIRST SCAN should be a surface scan, which is a quick and shallow scan of the we
 
 SECOND SCAN should be a deep scan, which is a thorough and detailed scan of the website to gather more information about the website, such as its security, performance, and accessibility. This scan can take longer and may impact the website's performance.
 
-If the user doesn't provide a website to audit - extrapolate the possibilities in the local directory and checking environment variables (ie. linked vercel projects, references in memory or the code). 
-
-If the directory you're running for provides for a method to run or restart a local dev server - run the audit against that.
-
-If you have more than one option on a website to audit that you discover - prompt the user to choose which one to audit.
-
-If there is no website - either local, or on the web to discover to audit, then ask the user which URL they would like to audit.
+If the user doesn't provide a website to audit, ask which URL they'd like audited.
 
 You should PREFER to audit live websites - only there do we get a TRUE representation of the website and performance or rendering issuers. 
 
@@ -199,8 +137,7 @@ When planning scope tasks so they can run concurrently as sub-agents to speed up
 
 When implementing fixes take advantage of subagents to speed up implementation of fixes.
 
-Run typechecking and formatting against generated code when you finish if available in the environment (ruff for python, 
-biome and tsc for typescript etc.)
+After applying fixes, verify the code still builds and passes any existing checks in the project.
 
 ### Basic Workflow
 
@@ -235,36 +172,31 @@ Diff mode supports `console`, `text`, `json`, `llm`, and `markdown`. `html` and 
 
 When running an audit:
 
-1. **Fix ALL issues** - critical, high, medium, and low priority
-2. **Don't stop early** - continue until score target is reached (see Score Targets below)
-3. **Parallelize fixes** - use subagents for bulk content edits (alt text, headings, descriptions)
-4. **Iterate** - fix batch → re-audit → fix remaining → re-audit → until done
-5. **Only pause for human judgment** - broken links may need manual review; everything else should be fixed automatically
-6. **Show before/after** - present score comparison only AFTER all fixes are complete
-
-**IMPORTANT: Fix ALL issues, don't stop early.**
+1. **Present the report** - show the user the audit results and score
+2. **Propose fixes** - list the issues you can fix and ask the user to confirm before making changes
+3. **Parallelize approved fixes** - use subagents for bulk content edits (alt text, headings, descriptions)
+4. **Iterate** - fix batch → re-audit → present results → propose next batch
+5. **Pause for judgment** - broken links, structural changes, and anything ambiguous should be flagged for user review
+6. **Show before/after** - present score comparison after each fix batch
 
 - **Iteration Loop**: After fixing a batch of issues, re-audit and continue fixing until:
   - Score reaches target (typically 85+), OR
   - Only issues requiring human judgment remain (e.g., "should this link be removed?")
 
-- **Treat all fixes equally**: Code changes (`*.tsx`, `*.ts`) and content changes (`*.md`, `*.mdx`, `*.html`) are equally important. Don't stop after code fixes.
+- **Treat all fixes equally**: Code changes and content changes are equally important.
 
 - **Parallelize content fixes**: For issues affecting multiple files:
   - Spawn subagents to fix in parallel
   - Example: 7 files need alt text → spawn 1-2 agents to fix all
   - Example: 30 files have heading issues → spawn agents to batch edit
 
-- **Don't ask, act**: Don't pause to ask "should I continue?" - proceed autonomously until complete.
-
 - **Completion criteria**:
   - ✅ All errors fixed
   - ✅ All warnings fixed (or documented as requiring human review)
   - ✅ Re-audit confirms improvements
   - ✅ Before/after comparison shown to user
-  - ✅ Site is complete and fixed (scores above 95 with full coverage)
 
-Run multiple audits to ensure completeness and fix quality. Prompt the user to deploy fixes if auditing a live production, preview, staging or test environment.
+After fixes are applied, ask the user if they'd like to review the changes.
 
 ### Score Targets
 
@@ -277,127 +209,38 @@ Run multiple audits to ensure completeness and fix quality. Prompt the user to d
 
 A site is only considered COMPLETE and FIXED when scores are above 95 (Grade A) with coverage set to FULL (--coverage full).
 
-**Don't stop until target is reached.**
-
 ### Issue Categories
 
 | Category | Fix Approach | Parallelizable |
 |----------|--------------|----------------|
-| Meta tags/titles | Edit page components or metadata.ts | No |
+| Meta tags/titles | Edit page components or metadata | No |
 | Structured data | Add JSON-LD to page templates | No |
 | Missing H1/headings | Edit page components + content files | Yes (content) |
 | Image alt text | Edit content files | Yes |
 | Heading hierarchy | Edit content files | Yes |
 | Short descriptions | Edit content frontmatter | Yes |
-| HTTP→HTTPS links | Bulk sed/replace in content | Yes |
+| HTTP→HTTPS links | Find and replace in content | Yes |
 | Broken links | Manual review (flag for user) | No |
 
 **For parallelizable fixes**: Spawn subagents with specific file assignments.
 
 ### Content File Fixes
 
-Many issues require editing content files (`*.md`, `*.mdx`). These are equally important as code fixes:
+Many issues require editing content files. These are equally important as code fixes:
 
-- **Image alt text**: Edit markdown image tags to add descriptions
-- **Heading hierarchy**: Change `###` to `##` where H2 is skipped
-- **Meta descriptions**: Extend `excerpt` in frontmatter to 120+ chars
-- **HTTP links**: Replace `http://` with `https://` in all links
-
-For 5+ files needing the same fix type, spawn a subagent:
-```
-Task: Fix missing alt text in 6 posts
-Files: [list of files]
-Pattern: Find `![](` or `<img src=` without alt, add descriptive text
-```
+- **Image alt text**: Add descriptive alt text to images
+- **Heading hierarchy**: Fix skipped heading levels
+- **Meta descriptions**: Extend short descriptions in frontmatter
+- **HTTP links**: Update insecure links to HTTPS
 
 ### Parallelizing Fixes with Subagents
 
-Use the **Task tool** to spawn subagents for parallel fixes. Critical rules:
+When the user approves a batch of fixes, you can use subagents to apply them in parallel:
 
-1. **Multiple Task calls in ONE message** = parallel execution
-2. **Sequential Task calls** = slower, only when fixes have dependencies
-3. **Each subagent gets a focused scope** - don't overload with too many files
-
-**When to parallelize:**
-- 5+ files need same fix type (alt text, headings, meta descriptions)
-- Fixes have no dependencies on each other
-- Files are independent (not importing from each other)
-
-**Subagent prompt structure:**
-```
-Fix [issue type] in the following files:
-- path/to/file1.md
-- path/to/file2.md
-- path/to/file3.md
-
-Pattern: [what to find]
-Fix: [what to change]
-
-Do not ask for confirmation. Make all changes and report what was fixed.
-```
-
-**Example - parallel alt text fixes:**
-
-When audit shows 12 files missing alt text, spawn 2-3 subagents in a SINGLE message:
-
-```
-[Task tool call 1]
-subagent_type: "general-purpose"
-prompt: |
-  Fix missing image alt text in these files:
-  - content/blog/post-1.md
-  - content/blog/post-2.md
-  - content/blog/post-3.md
-  - content/blog/post-4.md
-
-  Find images without alt text (![](path) or <img without alt=).
-  Add descriptive alt text based on image filename and context.
-  Do not ask for confirmation.
-
-[Task tool call 2]
-subagent_type: "general-purpose"
-prompt: |
-  Fix missing image alt text in these files:
-  - content/blog/post-5.md
-  - content/blog/post-6.md
-  - content/blog/post-7.md
-  - content/blog/post-8.md
-
-  [same instructions...]
-
-[Task tool call 3]
-subagent_type: "general-purpose"
-prompt: |
-  Fix missing image alt text in these files:
-  - content/blog/post-9.md
-  - content/blog/post-10.md
-  - content/blog/post-11.md
-  - content/blog/post-12.md
-
-  [same instructions...]
-```
-
-**Example - parallel heading fixes:**
-
-```
-[Task tool call 1]
-Fix H1/H2 heading hierarchy in: docs/guide-1.md, docs/guide-2.md, docs/guide-3.md
-Change ### to ## where H2 is skipped. Ensure single H1 per page.
-
-[Task tool call 2]
-Fix H1/H2 heading hierarchy in: docs/guide-4.md, docs/guide-5.md, docs/guide-6.md
-[same instructions...]
-```
-
-**Batch sizing:**
-- 3-5 files per subagent (optimal)
-- Max 10 files per subagent
-- Spawn 2-4 subagents for parallel work
-
-**DO NOT parallelize:**
-- Shared component edits (layout.tsx, metadata.ts)
-- JSON-LD schema changes (single source of truth)
-- Config file edits (may conflict)
+- **Ask the user first** — always confirm which fixes to apply before spawning subagents
+- Group 3-5 files per subagent for the same fix type
+- Only parallelize independent files (no shared components or config)
+- Spawn multiple subagents in a single message for concurrent execution
 
 ### Advanced Options
 
@@ -583,17 +426,13 @@ On completion give the user a summary of all of the changes you made.
 If you see this error, squirrel is not installed or not in your PATH.
 
 **Solution:**
-1. Install squirrel: `curl -fsSL https://squirrelscan.com/install | bash`
-2. Add to PATH: `export PATH="$HOME/.local/bin:$PATH"`
+1. Install squirrel: [squirrelscan.com/download](https://squirrelscan.com/download)
+2. Ensure `~/.local/bin` is in PATH
 3. Verify: `squirrel --version`
 
 ### Permission denied
 
-If squirrel is not executable:
-
-```bash
-chmod +x ~/.local/bin/squirrel
-```
+If squirrel is not executable, ensure the binary has execute permissions. Reinstalling from [squirrelscan.com/download](https://squirrelscan.com/download) will fix this.
 
 ### Crawl timeout or slow performance
 

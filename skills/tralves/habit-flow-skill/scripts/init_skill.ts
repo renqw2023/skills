@@ -14,7 +14,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const SKILL_DIR = path.resolve(__dirname, '..');
 
-const SKILL_VERSION = '1.5.2';
+const SKILL_VERSION = '1.5.4';
 const VERSION_FILE = path.join(process.env.HOME || '~', 'clawd', 'habit-flow-data', '.skill-version');
 
 async function getInstalledVersion(): Promise<string | null> {

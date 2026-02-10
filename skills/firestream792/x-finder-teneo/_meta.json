@@ -3,11 +3,16 @@
   "slug": "x-finder-teneo",
   "displayName": "X Finder - powered by Teneo Protocol",
   "latest": {
-    "version": "1.0.4",
-    "publishedAt": 1770448444407,
-    "commit": "https://github.com/openclaw/skills/commit/3c69284157eb53a1ec29cba795191346b7949ea4"
+    "version": "1.0.6",
+    "publishedAt": 1770643230917,
+    "commit": "https://github.com/openclaw/skills/commit/59e2ac88e358764af8d5bef7446e3d4c5aa4c792"
   },
   "history": [
+    {
+      "version": "1.0.4",
+      "publishedAt": 1770448444407,
+      "commit": "https://github.com/openclaw/skills/commit/3c69284157eb53a1ec29cba795191346b7949ea4"
+    },
     {
       "version": "1.0.3",
       "publishedAt": 1770302225263,

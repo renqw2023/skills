@@ -1,13 +1,18 @@
 {
   "owner": "jontsai",
   "slug": "command-center",
-  "displayName": "OpenClaw Command Center",
+  "displayName": "Command Center",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1770387746503,
-    "commit": "https://github.com/openclaw/skills/commit/508420cf56b0704ef83ce0ee2f913e62108413b6"
+    "version": "1.0.1",
+    "publishedAt": 1770628857551,
+    "commit": "https://github.com/openclaw/skills/commit/4b39adceefb66c7ebd7da6073a98f0659411c269"
   },
   "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1770387746503,
+      "commit": "https://github.com/openclaw/skills/commit/508420cf56b0704ef83ce0ee2f913e62108413b6"
+    },
     {
       "version": "0.2.0",
       "publishedAt": 1770188184728,

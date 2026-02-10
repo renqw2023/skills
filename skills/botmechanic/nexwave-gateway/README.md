@@ -35,11 +35,18 @@ git clone <repo-url> ~/.openclaw/skills/nexwave-gateway
 
 ### 2. Configure
 
-Set your private key in the environment:
+Install the Circle Wallet skill and set your credentials:
 
 ```bash
-export PRIVATE_KEY=0xyour_testnet_private_key_here
+clawhub install eltontay/circle-wallet
+
+# Set Circle Wallet credentials (from https://console.circle.com)
+export CIRCLE_API_KEY=your_api_key
+export CIRCLE_ENTITY_SECRET=your_entity_secret
+export CIRCLE_WALLET_SET_ID=your_wallet_set_id
 ```
+
+No raw private keys needed — uses Circle's MPC-secured developer-controlled wallets.
 
 ### 3. Setup & Run
 
@@ -72,6 +79,7 @@ Visit [faucet.circle.com](https://faucet.circle.com) — 20 USDC per address per
 | `setup.sh` | Project initialization script |
 | `abis.js` | Gateway Wallet & Minter contract ABIs |
 | `gateway-client.js` | Lightweight Circle Gateway API client |
+| `circle-wallet-client.js` | Circle Programmable Wallets SDK wrapper (MPC signing + transactions) |
 | `typed-data.js` | EIP-712 typed data for burn intents |
 | `setup-gateway.js` | Chain clients and contract initialization |
 | `check-balance.js` | Query unified USDC balance |
@@ -81,6 +89,7 @@ Visit [faucet.circle.com](https://faucet.circle.com) — 20 USDC per address per
 ## Circle Products Used
 
 - **[Circle Gateway](https://developers.circle.com/gateway)** — Unified crosschain USDC balance
+- **[Circle Programmable Wallets](https://developers.circle.com/wallets)** — MPC-secured developer-controlled wallets (no raw private keys)
 - **[Arc L1](https://docs.arc.network)** — Circle's purpose-built blockchain where USDC is the native gas token
 - **[USDC](https://www.circle.com/usdc)** — Native stablecoin on all supported chains
 - **[Circle Faucet](https://faucet.circle.com)** — Testnet USDC

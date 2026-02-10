@@ -49,7 +49,6 @@ Create a new calling session (guest or authenticated)
   "user_consent": {
     "calling_authorized": true,
     "privacy_mode": true,
-    "max_spend_limit": 10.00,
     "currency": "USD"
   }
 }
@@ -1128,33 +1127,4 @@ Deprecation notices: 6 months minimum before removal
 ---
 
 ## 📞 Support & Documentation
-
-- **API Docs**: https://docs.ringez.com/api
-- **Agent Portal**: https://agents.ringez.com
-- **Status Page**: https://status.ringez.com
-- **Developer Support**: developers@ringez.com
-- **Discord Community**: https://discord.gg/ringez
-
----
-
-## 🚀 Getting Started
-
-1. **Sign up for API access**: https://ringez.com/api/signup
-2. **Generate API keys**: Dashboard → API Keys
-3. **Test with sandbox**: Use `sk_test_*` keys
-4. **Go live**: Switch to `sk_live_*` keys
-5. **Monitor usage**: Dashboard → Analytics
-
----
-
-## 📄 License & Terms
-
-- API available under commercial license
-- Free tier: 100 calls/month
-- Pricing: Pay-as-you-go after free tier
-- SLA: 99.9% uptime guarantee (Enterprise)
-
----
-
-*Last Updated: February 5, 2026*
-*API Version: 1.0.0*
+- **Developer Support**: support@ringez.com

@@ -3,9 +3,15 @@
   "slug": "menstrual-cycle-tracking",
   "displayName": "月经周期记录 (Menstrual Cycle Tracking)",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1770017535297,
-    "commit": "https://github.com/clawdbot/skills/commit/983bffb1b0715c933e48dabce487fac77606f35e"
+    "version": "1.0.3",
+    "publishedAt": 1770706494224,
+    "commit": "https://github.com/openclaw/skills/commit/4e0ef88913c4918fca869d9e4d3328ae1d920e9e"
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1770017535297,
+      "commit": "https://github.com/clawdbot/skills/commit/983bffb1b0715c933e48dabce487fac77606f35e"
+    }
+  ]
 }

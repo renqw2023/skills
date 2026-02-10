@@ -70,7 +70,6 @@ session = client.sessions.create({
     "session_type": "authenticated",
     "user_consent": {
         "calling_authorized": True,
-        "max_spend_limit": 5.00,
         "privacy_mode": False
     }
 })
@@ -122,7 +121,7 @@ async function makeFirstCall() {
       sessionType: 'authenticated',
       userConsent: {
         callingAuthorized: true,
-        maxSpendLimit: 5.00,
+        callingAuthorized: true,
         privacyMode: false
       }
     });
@@ -173,8 +172,7 @@ curl -X POST https://ringez-api.vercel.app/api/v1/sessions/create \
   -d '{
     "session_type": "authenticated",
     "user_consent": {
-      "calling_authorized": true,
-      "max_spend_limit": 5.00
+      "calling_authorized": true
     }
   }'
 
@@ -451,7 +449,6 @@ class SalesOutreachBot:
         session = self.client.sessions.create({
             "session_type": "authenticated",
             "user_consent": {
-                "max_spend_limit": 50.00
             }
         })
         

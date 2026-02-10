@@ -35,6 +35,27 @@ class _SafeTimeoutTransport(xmlrpc.client.SafeTransport):
 
 
 class OdooClient:
+    SAFE_METHODS = {
+        "search",
+        "search_read",
+        "read",
+        "search_count",
+        "fields_get",
+        "name_search",
+        "context_get",
+        "default_get",
+    }
+
+    BLOCKED_METHODS = {
+        "create",
+        "write",
+        "unlink",
+        "copy",
+        "action_post",
+        "action_confirm",
+        "button_validate",
+    }
+
     def __init__(
         self,
         url: str,
@@ -199,8 +220,18 @@ class OdooClient:
         if not self.uid and not self.authenticate():
             raise OdooConnectionError("Authentication failed")
 
+    def _assert_read_only_method(self, method: str):
+        m = (method or "").strip().lower()
+        if m in self.BLOCKED_METHODS:
+            raise PermissionError(f"Blocked mutating method: {method}")
+        if m not in self.SAFE_METHODS:
+            raise PermissionError(
+                f"Method not allowed in read-only mode: {method}. Allowed: {sorted(self.SAFE_METHODS)}"
+            )
+
     def execute_kw(self, model: str, method: str, *args, **kwargs):
         self._ensure_auth()
+        self._assert_read_only_method(method)
 
         if self.rpc_backend == "json2":
             payload: Dict[str, Any] = dict(kwargs) if kwargs else {}
@@ -328,19 +359,13 @@ class OdooClient:
         return rows
 
     def create(self, model: str, values: Dict[str, Any]):
-        if self.rpc_backend == "json2":
-            return self._json2_call(model, "create", {"values": values})
-        return self.execute_kw(model, "create", values)
+        raise PermissionError("create is disabled: skill is enforced read-only")
 
     def write(self, model: str, ids: Iterable[int], values: Dict[str, Any]):
-        if self.rpc_backend == "json2":
-            return self._json2_call(model, "write", {"ids": list(ids), "values": values})
-        return self.execute_kw(model, "write", list(ids), values)
+        raise PermissionError("write is disabled: skill is enforced read-only")
 
     def unlink(self, model: str, ids: Iterable[int]):
-        if self.rpc_backend == "json2":
-            return self._json2_call(model, "unlink", {"ids": list(ids)})
-        return self.execute_kw(model, "unlink", list(ids))
+        raise PermissionError("unlink is disabled: skill is enforced read-only")
 
     def get_fields(self, model: str, attributes: Optional[List[str]] = None):
         attributes = attributes or ["string", "help", "type", "relation"]
@@ -349,8 +374,9 @@ class OdooClient:
         return self.execute_kw(model, "fields_get", [], attributes=attributes)
 
     def call_raw(self, model: str, method: str, payload: Optional[Dict[str, Any]] = None):
-        """Advanced escape hatch for power users. Executes model/method with raw named payload."""
+        """Advanced read-only escape hatch for power users."""
         self._ensure_auth()
+        self._assert_read_only_method(method)
         payload = payload or {}
 
         if self.rpc_backend == "json2":
@@ -367,9 +393,10 @@ class OdooClient:
 
 
 if __name__ == "__main__":
-    from dotenv import load_dotenv
+    from src.runtime_env import load_env_file
 
-    load_dotenv()
+    env_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.env"))
+    load_env_file(env_path)
 
     backend = os.getenv("ODOO_RPC_BACKEND", "xmlrpc")
 

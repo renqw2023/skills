@@ -1,0 +1,11 @@
+{
+  "owner": "okaris",
+  "slug": "video-ad-specs",
+  "displayName": "Video Ad Specs",
+  "latest": {
+    "version": "0.1.0",
+    "publishedAt": 1770656286404,
+    "commit": "https://github.com/openclaw/skills/commit/253b03a6e061e95a0176d42a530c806f77dd88c2"
+  },
+  "history": []
+}

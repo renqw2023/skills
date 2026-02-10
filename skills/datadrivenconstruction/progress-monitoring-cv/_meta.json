@@ -1,0 +1,11 @@
+{
+  "owner": "datadrivenconstruction",
+  "slug": "progress-monitoring-cv",
+  "displayName": "Progress Monitoring Cv",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770476414368,
+    "commit": "https://github.com/openclaw/skills/commit/9f6715626d9e7e5fb43d07c41c9e76bc839a1f5d"
+  },
+  "history": []
+}

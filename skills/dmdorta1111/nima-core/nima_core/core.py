@@ -81,6 +81,7 @@ class NimaCore:
         if models_dir:
             os.environ["NIMA_MODELS_DIR"] = str(models_dir)
         
+        # Refresh module-level path constants if custom dirs were provided
         # Load or use provided config
         if config:
             self.config = config
@@ -102,14 +103,27 @@ class NimaCore:
         self._metacognitive = None
         self._retriever = None
         
+        # Instance-specific paths (thread-safe, not global)
+        from .config import NIMA_DATA_DIR, NIMA_MODELS_DIR
+        if data_dir:
+            self._data_dir = Path(data_dir)
+            os.environ["NIMA_DATA_DIR"] = str(data_dir)
+        else:
+            self._data_dir = NIMA_DATA_DIR
+            
+        if models_dir:
+            self._models_dir = Path(models_dir)
+            os.environ["NIMA_MODELS_DIR"] = str(models_dir)
+        else:
+            self._models_dir = NIMA_MODELS_DIR
+        
         # Ensure data directories exist
-        from .config import NIMA_DATA_DIR
-        (NIMA_DATA_DIR / "sessions").mkdir(parents=True, exist_ok=True)
-        (NIMA_DATA_DIR / "schemas").mkdir(parents=True, exist_ok=True)
-        (NIMA_DATA_DIR / "cache").mkdir(parents=True, exist_ok=True)
+        (self._data_dir / "sessions").mkdir(parents=True, exist_ok=True)
+        (self._data_dir / "schemas").mkdir(parents=True, exist_ok=True)
+        (self._data_dir / "cache").mkdir(parents=True, exist_ok=True)
         
         # Memory storage path
-        self._memory_path = NIMA_DATA_DIR / "sessions" / "latest.pt"
+        self._memory_path = self._data_dir / "sessions" / "latest.pt"
         
         if auto_init:
             self._initialize()
@@ -249,6 +263,10 @@ class NimaCore:
             # Apply time filter
             if since_ms or until_ms:
                 results = self._filter_by_time(results, since_ms, until_ms)
+            
+            # Fall back to text search if vector retrieval returned nothing
+            if not results:
+                results = self._text_search(query, top_k, since_ms=since_ms, until_ms=until_ms)
             
             return results[:top_k]
             
@@ -417,6 +435,69 @@ class NimaCore:
             logger.error(f"Capture failed: {e}")
             return False
     
+    def synthesize(
+        self,
+        insight: str,
+        domain: str = "general",
+        sparked_by: str = "",
+        importance: float = 0.85,
+        max_chars: int = 280,
+    ) -> bool:
+        """
+        Capture a synthesized insight — lightweight by design.
+
+        Unlike capture() (raw facts) or experience() (full pipeline),
+        synthesize() is for distilled connections and breakthroughs.
+        Enforces brevity to prevent memory bloat.
+
+        Args:
+            insight: The synthesized understanding (max 280 chars enforced)
+            domain: Knowledge domain tag (e.g. "theology", "neuroscience")
+            sparked_by: Who/what triggered the insight
+            importance: Default 0.85 (high but not max)
+            max_chars: Max length for insight text (default 280, like a tweet)
+
+        Returns:
+            True if captured successfully
+
+        Example:
+            nima.synthesize(
+                "Mercy (eleison) shares root with olive oil (elaion) — "
+                "not legal pardon but healing ointment.",
+                domain="theology",
+                sparked_by="Melissa",
+            )
+        """
+        # Enforce brevity — truncate with ellipsis if over limit
+        if len(insight) > max_chars:
+            base = insight[: max_chars - 3]
+            # Try to break at last space for cleaner truncation
+            if " " in base:
+                base = base.rsplit(" ", 1)[0]
+            insight = base + "..."
+            logger.info(f"Synthesis truncated to {max_chars} chars")
+
+        # Build compact memory
+        prefix = f"Synthesis [{domain}]"
+        if sparked_by:
+            prefix += f" (with {sparked_by})"
+        what = f"{prefix}: {insight}"
+
+        try:
+            self._store_memory({
+                "who": self.name,
+                "what": what,
+                "importance": min(importance, 0.95),  # Cap at 0.95
+                "timestamp": datetime.now().isoformat(),
+                "type": "synthesis",
+                "context": "insight",
+                "domain": domain,
+            })
+            return True
+        except Exception as e:
+            logger.error(f"Synthesis capture failed: {e}")
+            return False
+
     def dream(self, hours: int = 24, deep: bool = False) -> Dict:
         """
         Run dream consolidation via the DreamEngine.
@@ -440,7 +521,8 @@ class NimaCore:
             from .config import NIMA_DATA_DIR
             
             engine = DreamEngine(
-                data_dir=str(NIMA_DATA_DIR),
+                data_dir=str(self._data_dir),
+                models_dir=str(self._models_dir),
                 nima_core=self,
             )
             session = engine.dream(hours=hours, deep=deep)
@@ -468,11 +550,24 @@ class NimaCore:
         """
         memories = self._load_memories()
         
+        # Projection status
+        projection_status = {"trained": False}
+        try:
+            from .embeddings.projection_trainer import ProjectionTrainer
+            trainer = ProjectionTrainer(self._models_dir)
+            projection_status = trainer.get_status()
+            if not projection_status["trained"]:
+                remaining = max(0, 100 - len(memories))
+                projection_status["memories_until_training"] = remaining
+        except Exception as e:
+            logger.debug("Could not get projection status: %s", e)
+
         status = {
             "name": self.name,
-            "version": "1.0.0",
+            "version": "1.1.0",
             "memory_count": len(memories),
             "config": self.config.to_dict(),
+            "projection": projection_status,
             "components": {
                 "bridge": self._bridge is not None,
                 "metacognitive": self._metacognitive is not None,
@@ -605,9 +700,8 @@ class NimaCore:
     def _sparse_recall(self, query_vec, top_k: int) -> List[Dict]:
         """Sparse retrieval search."""
         from .retrieval.sparse_retrieval import SparseRetriever
-        from .config import NIMA_DATA_DIR
         
-        cache_path = NIMA_DATA_DIR / "cache" / "sparse_index.pt"
+        cache_path = self._data_dir / "cache" / "sparse_index.pt"
         
         if cache_path.exists():
             retriever = SparseRetriever.load(str(cache_path))

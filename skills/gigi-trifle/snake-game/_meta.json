@@ -3,9 +3,15 @@
   "slug": "snake-game",
   "displayName": "Snake Game",
   "latest": {
-    "version": "2.1.0",
-    "publishedAt": 1770538349563,
-    "commit": "https://github.com/openclaw/skills/commit/e86e0e7c2c53ef049f2c7c415a3559c22f94e036"
+    "version": "2.1.1",
+    "publishedAt": 1770539668103,
+    "commit": "https://github.com/openclaw/skills/commit/0be63c2c4eecd1daa6af1c05f46b2e2ef7807692"
   },
-  "history": []
+  "history": [
+    {
+      "version": "2.1.0",
+      "publishedAt": 1770538349563,
+      "commit": "https://github.com/openclaw/skills/commit/e86e0e7c2c53ef049f2c7c415a3559c22f94e036"
+    }
+  ]
 }

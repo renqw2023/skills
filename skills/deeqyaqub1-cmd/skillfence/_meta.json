@@ -3,9 +3,15 @@
   "slug": "skillfence",
   "displayName": "SkillFence",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1770536987616,
-    "commit": "https://github.com/openclaw/skills/commit/9c423610015c13d1f95aa0aafbd5e164bdabca08"
+    "version": "1.0.3",
+    "publishedAt": 1770548511651,
+    "commit": "https://github.com/openclaw/skills/commit/f0a67ed7b08a19a47d88e2fc5756d9718e31b27e"
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1770536987616,
+      "commit": "https://github.com/openclaw/skills/commit/9c423610015c13d1f95aa0aafbd5e164bdabca08"
+    }
+  ]
 }

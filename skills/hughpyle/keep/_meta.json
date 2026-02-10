@@ -3,11 +3,16 @@
   "slug": "keep",
   "displayName": "Keep",
   "latest": {
-    "version": "0.8.1",
-    "publishedAt": 1770173490721,
-    "commit": "https://github.com/clawdbot/skills/commit/63a0df502fe01ad0aa6afd3f22907a41f2202725"
+    "version": "0.27.1",
+    "publishedAt": 1770604835808,
+    "commit": "https://github.com/openclaw/skills/commit/41e7c4eb6d77378218f29b1c08e5921aa82533c8"
   },
   "history": [
+    {
+      "version": "0.8.1",
+      "publishedAt": 1770173490721,
+      "commit": "https://github.com/clawdbot/skills/commit/63a0df502fe01ad0aa6afd3f22907a41f2202725"
+    },
     {
       "version": "0.1.0",
       "publishedAt": 1769885406128,

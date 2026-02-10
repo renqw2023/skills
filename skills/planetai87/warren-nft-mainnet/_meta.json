@@ -1,0 +1,11 @@
+{
+  "owner": "planetai87",
+  "slug": "warren-nft-mainnet",
+  "displayName": "Warren NFT Deploy(mainnet)",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770559003230,
+    "commit": "https://github.com/openclaw/skills/commit/293fbdc2683283f46782366035bc35e4e4b1a69e"
+  },
+  "history": []
+}

@@ -1,0 +1,11 @@
+{
+  "owner": "getmolty",
+  "slug": "openclaw-securityh",
+  "displayName": "OpenClaw Security Suite",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770675259173,
+    "commit": "https://github.com/openclaw/skills/commit/fb11f5e33eab4d89d63fe19b7f357d5edd0bbee3"
+  },
+  "history": []
+}

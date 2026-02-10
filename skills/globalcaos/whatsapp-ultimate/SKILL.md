@@ -1,9 +1,9 @@
 ---
 name: whatsapp-ultimate
-version: 1.2.0
+version: 1.1.2
 description: "The most comprehensive WhatsApp skill for AI agents. Full messaging (text, media, polls, stickers, voice), reactions, replies, edits, unsend, complete group management, AND persistent searchable message history with SQLite + FTS5. Native Baileys integration - no external services required."
 homepage: https://github.com/openclaw/openclaw
-repository: https://github.com/openclaw/openclaw
+repository: https://github.com/globalcaos/clawdbot-moltbot-openclaw
 metadata:
   openclaw:
     emoji: "📱"
@@ -432,6 +432,14 @@ No external services. No Docker. No CLI tools. Direct protocol integration.
 
 ---
 
+## Credits
+
+Created by **Oscar Serra** with the help of **Claude** (Anthropic).
+
+*The skill that finally made WhatsApp work the way it should.*
+
+---
+
 ## License
 
 MIT — Part of OpenClaw
@@ -440,6 +448,6 @@ MIT — Part of OpenClaw
 
 ## Links
 
-- OpenClaw: https://github.com/openclaw/openclaw
+- OpenClaw Fork: https://github.com/globalcaos/clawdbot-moltbot-openclaw
 - Baileys: https://github.com/WhiskeySockets/Baileys
 - ClawHub: https://clawhub.com

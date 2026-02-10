@@ -8,27 +8,6 @@ metadata: {"openclaw":{"emoji":"🧠","install":[{"id":"npm","kind":"node","pack
 
 Persistent memory that compounds. Your agent remembers conversations, learns preferences, connects ideas, and picks up exactly where it left off—across sessions, days, and channels.
 
-## Install
-
-```
-openclaw plugins install openclaw-penfield
-openclaw penfield login
-openclaw gateway restart
-```
-
-Sign up: https://portal.penfield.app/sign-up
-
-## Every Session Starts Here
-
-Always do this first, before anything else:
-
-```
-penfield_awaken()
-penfield_reflect({ time_window: "7d" })
-```
-
-`awaken` loads your identity and personality context. `reflect` orients you on recent work. Without these, you're starting cold.
-
 ## Tools
 
 ### Memory
@@ -224,8 +203,9 @@ penfield_connect({
 
 ```
 penfield_save_context({
-  memory_ids: [discovery.id, correction.id, initial_report.id],
-  session_id: "deployment-investigation-2026-02"
+  name: "deployment-investigation-2026-02",
+  description: "Investigated deployment timeout issues. memory_id: " + discovery.id,
+  memory_ids: [discovery.id, correction.id, initial_report.id]
 })
 ```
 
@@ -233,8 +213,7 @@ Next session or different agent:
 
 ```
 penfield_restore_context({
-  checkpoint_id: "checkpoint-uuid",
-  merge_mode: "append"
+  name: "deployment-investigation-2026-02"
 })
 ```
 

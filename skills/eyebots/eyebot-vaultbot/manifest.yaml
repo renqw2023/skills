@@ -1,0 +1,5 @@
+name: eyebot-vaultbot
+description: Secure wallet management and multi-sig vaults
+version: 1.2.0
+author: ILL4NE
+tags: [crypto, security, multisig, vaults]

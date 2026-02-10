@@ -3,11 +3,21 @@
   "slug": "giphy",
   "displayName": "Giphy",
   "latest": {
-    "version": "1.0.3",
-    "publishedAt": 1770489329807,
-    "commit": "https://github.com/openclaw/skills/commit/0ae399e159f2d1850c974c92f74daca058e8060a"
+    "version": "1.0.7",
+    "publishedAt": 1770561754359,
+    "commit": "https://github.com/openclaw/skills/commit/0e9053313506017044d209ae7d1edf72e7ea5800"
   },
   "history": [
+    {
+      "version": "1.0.6",
+      "publishedAt": 1770533708646,
+      "commit": "https://github.com/openclaw/skills/commit/971255bad5164b37005bc9bad53f3022d1a7bb27"
+    },
+    {
+      "version": "1.0.3",
+      "publishedAt": 1770489329807,
+      "commit": "https://github.com/openclaw/skills/commit/0ae399e159f2d1850c974c92f74daca058e8060a"
+    },
     {
       "version": "1.0.2",
       "publishedAt": 1770042243352,

@@ -1,0 +1,11 @@
+{
+  "owner": "eyebots",
+  "slug": "eyebot-elite",
+  "displayName": "Eyebot Elite Suite",
+  "latest": {
+    "version": "1.1.0",
+    "publishedAt": 1770597918757,
+    "commit": "https://github.com/openclaw/skills/commit/ae6a978080e6611d186bc4a3833db4416d803528"
+  },
+  "history": []
+}

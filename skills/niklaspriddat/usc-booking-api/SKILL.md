@@ -16,11 +16,7 @@ venv/bin/playwright install-deps chromium
 
 ### 2. Zugangsdaten
 
-Kopiere die Vorlage und trage deine USC-Logindaten ein:
-
-```bash
-cp credentials.example.json credentials.json
-```
+Trage deine USC-Logindaten ein:
 
 ```json
 {
@@ -64,6 +60,15 @@ VENUES = {
 - `url`: Venue-Seite auf urbansportsclub.com
 - `type`: Frei waehlbar, wird im Output angezeigt
 - `keywords`: Helfen bei der Erkennung der Kursnamen im Seitentext
+
+### URL-Parameter
+
+Der Scanner haengt automatisch folgende Parameter an die Venue-URL an:
+
+- `plan_type`: Mitgliedschafts-Stufe. Bestimmt welche Kurse angezeigt werden (nur die, die mit der jeweiligen Stufe buchbar sind). Privat: 1=Essential, 2=Classic, 3=Premium, 6=Max. Firma: 1=S, 2=M, 3=L, 6=XL. Standardwert: `3`.
+- `business_type`: `b2c` (Privatmitglieder) oder `b2b` (Firmenmitglieder). Standardwert: `b2c`.
+
+Diese Werte sind in `config.py` als `PLAN_TYPE` und `BUSINESS_TYPE` konfigurierbar.
 
 ## Usage
 

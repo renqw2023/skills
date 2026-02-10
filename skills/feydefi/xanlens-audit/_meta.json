@@ -1,0 +1,11 @@
+{
+  "owner": "feydefi",
+  "slug": "xanlens-audit",
+  "displayName": "XanLens Audit",
+  "latest": {
+    "version": "2.0.0",
+    "publishedAt": 1770636260282,
+    "commit": "https://github.com/openclaw/skills/commit/c77bb0fc17c6018025995afb2547b44eeaca0661"
+  },
+  "history": []
+}

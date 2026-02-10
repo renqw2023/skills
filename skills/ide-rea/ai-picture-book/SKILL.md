@@ -8,11 +8,6 @@ metadata: { "openclaw": { "emoji": "📔", "requires": { "bins": ["python3"], "e
 
 This skill allows OpenClaw agents to generate AI picture book, Based solely on a story or description provided by the user.
 
-## Setup
-
-1.  **API Key:** Ensure the BAIDU_API_KEY environment variable is set with your valid API key.
-2.  **Environment:** The API key should be available in the runtime environment.
-3.  **BAIDU_API_KEY:** BAIDU_API_KEY available, need to go to the baidu cloud platform(https://login.bce.baidu.com) registered account, if you already have account will go to get the API KEY (https://console.bce.baidu.com/qianfan/ais/console/apiKey)
 
 ## API table
 |    name    |               path              |            description                |
@@ -41,7 +36,7 @@ This skill allows OpenClaw agents to generate AI picture book, Based solely on a
 
 #### Example Usage
 ```bash
-BAIDU_API_KEY=xxx python3 scripts/ai_picture_book_task_create.py 9 "This is a story about a little girl who loves to read books."
+python3 scripts/ai_picture_book_task_create.py 9 "This is a story about a little girl who loves to read books."
 ```
 
 ### AIPictureBookTaskQuery API 
@@ -53,5 +48,5 @@ BAIDU_API_KEY=xxx python3 scripts/ai_picture_book_task_create.py 9 "This is a st
 
 #### Example Usage
 ```bash
-BAIDU_API_KEY=xxx python3 scripts/ai_picture_book_task_query.py "26943ed4-f5a9-4306-a05b-b087665433a0"
+python3 scripts/ai_picture_book_task_query.py "26943ed4-f5a9-4306-a05b-b087665433a0"
 ```

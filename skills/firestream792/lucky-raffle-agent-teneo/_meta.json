@@ -3,11 +3,21 @@
   "slug": "lucky-raffle-agent-teneo",
   "displayName": "Lucky Raffle Agent - powered by Teneo Protocol",
   "latest": {
-    "version": "1.0.6",
-    "publishedAt": 1770448432802,
-    "commit": "https://github.com/openclaw/skills/commit/c4208e0dbdd6475e88919f1e266dfb54197f1b46"
+    "version": "1.0.10",
+    "publishedAt": 1770643228849,
+    "commit": "https://github.com/openclaw/skills/commit/8238fd17e8160f4c757896dbab9d848a1093c4a2"
   },
   "history": [
+    {
+      "version": "1.0.7",
+      "publishedAt": 1770620141162,
+      "commit": "https://github.com/openclaw/skills/commit/fb4c42ef7564ff65270a2eeaa7ebc0eb4084b11a"
+    },
+    {
+      "version": "1.0.6",
+      "publishedAt": 1770448432802,
+      "commit": "https://github.com/openclaw/skills/commit/c4208e0dbdd6475e88919f1e266dfb54197f1b46"
+    },
     {
       "version": "1.0.5",
       "publishedAt": 1770302219996,

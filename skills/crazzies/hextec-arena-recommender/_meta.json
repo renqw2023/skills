@@ -1,0 +1,17 @@
+{
+  "owner": "crazzies",
+  "slug": "hextec-arena-recommender",
+  "displayName": "Hextech Arena Recommender",
+  "latest": {
+    "version": "1.1.1",
+    "publishedAt": 1770649582984,
+    "commit": "https://github.com/openclaw/skills/commit/13f8f9433516de2af62e0dae3d6d5ed2356294ad"
+  },
+  "history": [
+    {
+      "version": "1.1.0",
+      "publishedAt": 1770601611324,
+      "commit": "https://github.com/openclaw/skills/commit/d0632dcd8fd27654cafe82a7e344087fd59e9246"
+    }
+  ]
+}

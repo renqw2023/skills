@@ -3,11 +3,16 @@
   "slug": "tiktok-teneo",
   "displayName": "Tiktok - powered by Teneo Protocol",
   "latest": {
-    "version": "1.0.9",
-    "publishedAt": 1770448422193,
-    "commit": "https://github.com/openclaw/skills/commit/b41db2a37b8c81dc6f0e39d913356ea3fc9d9885"
+    "version": "1.0.13",
+    "publishedAt": 1770643220138,
+    "commit": "https://github.com/openclaw/skills/commit/b7ad2fa3df429261aa97d6a3b42d399d7b016630"
   },
   "history": [
+    {
+      "version": "1.0.9",
+      "publishedAt": 1770448422193,
+      "commit": "https://github.com/openclaw/skills/commit/b41db2a37b8c81dc6f0e39d913356ea3fc9d9885"
+    },
     {
       "version": "1.0.8",
       "publishedAt": 1770302208080,

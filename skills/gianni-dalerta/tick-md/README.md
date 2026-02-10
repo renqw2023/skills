@@ -1,284 +1,174 @@
-# TICK.md
+# Tick Coordination Skill
 
-**Multi-agent task coordination via Git-backed Markdown**
+ClawHub-ready skill package for multi-agent task coordination.
 
-[![npm version](https://img.shields.io/npm/v/tick-md.svg?style=flat-square&color=a78bfa)](https://www.npmjs.com/package/tick-md)
-[![npm downloads](https://img.shields.io/npm/dm/tick-md.svg?style=flat-square&color=a78bfa)](https://www.npmjs.com/package/tick-md)
-[![MCP Server](https://img.shields.io/npm/v/tick-mcp-server.svg?style=flat-square&label=mcp-server&color=7c3aed)](https://www.npmjs.com/package/tick-mcp-server)
-[![ClawHub](https://img.shields.io/badge/ClawHub-tick--md-6366f1?style=flat-square&logo=data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTUgMTNsNCA0TDE5IDciIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIzIiBmaWxsPSJub25lIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz4KPC9zdmc+)](https://clawhub.ai/skills/tick-md)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](https://opensource.org/licenses/MIT)
-[![GitHub stars](https://img.shields.io/github/stars/Purple-Horizons/tick-md?style=flat-square&color=a78bfa)](https://github.com/Purple-Horizons/tick-md)
+## Package Structure
 
-Coordinate work across human and AI agents using structured TICK.md files. Built on Git, designed for natural language interaction, optimized for multi-agent workflows.
-
-> **100% open source.** Protocol, CLI, dashboard, MCP server — all free forever.
-
-## ✨ Features
-
-- 🤖 **AI-Native**: MCP server for seamless bot integration
-- 📝 **Human-Readable**: Plain Markdown with YAML frontmatter
-- 🔄 **Git-Backed**: Full version control and audit trail
-- 🎯 **Dependency Tracking**: Automatic task unblocking
-- 🔍 **Advanced Filtering**: Find tasks by status, priority, tags
-- 📊 **Visualization**: Dependency graphs (ASCII and Mermaid)
-- 👀 **Real-Time Monitoring**: Watch mode for live updates
-- 🌐 **Local-First**: No cloud required, works offline
-
-## 🚀 Quick Start
-
-### Install CLI
-```bash
-npm install -g tick-md
+```
+clawhub-skill/
+├── SKILL.md              # Main skill documentation (ClawHub displays this)
+├── skill.json            # Metadata for ClawHub registry
+├── INSTALL.md            # Installation and editor setup
+├── mcp-reference.md      # Complete MCP tools reference
+├── CHANGELOG.md          # Version history
+└── README.md             # This file
 ```
 
-### Initialize Project
+## Publishing to ClawHub
+
+### Prerequisites
+1. Install ClawHub CLI:
+   ```bash
+   npm install -g clawhub
+   ```
+
+2. Authenticate (if required):
+   ```bash
+   clawhub login
+   ```
+
+### Publishing
+
+From this directory:
 ```bash
-cd your-project
-tick init
-tick status
+clawhub publish
 ```
 
-### Create and Claim Tasks
+The CLI will:
+- Package all files in this directory
+- Read metadata from `skill.json`
+- Upload to ClawHub registry
+- Make available at `clawhub.ai/skills/tick-coordination`
+
+### Updating
+
+To publish a new version:
+1. Update `skill.json` version (follow semver)
+2. Update `CHANGELOG.md`
+3. Run `clawhub publish` again
+
 ```bash
-tick add "Build authentication" --priority high --tags backend
-tick claim TASK-001 @yourname
-tick done TASK-001 @yourname
+# Example: publish v1.0.1
+# 1. Edit skill.json: "version": "1.0.1"
+# 2. Add entry to CHANGELOG.md
+# 3. Publish
+clawhub publish
 ```
 
-## 🤖 For AI Agents
+## Local Testing
 
-### Install MCP Server
+Test the skill locally before publishing:
+
+### Option 1: Copy to Cursor Skills
 ```bash
-npm install -g tick-mcp-server
+cp -r . ~/.cursor/skills/tick-coordination/
 ```
 
-### Configure (see [INSTALL.md](clawhub-skill/INSTALL.md) for editor-specific setup)
+Restart Cursor and the skill will be available.
 
-Add to your MCP config:
+### Option 2: Use workspace skills
+```bash
+# In your project
+mkdir -p skills
+cp -r . skills/tick-coordination/
+```
+
+OpenClaw/Cursor will pick up skills from `./skills/` in the current workspace.
+
+### Option 3: Install from ClawHub (after publishing)
+```bash
+clawhub search "tick coordination"
+clawhub install tick-coordination
+```
+
+## What Gets Published
+
+When you run `clawhub publish`, these files are included:
+- ✅ `SKILL.md` - Main documentation (required, editor-agnostic)
+- ✅ `skill.json` - Metadata (required)
+- ✅ `INSTALL.md` - Installation guide (editor-specific setup)
+- ✅ `mcp-reference.md` - API reference
+- ✅ `CHANGELOG.md` - Version history
+- ✅ `README.md` - Package info
+
+Files automatically excluded:
+- `.git/` directories
+- `node_modules/`
+- Hidden files (except necessary configs)
+
+## Skill Metadata (skill.json)
+
+The `skill.json` file controls how the skill appears on ClawHub:
+
 ```json
 {
-  "mcpServers": {
-    "tick": {
-      "command": "tick-mcp",
-      "args": []
-    }
+  "name": "tick-coordination",
+  "version": "1.0.0",
+  "summary": "Multi-agent task coordination using Git-backed Markdown files",
+  "tags": ["coordination", "tasks", "agents", "git", "markdown"],
+  "requirements": {
+    "runtime": "node >=18",
+    "packages": ["tick-md", "tick-mcp-server"]
   }
 }
 ```
 
-### Install via ClawHub (for OpenClaw Bots)
-```bash
-clawhub install tick-md
-```
+**Key fields**:
+- `name`: Unique identifier (lowercase, hyphens)
+- `version`: Semver (e.g., "1.0.0")
+- `summary`: Short description (< 100 chars)
+- `tags`: For discovery and search
+- `requirements`: Runtime and package dependencies
 
-OpenClaw bots can now coordinate tasks through natural conversation!
+## Versioning Guidelines
 
-## 📖 Documentation
+Follow semantic versioning:
+- **Major (1.0.0 → 2.0.0)**: Breaking changes
+- **Minor (1.0.0 → 1.1.0)**: New features, backward compatible
+- **Patch (1.0.0 → 1.0.1)**: Bug fixes
 
-- **[CLI Commands](cli/README.md)** - Complete command reference
-- **[MCP Server](mcp/README.md)** - API for AI agents
-- **[ClawHub Skill](clawhub-skill/SKILL.md)** - Bot coordination guide
-- **[Build Sessions](BUILD_SESSION_8.md)** - Development notes
+**Examples**:
+- Add new CLI command → Minor version bump
+- Change MCP tool arguments → Major version bump
+- Fix typo in docs → Patch version bump
 
-## 🎯 Core Workflow
+## User Installation
 
-```bash
-# Project setup
-tick init                          # Initialize TICK.md
-tick agent register @bot --type bot # Register agent
-
-# Task management
-tick add "Task title" --priority high
-tick list --status todo            # Filter tasks
-tick graph                         # Visualize dependencies
-
-# Work coordination
-tick claim TASK-001 @bot           # Claim task
-tick comment TASK-001 @bot --note "Making progress"
-tick done TASK-001 @bot            # Complete (auto-unblocks dependents)
-
-# Real-time monitoring
-tick watch                         # Watch for changes
-
-# Git integration
-tick sync --push                   # Commit and push
-```
-
-## 🏗️ Project Structure
-
-```
-tick-md/
-├── cli/                  # Command-line interface (npm: tick-md)
-├── mcp/                  # MCP server (npm: tick-mcp-server)
-├── clawhub-skill/        # ClawHub skill package
-├── docs/                 # Landing page and documentation
-├── TICK.md              # This project's own task tracking
-└── LICENSE              # MIT License
-```
-
-## 📋 Command Reference
-
-| Command | Description |
-|---------|-------------|
-| `tick init` | Initialize new project |
-| `tick status` | Show project overview |
-| `tick list` | List/filter tasks |
-| `tick graph` | Visualize dependencies |
-| `tick watch` | Monitor changes in real-time |
-| `tick add` | Create task |
-| `tick claim` | Claim task |
-| `tick done` | Complete task |
-| `tick validate` | Check for errors |
-| `tick sync` | Git integration |
-| `tick agent register/list` | Manage agents |
-
-## 🤝 Use Cases
-
-### For Development Teams
-- Coordinate work across multiple developers
-- Track dependencies and blockers
-- Maintain audit trail via Git
-- Natural language task management
-
-### For AI Agent Swarms
-- Multi-bot task coordination
-- Transparent work tracking
-- Prevent duplicate effort
-- Enable bot-to-bot handoffs
-
-### For Solo Developers
-- Structure your work
-- Track progress visually
-- Integrate with Git workflow
-- Command-line productivity
-
-## 🌟 Example Workflows
-
-### Bot Creates and Claims Task
-```javascript
-// Via MCP
-await tick_add({
-  title: "Refactor authentication system",
-  priority: "high",
-  tags: ["backend", "security"]
-});
-
-await tick_claim({ taskId: "TASK-023", agent: "@bot" });
-await tick_comment({ 
-  taskId: "TASK-023", 
-  agent: "@bot",
-  note: "Analyzing current implementation"
-});
-await tick_done({ taskId: "TASK-023", agent: "@bot" });
-```
-
-### Human Monitors Progress
-```bash
-tick watch
-# [20:15:32] ✓ Added: TASK-023 - Refactor authentication system
-# [20:15:35] 🔒 TASK-023 claimed by @bot
-# [20:17:42] ⟳ TASK-023: in_progress → done
-```
-
-## 🔧 Advanced Features
-
-### Dependency Management
-```bash
-tick add "Deploy to production" --priority high
-tick add "Run tests" --blocks TASK-001
-tick add "Update docs" --blocks TASK-001
-
-# When tests and docs complete, deploy automatically unblocks
-```
-
-### Task Filtering
-```bash
-tick list --status blocked         # Find blockers
-tick list --priority urgent --json # Export data
-tick list --claimed-by @bot        # Bot's tasks
-tick list --tag security           # Security tasks
-```
-
-### Dependency Visualization
-```bash
-tick graph                         # ASCII tree
-tick graph --format mermaid        # For documentation
-```
-
-## 🛠️ Development
+Once published, users can install with:
 
 ```bash
-# Clone repo
-git clone https://github.com/Purple-Horizons/tick-md.git
-cd tick-md
+# Via ClawHub CLI
+clawhub search "tick"
+clawhub install tick-coordination
 
-# Build CLI
-cd cli
-npm install
-npm run build
-
-# Build MCP server
-cd ../mcp
-npm install
-npm run build
-
-# Test locally
-npm link
-tick init
+# Or direct npm install
+npm install -g tick-md tick-mcp-server
 ```
 
-## 📦 Packages
+## Support and Feedback
 
-- **[tick-md](https://www.npmjs.com/package/tick-md)** - CLI tool (v1.1.0)
-- **[tick-mcp-server](https://www.npmjs.com/package/tick-mcp-server)** - MCP server for AI agents
-- **[tick-md](https://clawhub.ai/skills/tick-md)** - ClawHub skill for OpenClaw bots
+After publishing:
+- Users can star/comment on ClawHub
+- Monitor usage via ClawHub dashboard
+- Respond to issues via GitHub (link in skill.json)
 
-## 🤝 Contributing
+## Development Workflow
 
-Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+1. **Make changes** to SKILL.md or supporting files
+2. **Test locally** by copying to skills directory
+3. **Update version** in skill.json
+4. **Update CHANGELOG.md**
+5. **Publish**: `clawhub publish`
+6. **Verify** at clawhub.ai
 
-**Ways to contribute**:
-- 🐛 Report bugs
-- 💡 Suggest features
-- 📖 Improve documentation
-- 🔧 Submit pull requests
+## Related Packages
 
-## 📄 License
+This skill depends on:
+- **tick-md** (npm): CLI tool
+- **tick-mcp-server** (npm): MCP server
 
-MIT License - see [LICENSE](LICENSE) for details.
+These should be published to npm separately before publishing the skill to ClawHub.
 
-## 🙏 Acknowledgments
+## License
 
-Built with:
-- [commander.js](https://github.com/tj/commander.js) - CLI framework
-- [chalk](https://github.com/chalk/chalk) - Terminal styling
-- [gray-matter](https://github.com/jonschlinkert/gray-matter) - YAML frontmatter
-- [Model Context Protocol](https://github.com/modelcontextprotocol) - AI agent integration
-
-## 🔗 Links
-
-- **Website**: [tick.md](https://tick.md)
-- **npm**: [tick-md](https://www.npmjs.com/package/tick-md) · [tick-mcp-server](https://www.npmjs.com/package/tick-mcp-server)
-- **ClawHub**: [tick-md skill](https://clawhub.ai/skills/tick-md)
-- **Documentation**: [Full Docs](cli/README.md)
-- **Issues**: [GitHub Issues](https://github.com/Purple-Horizons/tick-md/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/Purple-Horizons/tick-md/discussions)
-
-## 💬 Community
-
-- Share your workflows and integrations
-- Ask questions in Discussions
-- Join the coordination revolution!
-
-## ❤️ Support
-
-TICK.md is 100% free and open source. If it helps you, consider supporting development:
-
-- [Sponsor on GitHub](https://github.com/sponsors/Purple-Horizons)
-- ⭐ Star this repo
-
----
-
-**Made with ❤️ by Purple Horizons**
-
-*Coordinate smarter, not harder.*
+MIT - Same as Tick project

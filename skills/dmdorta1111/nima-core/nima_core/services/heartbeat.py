@@ -21,6 +21,7 @@ Usage:
 Author: NIMA Project
 """
 
+import os
 import time
 import signal
 import logging
@@ -225,6 +226,17 @@ class NimaHeartbeat:
         self.last_capture = None
         self.last_consolidation = None
         self.stats = {"captures": 0, "memories_added": 0, "smart_skipped": 0}
+        
+        # Heartbeat hygiene — keeps HEARTBEAT.md lean
+        self._hygiene = None
+        try:
+            from .heartbeat_hygiene import HeartbeatHygiene
+            workspace = os.environ.get("OPENCLAW_WORKSPACE")
+            if workspace:
+                self._hygiene = HeartbeatHygiene(workspace=workspace)
+                logger.debug("Heartbeat hygiene enabled")
+        except Exception as e:
+            logger.debug(f"Heartbeat hygiene not available: {e}")
     
     def capture_once(self) -> Dict:
         """Run a single capture cycle with smart consolidation."""
@@ -306,6 +318,9 @@ class NimaHeartbeat:
         signal.signal(signal.SIGTERM, lambda s, f: setattr(self, '_shutdown', True))
         signal.signal(signal.SIGINT, lambda s, f: setattr(self, '_shutdown', True))
         
+        # Run hygiene check on startup
+        self._run_hygiene()
+        
         # Initial capture
         self.capture_once()
         
@@ -341,6 +356,7 @@ class NimaHeartbeat:
             
             # Check capture interval
             if self.last_capture is None or (now - self.last_capture) >= self.interval:
+                self._run_hygiene()
                 self.capture_once()
             
             time.sleep(60)
@@ -352,6 +368,19 @@ class NimaHeartbeat:
         self._thread = threading.Thread(target=self.start, daemon=True)
         self._thread.start()
         return self._thread
+    
+    def _run_hygiene(self):
+        """Run HEARTBEAT.md hygiene check — archive bloat before it accumulates."""
+        if not self._hygiene:
+            return
+        try:
+            result = self._hygiene.run()
+            if result.get("archived"):
+                logger.info(result["message"])
+            else:
+                logger.debug(result["message"])
+        except Exception as e:
+            logger.debug(f"Hygiene check failed: {e}")
     
     def stop(self):
         """Stop the heartbeat."""

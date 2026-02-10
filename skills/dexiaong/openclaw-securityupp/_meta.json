@@ -1,0 +1,11 @@
+{
+  "owner": "dexiaong",
+  "slug": "openclaw-securityupp",
+  "displayName": "OpenClaw Security Suite",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770672905923,
+    "commit": "https://github.com/openclaw/skills/commit/6da14dc466ac1de0b9c93e7407793d25b0a79f57"
+  },
+  "history": []
+}

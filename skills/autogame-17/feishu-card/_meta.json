@@ -3,11 +3,21 @@
   "slug": "feishu-card",
   "displayName": "Feishu Card",
   "latest": {
-    "version": "1.4.7",
-    "publishedAt": 1770152114026,
-    "commit": "https://github.com/clawdbot/skills/commit/66a7ef02c8fe532f1f5228c34a432a09fc29268d"
+    "version": "1.4.11",
+    "publishedAt": 1770649344266,
+    "commit": "https://github.com/openclaw/skills/commit/9dcb1855895e5f12b9d3945a2132fdca96a127cf"
   },
   "history": [
+    {
+      "version": "1.4.10",
+      "publishedAt": 1770561252124,
+      "commit": "https://github.com/openclaw/skills/commit/e15b8a2a72e2826ba260c82e3fdc47aa9c24ba9d"
+    },
+    {
+      "version": "1.4.7",
+      "publishedAt": 1770152114026,
+      "commit": "https://github.com/clawdbot/skills/commit/66a7ef02c8fe532f1f5228c34a432a09fc29268d"
+    },
     {
       "version": "1.4.6",
       "publishedAt": 1770118123015,

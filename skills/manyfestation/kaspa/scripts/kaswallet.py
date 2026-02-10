@@ -57,6 +57,13 @@ _ADDRESS_WITH_PREFIX_RE = re.compile(r"(kaspa(?:test|dev|sim)?):[0-9a-z]+", re.I
 _ADDRESS_PAYLOAD_RE = re.compile(r"\b[0-9a-z]{20,}\b", re.IGNORECASE)
 
 
+def _sdk_network_id() -> str:
+    n = (NETWORK or "").lower()
+    if n == "testnet-10":
+        return "testnet"
+    return n
+
+
 def _network_address_prefix() -> str:
     n = (NETWORK or "").lower()
     if n.startswith("testnet"):
@@ -234,7 +241,8 @@ async def wallet():
         m = Mnemonic(MNEMONIC)
         seed = call_any(m, ["to_seed", "toSeed"])
         x = XPrv(seed)
-        gen = PrivateKeyGenerator(x, False, 0)
+        x_str = call_any(x, ["to_string", "toString"])
+        gen = PrivateKeyGenerator(x_str, False, 0)
         key = call_any(gen, ["receive_key", "receiveKey"], 0)
     else:
         PrivateKey = getattr(kaspa, "PrivateKey", None)
@@ -243,7 +251,7 @@ async def wallet():
         key = PrivateKey(PRIVATE_KEY)
 
     pub = call_any(key, ["to_public_key", "toPublicKey"])
-    addr = call_any(pub, ["to_address", "toAddress"], NETWORK)
+    addr = call_any(pub, ["to_address", "toAddress"], _sdk_network_id())
     return key, addr
 
 

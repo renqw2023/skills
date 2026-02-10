@@ -27,7 +27,7 @@ understanding *how work proceeds*, not just *what we know*.
 - `language` — python, typescript, rust, etc.
 - `layer` — frontend, backend, infra, database, cli
 - `module` — auth, api, ui, core, tests
-- `status` — working, broken, needs_review, deprecated
+- `status` — working, broken, needs_review, deprecated (domain-specific values coexist with speech-act lifecycle values like `open`, `fulfilled`; see `keep get .tag/status`)
 
 **Common conversation patterns:** (see conversations.md)
 - Bug report → Diagnosis → Fix → Verify
@@ -124,7 +124,7 @@ These patterns apply regardless of domain:
 **Conversation indexing:**
 ```bash
 # Index the current conversation
-keep update "User asked about X, we discussed Y, decided Z" \
+keep put "User asked about X, we discussed Y, decided Z" \
   --tag session=abc123
 ```
 
@@ -137,9 +137,23 @@ keep now "Working on feature X" --tag topic=feature_x
 **Breakdown learning:**
 ```bash
 # When something goes wrong, capture the learning
-keep update "Assumed user wanted full rewrite, actually wanted minimal fix. \
+keep put "Assumed user wanted full rewrite, actually wanted minimal fix. \
 Ask about scope before large changes." \
   --tag type=breakdown --tag conversation_type=code_change_request
+```
+
+**Speech-act tracking:**
+```bash
+# Track commitments and requests across work
+keep put "I'll fix the flaky test suite by Friday" \
+  -t act=commitment -t status=open -t project=myapp -t topic=testing
+
+# Check open commitments at session start
+keep list -t act=commitment -t status=open
+keep list -t act=request -t status=open
+
+# Mark fulfilled when done
+keep tag-update ID --tag status=fulfilled
 ```
 
 **Temporal queries using system tags:**
@@ -166,7 +180,7 @@ Beyond subject-matter knowledge, index *how to work effectively*:
 
 ```bash
 # Index a learned pattern
-keep update "Pattern: Incremental Specification. \
+keep put "Pattern: Incremental Specification. \
 When requirements are vague, don't promise immediately. \
 Propose interpretation → get correction → repeat until clear. \
 Only then commit to action. Breakdown risk: Promising too early leads to rework." \

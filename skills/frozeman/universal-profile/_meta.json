@@ -1,0 +1,22 @@
+{
+  "owner": "frozeman",
+  "slug": "universal-profile",
+  "displayName": "Universal Profile",
+  "latest": {
+    "version": "0.3.7",
+    "publishedAt": 1770636956220,
+    "commit": "https://github.com/openclaw/skills/commit/f339a50fa5a4a68d545cdda336e3a640e9ecfd8d"
+  },
+  "history": [
+    {
+      "version": "0.3.5",
+      "publishedAt": 1770588301956,
+      "commit": "https://github.com/openclaw/skills/commit/7e480dd4f9592c4f9d84585a35da556d72ca3676"
+    },
+    {
+      "version": "0.3.3",
+      "publishedAt": 1770579099847,
+      "commit": "https://github.com/openclaw/skills/commit/1f522cda4b8722d67f49819a13d6bf9ffc13f77d"
+    }
+  ]
+}

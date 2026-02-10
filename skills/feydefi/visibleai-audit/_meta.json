@@ -1,0 +1,17 @@
+{
+  "owner": "feydefi",
+  "slug": "visibleai-audit",
+  "displayName": "VisibleAI GEO Audit",
+  "latest": {
+    "version": "1.1.0",
+    "publishedAt": 1770587292199,
+    "commit": "https://github.com/openclaw/skills/commit/7b4900fc31e5bcf2c39d4756b4757ab60e9135af"
+  },
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1770585193598,
+      "commit": "https://github.com/openclaw/skills/commit/b395d0c34d9af925942998a8eeca647a4f331c50"
+    }
+  ]
+}

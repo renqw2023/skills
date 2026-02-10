@@ -1,6 +1,6 @@
 {
   "name": "feishu-post",
-  "version": "1.1.1",
+  "version": "1.1.6",
   "description": "Send rich text messages (Post/RichText) to Feishu users/groups. Supports markdown conversion.",
   "main": "send.js",
   "dependencies": {

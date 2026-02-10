@@ -6,15 +6,13 @@ from datetime import datetime, timedelta
 
 import requests
 
-from dotenv import load_dotenv
-
 # Add project root to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
 from src.connectors.odoo_client import OdooClient
+from src.runtime_env import load_env_file
 from src.logic.finance_engine import FinanceEngine
 from src.logic.intelligence_engine import IntelligenceEngine
-from src.tools.visualizer import generate_revenue_vs_expense_chart
 
 
 def load_settings():
@@ -30,13 +28,6 @@ def save_settings(settings):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w") as f:
         json.dump(settings, f, indent=2)
-
-
-MUTATING_METHODS = {"create", "write", "unlink"}
-
-
-def method_requires_write_guard(method: str) -> bool:
-    return (method or "").strip().lower() in MUTATING_METHODS
 
 
 def _print_json(data):
@@ -65,7 +56,8 @@ def _resolve_rpc_backend(args) -> str:
 
 
 def _build_client(args):
-    load_dotenv()
+    env_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.env"))
+    load_env_file(env_path)
 
     context = {}
     if args.lang:
@@ -138,7 +130,6 @@ def main():
     rpc_parser.add_argument("--model", required=True, type=str, help="Odoo model (e.g., res.partner)")
     rpc_parser.add_argument("--method", required=True, type=str, help="Model method (e.g., search_read)")
     rpc_parser.add_argument("--payload", type=str, default="{}", help="JSON object payload (JSON-2: named args, XML-RPC: {args:[], kwargs:{}})")
-    rpc_parser.add_argument("--allow-write", action="store_true", help="Required for mutating methods (create/write/unlink)")
 
     args = parser.parse_args()
 
@@ -223,6 +214,8 @@ def main():
             result = intelligence.get_trend_analysis(months=args.months)
             chart_path = None
             if args.visualize:
+                from src.tools.visualizer import generate_revenue_vs_expense_chart
+
                 os.makedirs("output", exist_ok=True)
                 output_file = f"output/revenue_vs_expense_{datetime.now().strftime('%Y%m%d')}.png"
                 chart_path = generate_revenue_vs_expense_chart(result, output_file)
@@ -243,10 +236,6 @@ def main():
 
         elif args.command == "rpc-call":
             method = args.method.strip()
-            if method_requires_write_guard(method) and not args.allow_write:
-                raise PermissionError(
-                    f"Method '{method}' is mutating. Re-run with --allow-write if you explicitly want to modify Odoo data."
-                )
 
             try:
                 payload = json.loads(args.payload or "{}")

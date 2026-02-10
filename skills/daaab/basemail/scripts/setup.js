@@ -5,8 +5,8 @@
  * 
  * Usage: 
  *   node setup.js              # Show help
- *   node setup.js --managed    # Generate wallet and save to ~/.basemail/
- *   node setup.js --managed --encrypt  # Generate with password encryption
+ *   node setup.js --managed    # Generate wallet (encrypted by default ✅)
+ *   node setup.js --managed --no-encrypt  # Generate without encryption (⚠️ less secure)
  * 
  * ⚠️ SECURITY: This is optional! Recommended to use existing wallet via
  *    environment variable BASEMAIL_PRIVATE_KEY instead.
@@ -86,23 +86,24 @@ function showHelp() {
   console.log('   node scripts/register.js\n');
   
   console.log('📌 或指定現有錢包路徑：\n');
-  console.log('   node scripts/register.js --wallet ~/.openclaw/wallet/private-key\n');
+  console.log('   node scripts/register.js --wallet /path/to/your/private-key\n');
   
   console.log('─'.repeat(50));
   console.log('\n⚠️  如果你沒有錢包，可以讓此 Skill 幫你生成：\n');
   console.log('   node setup.js --managed\n');
-  console.log('   這會將私鑰明文存於 ~/.basemail/private-key');
+  console.log('   預設使用密碼加密，私鑰存於 ~/.basemail/private-key.enc');
   console.log('   僅建議對錢包不熟悉的用戶使用\n');
   
-  console.log('📌 加密選項（更安全）：\n');
-  console.log('   node setup.js --managed --encrypt\n');
-  console.log('   私鑰會以密碼加密後儲存\n');
+  console.log('📌 不加密選項（⚠️ 較不安全）：\n');
+  console.log('   node setup.js --managed --no-encrypt\n');
+  console.log('   私鑰將以明文儲存，僅限受信任的環境使用\n');
 }
 
 async function main() {
   const args = process.argv.slice(2);
   const isManaged = args.includes('--managed');
-  const isEncrypt = args.includes('--encrypt');
+  const noEncrypt = args.includes('--no-encrypt');
+  const isEncrypt = !noEncrypt; // Default to encrypted
 
   // No --managed flag: show help and exit
   if (!isManaged) {
@@ -118,8 +119,9 @@ async function main() {
   if (isEncrypt) {
     console.log('   私鑰將以密碼加密後存於 ~/.basemail/\n');
   } else {
-    console.log('   私鑰將以明文存於 ~/.basemail/');
-    console.log('   請確保這台機器只有你有權限存取\n');
+    console.log('   ⚠️ 私鑰將以明文存於 ~/.basemail/');
+    console.log('   請確保這台機器只有你有權限存取');
+    console.log('   建議使用預設加密模式（移除 --no-encrypt）\n');
   }
 
   // Check if wallet already exists
@@ -192,9 +194,25 @@ async function main() {
     }
   }
 
-  // Save mnemonic to file (read-only)
-  fs.writeFileSync(MNEMONIC_FILE, wallet.mnemonic.phrase, { mode: 0o400 });
-  console.log(`📝 Mnemonic 已存於: ${MNEMONIC_FILE} (唯讀)`);
+  // Display mnemonic for manual backup (NOT saved to file automatically)
+  console.log('\n' + '═'.repeat(50));
+  console.log('📝 重要：請立即備份你的 Mnemonic（助記詞）');
+  console.log('═'.repeat(50));
+  console.log('\n' + wallet.mnemonic.phrase + '\n');
+  console.log('═'.repeat(50));
+  console.log('⚠️  這是唯一一次顯示！請抄寫或安全儲存');
+  console.log('⚠️  遺失助記詞將無法恢復錢包');
+  console.log('═'.repeat(50));
+  
+  // Ask if user wants to save mnemonic to file
+  const saveMnemonic = await prompt('\n是否儲存助記詞到檔案？(yes/no，預設 no): ');
+  if (saveMnemonic.toLowerCase() === 'yes') {
+    fs.writeFileSync(MNEMONIC_FILE, wallet.mnemonic.phrase, { mode: 0o400 });
+    console.log(`📝 Mnemonic 已存於: ${MNEMONIC_FILE} (唯讀)`);
+    console.log('⚠️  建議備份後刪除此檔案');
+  } else {
+    console.log('📝 Mnemonic 未儲存到檔案，請確保已自行備份');
+  }
   
   // Save wallet info (public only)
   const walletInfo = {

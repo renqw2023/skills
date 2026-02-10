@@ -61,6 +61,27 @@ def get_check_script_path(scripts_dir: Path) -> Path:
     return scripts_dir / "step-sequencer-check.py"
 
 
+def _check_required_outputs(step_def: dict, workspace_root: Path) -> tuple[bool, list[str]]:
+    """If step has requiredOutputs, verify each path exists under workspace_root. Return (all_exist, missing_list)."""
+    required = step_def.get("requiredOutputs") or step_def.get("required_outputs")
+    if not required or not isinstance(required, list):
+        return True, []
+    root = workspace_root.resolve()
+    missing = []
+    for rel in required:
+        if not isinstance(rel, str):
+            continue
+        full = (root / rel).resolve()
+        try:
+            if root not in full.parents and full != root:
+                missing.append(rel)  # path escape
+            elif not full.is_file() and not full.is_dir():
+                missing.append(rel)
+        except (OSError, ValueError):
+            missing.append(rel)
+    return (len(missing) == 0, missing)
+
+
 def run(state_path: Path) -> int:
     """
     Run current step. Returns 0 on success, 1 on failure.
@@ -130,6 +151,12 @@ def run(state_path: Path) -> int:
         success = False
         result = type("Result", (), {"stderr": "Timeout"})()
 
+    if success and step_def:
+        all_present, missing = _check_required_outputs(step_def, state_path.parent)
+        if not all_present:
+            success = False
+            result = type("Result", (), {"stderr": f"Missing required outputs: {', '.join(missing)}"})()
+
     step_runs[step_id]["status"] = "DONE" if success else "FAILED"
     step_runs[step_id]["lastRunIso"] = datetime.now(timezone.utc).isoformat()
     if not success:
@@ -146,6 +173,13 @@ def run(state_path: Path) -> int:
             )
         return 1
 
+    # Advance to next step immediately: invoke check script so it bumps currentStep and runs runner again
+    check_script = get_check_script_path(scripts_dir)
+    if check_script.exists():
+        subprocess.run(
+            [sys.executable, str(check_script), str(state_path)],
+            cwd=state_path.parent,
+        )
     return 0
 
 

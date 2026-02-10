@@ -137,13 +137,6 @@ MAJOR.MINOR.PATCH
 
 ## Changelog
 
-### v1.6.1
-- Expand vibe testing to 16 tests (13 deterministic + 3 LLM-driven).
-- Add T8 personality_evolution, T9 memory_graph_causal, T10 a2a_ingest_promote, T11 selector_gene_match, T12 prompt_structure.
-- Add T13 llm_prompt_judge, T14 llm_executor_closed_loop, T15 llm_innovation_proposal (Gemini 2.5 Flash, auto-skip if no API key).
-- Add test/llm_helper.js: zero-dependency Gemini REST wrapper.
-- Docker test now passes through GEMINI_API_KEY for LLM vibe testing.
-
 ### v1.6.0
 - Add innovation/opportunity signal detection: user_feature_request, user_improvement_suggestion, perf_bottleneck, capability_gap, stable_success_plateau, external_opportunity.
 - Add innovate Gene (gene_gep_innovate_from_opportunity) for proactive feature development.

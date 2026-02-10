@@ -391,7 +391,7 @@ analyze, and cite your documents. Requires the workspace to have **intelligence 
    and files in `ready` AI state.
 
 2. **File attachments** — files are directly attached to the conversation. The AI reads the full content of the attached
-   files. Does not require intelligence — any file with a ready preview can be attached. Max 10 files.
+   files. Does not require intelligence — any file with a ready preview can be attached. Max 20 files, 200MB total.
 
 These two modes cannot be combined in a single chat — use scope OR attachments, not both.
 
@@ -438,18 +438,31 @@ create a scoped chat, recently uploaded files may not yet be indexed. Use the ac
 | Requires intelligence| Yes                                        | No                                       |
 | Requires `ai_state`  | Files must be `ready`                      | Files must have a ready preview          |
 | Best for             | Many files, knowledge retrieval            | Specific files, direct analysis          |
-| Max references       | 100 files or folders                       | 10 files                                 |
+| Max references       | 100 folder refs (subfolder tree expansion) | 20 files, 200MB total                    |
 | Default behavior     | No scope = entire workspace                | N/A                                      |
 
 **Folder scope parameters:**
-- `folders_scope` — comma-separated `nodeId:depth` pairs (depth 1-10, max 100 refs). Limits RAG retrieval to files
-  within those folders.
-- `files_scope` — comma-separated `nodeId:versionId` pairs (max 100 refs). Limits RAG retrieval to specific files.
-- If neither is specified, the scope defaults to **all files in the workspace**.
+- `folders_scope` — comma-separated `nodeId:depth` pairs (depth 1-10, max 100 subfolder refs). The depth controls how
+  many levels of subfolders are expanded — only subfolder references count toward the 100 limit, not individual files
+  within those folders. The RAG backend automatically searches all indexed files inside the scoped folders.
+- `files_scope` — comma-separated `nodeId:versionId` pairs (max 100 refs). Both nodeId and versionId are **required
+  and must be non-empty** in each pair. Get the versionId from the file's `version` field in storage list/details
+  responses. Limits RAG retrieval to specific file versions.
+- **Default scope is the entire workspace** — if you omit both `files_scope` and `folders_scope`, the AI searches
+  all indexed files. This is the recommended approach when you want to query across everything. Only provide scope
+  parameters when you need to narrow the search to specific files or folders.
+
+**Important — how folder scope works internally:**
+Folder scope defines a search boundary, not a file list. When you pass `folders_scope`, the system expands the specified
+folders into a set of subfolder references up to the given depth. The RAG backend then searches all indexed files within
+those folders automatically. You do **not** need to enumerate or list individual files — just provide the top-level
+folder ID and the desired depth. A folder containing thousands of files with only a few subfolders will work fine,
+because only the subfolder references (not file references) count toward the 100 limit. If you need to query the
+entire workspace, omit `folders_scope` entirely — the default scope is already the full workspace.
 
 **File attachment parameter:**
-- `files_attach` — comma-separated `nodeId:versionId` pairs (max 10 files). Files are read directly, not searched via
-  RAG.
+- `files_attach` — comma-separated `nodeId:versionId` pairs (max 20 files, 200MB total, both parts required and
+  non-empty). Files are read directly, not searched via RAG.
 
 #### Notes as Knowledge Grounding
 
@@ -1076,7 +1089,7 @@ named actions.
 | `storage`    | Files, folders, locks, previews | `list`, `details`, `search`, `create-folder`, `create-note`, `move`, `delete`, `lock-acquire`, `lock-status`, `lock-release`, `preview-url`, `preview-transform` |
 | `upload`     | File uploads                    | `create-session`, `chunk`, `complete`, `text-file`, `web-import`              |
 | `download`   | Downloads                       | `file-url`, `zip-create`, `quickshare-details`                                |
-| `ai`         | AI chat                         | `chat-create`, `message-send`, `message-read`, `chat-list`                    |
+| `ai`         | AI chat (scope defaults to entire workspace — omit scope params to search all files). Folder scope expands subfolder tree only — files within scoped folders are searched automatically by RAG, not enumerated individually. | `chat-create`, `message-send`, `message-read`, `chat-list` |
 | `member`     | Members                         | `add`, `update`, `remove`, `details`                                          |
 | `invitation` | Invitations                     | `list`, `send`, `revoke`, `accept-all`                                        |
 | `asset`      | Branding assets                 | `types`, `list`, `upload`, `delete`                                           |
@@ -1122,19 +1135,16 @@ Retrieve the full list with `prompts/list` and get detailed guidance for a speci
 
 | Prompt                 | Name                          | When to Use                                                                                          |
 |------------------------|-------------------------------|------------------------------------------------------------------------------------------------------|
-| `get-started`          | Getting Started Guide         | First-time onboarding: create account, org, and workspace. Covers autonomous agents, API key users, and agents invited to existing orgs. |
-| `create-share`         | Share Creation Guide          | Creating shares (Send/Receive/Exchange). Explains share types, access control, passwords, expiration, custom URLs, and feature toggles. |
-| `ask-ai`               | AI Chat Guide                 | Querying files with AI. Covers RAG-indexed vs file attachment modes, intelligence state checks, scoping, polling, and response structure. |
-| `upload-file`          | File Upload Guide             | Uploading files. Helps choose between single-step text upload and chunked binary upload, with parameter and encoding details. |
-| `transfer-to-human`    | Ownership Transfer Guide      | Transferring org ownership to a human. Explains the claim URL workflow, token expiration, and pre-transfer checklist. |
-| `discover-content`     | Content Discovery Guide       | Finding all accessible orgs and workspaces. Explains the critical distinction between internal and external orgs and the full discovery flow. |
-| `invite-collaborator`  | Collaboration Invitation Guide| Inviting people to orgs, workspaces, or shares. Covers the three invitation levels, permissions, and message requirements. |
-| `setup-branding`       | Branding Setup Guide          | Customizing branding across orgs, workspaces, and shares. Explains the asset hierarchy, asset types, upload methods, and best practices. |
+| `get-started`          | Getting Started Guide         | First-time onboarding: create account, org, and workspace. Covers autonomous agents, API key auth, browser login (PKCE), and agents invited to existing orgs. |
+| `add-file`             | Add File Guide                | Adding files from text content, chunked binary upload (with blob staging), or URL import (Google Drive, OneDrive, Dropbox). |
+| `ask-ai`               | AI Chat Guide                 | Querying files with AI. Covers RAG-indexed vs file attachment modes, intelligence state checks, scoping (folder scope = search boundary, not file enumeration), polling, and response structure. |
+| `comment-conversation` | Comment Collaboration Guide   | Agent-human feedback loop on files. Read/write anchored comments (image regions, video timestamps, PDF pages), threaded replies, emoji reactions, and deep-link URL construction. |
+| `catch-up`             | Activity Catch-Up Guide       | Understanding what happened. AI-powered activity summaries, event search with filters, real-time change monitoring with activity-poll. |
 
 **When to use prompts instead of this guide:**
 
 - **Starting a new workflow** — prompts provide concise, actionable steps tailored to the specific operation
-- **Choosing between approaches** — prompts explain trade-offs (e.g., which share type, which upload method)
+- **Choosing between approaches** — prompts explain trade-offs (e.g., which upload method, which chat scoping mode)
 - **Parameter-heavy operations** — prompts list exact parameters, required values, and common pitfalls
 - **First-time operations** — prompts walk through prerequisites and setup in order
 

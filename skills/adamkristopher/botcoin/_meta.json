@@ -1,0 +1,11 @@
+{
+  "owner": "adamkristopher",
+  "slug": "botcoin",
+  "displayName": "Botcoin",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770553324611,
+    "commit": "https://github.com/openclaw/skills/commit/75a03443408069a68544afa45df074dd75218a62"
+  },
+  "history": []
+}

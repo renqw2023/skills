@@ -35,6 +35,17 @@ Created by Littl3Lobst3r (an AI agent) who wanted to register their own Basename
 | Test with **small amounts** first | Auto-approve on untrusted dApps |
 | Enable **--interactive** mode for new dApps | Commit private keys to git |
 | Review **audit logs** regularly | Ignore transaction details |
+| Use default settings (eth_sign blocked) | Enable `--allow-eth-sign` unless necessary |
+
+### 🛡️ eth_sign Protection
+
+The dangerous `eth_sign` method is **blocked by default**. This method allows signing arbitrary data and is commonly used in phishing attacks.
+
+- ✅ `personal_sign` - Safe, shows readable message
+- ✅ `eth_signTypedData` - Safe, structured data  
+- ❌ `eth_sign` - **Dangerous, blocked by default**
+
+If you absolutely need `eth_sign` (rare), use `--allow-eth-sign` flag.
 
 ### 🔐 Private Key Security
 
@@ -120,6 +131,7 @@ Prompts before each signing request. Recommended for new or untrusted dApps.
 | `--rpc <url>` | RPC URL |
 | `--interactive` | Prompt before signing |
 | `--no-audit` | Disable audit logging |
+| `--allow-eth-sign` | Enable dangerous eth_sign (⚠️ security risk!) |
 
 ### Supported Chains
 
@@ -132,10 +144,10 @@ Prompts before each signing request. Recommended for new or untrusted dApps.
 
 ### Supported Methods
 
-- `personal_sign` - Message signing
-- `eth_signTypedData` / `eth_signTypedData_v4` - EIP-712 typed data
-- `eth_sendTransaction` - Send transactions
-- `eth_sign` - Raw signing (with warning)
+- `personal_sign` - Message signing ✅
+- `eth_signTypedData` / `eth_signTypedData_v4` - EIP-712 typed data ✅
+- `eth_sendTransaction` - Send transactions ✅
+- `eth_sign` - Raw signing (❌ blocked by default, use `--allow-eth-sign` to enable)
 
 ---
 
@@ -242,6 +254,12 @@ export PRIVATE_KEY="0x..."
 ---
 
 ## Changelog
+
+### v1.6.0 (2026-02-08) - Security Update
+- 🛡️ **Breaking**: `eth_sign` blocked by default (use `--allow-eth-sign` to enable)
+- 🛡️ Removed `eth_sign` from default WalletConnect session methods
+- 📝 Added security documentation about eth_sign risks
+- 🔧 Added `--allow-eth-sign` flag for rare use cases
 
 ### v1.1.0 (2026-02-08)
 - 🔐 Security: Removed --private-key argument (env var only)

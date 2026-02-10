@@ -1,0 +1,11 @@
+{
+  "owner": "glucksberg",
+  "slug": "issue-prioritizer",
+  "displayName": "Issue Prioritizer",
+  "latest": {
+    "version": "1.1.0",
+    "publishedAt": 1770585106851,
+    "commit": "https://github.com/openclaw/skills/commit/8ec62490adcff78c16447866bd38fce6d8735c74"
+  },
+  "history": []
+}

@@ -1,0 +1,11 @@
+{
+  "owner": "leo3linbeck",
+  "slug": "sveltekit-webapp",
+  "displayName": "SvelteKit Webapp",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770597457141,
+    "commit": "https://github.com/openclaw/skills/commit/2939c25bb3a3567a125cd637c6104604fe7ab329"
+  },
+  "history": []
+}

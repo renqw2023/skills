@@ -4,13 +4,19 @@ General utilities for Feishu Message operations that go beyond simple sending.
 
 ## Tools
 
-### 1. Get/Read Message (Recursive)
+### 1. Create Group Chat (create_chat.js)
+Create a new Feishu group chat with specified users.
+```bash
+node skills/feishu-message/create_chat.js --name "Project Alpha" --users "ou_..." "ou_..." --desc "Internal Discussion"
+```
+
+### 2. Get/Read Message (Recursive)
 Fetch message content, including handling merge-forward messages recursively.
 ```bash
 node skills/feishu-message/get.js --message-id "om_..." --recursive
 ```
 
-### 2. Send Audio (Voice Bubble)
+### 3. Send Audio (Voice Bubble)
 Send an audio file as a native Feishu voice bubble.
 - Automatically calculates duration (requires `music-metadata`).
 - Uploads as `opus` (compatible with Feishu voice).
@@ -26,3 +32,4 @@ node skills/feishu-message/send-audio.js --target "ou_..." --file "path/to/audio
 - axios
 - form-data
 - music-metadata
+- commander

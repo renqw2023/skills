@@ -66,12 +66,12 @@ The original document content is **not stored** — only the summary and embeddi
 
 **[providers/](keep/providers/)** — Pluggable services
 - **Document**: Fetch content from URIs (file://, https://)
-- **Embedding**: Generate vectors (sentence-transformers, OpenAI, MLX)
+- **Embedding**: Generate vectors (sentence-transformers, OpenAI, Ollama, MLX)
 - **Summarization**: Generate summaries (truncate, LLM-based)
 - **Registry**: Factory for lazy-loading providers
 
 **[config.py](keep/config.py)** — Configuration
-- Detects available providers (platform, API keys)
+- Detects available providers (platform, API keys, Ollama)
 - Persists choices in `keep.toml`
 - Auto-creates on first use
 
@@ -92,8 +92,13 @@ URI or content
 ┌─────────────────┐
 │ Fetch/Use input │ ← DocumentProvider (for URIs only)
 └────────┬────────┘
-         │ content (text)
-         │
+         │ raw bytes
+         ▼
+┌─────────────────┐
+│ Content Regular-│ ← Extract text from HTML/PDF
+│ ization         │   (scripts/styles removed)
+└────────┬────────┘
+         │ clean text
     ┌────┴────┬─────────────┐
     │         │             │
     ▼         ▼             ▼
@@ -142,6 +147,25 @@ query text
            │
            ▼
     list[Item] (sorted by effective score)
+```
+
+### Delete / Revert: delete(id) or revert(id)
+
+```
+delete(id)
+    │
+    ▼
+  version_count(id)
+    │
+    ├── 0 versions → full delete from both stores
+    │
+    └── N versions → revert to previous
+            │
+            ├─ get archived embedding from ChromaDB (id@vN)
+            ├─ restore_latest_version() in DocumentStore
+            │    (promote latest version row to current, delete version row)
+            ├─ upsert restored embedding as current in ChromaDB
+            └─ delete versioned entry (id@vN) from ChromaDB
 ```
 
 ---
@@ -217,26 +241,62 @@ store_path/
 ### Embedding Providers
 Generate vector representations for semantic search.
 
-- **sentence-transformers**: Local, CPU/GPU, no API key (default)
+- **voyage**: API-based, Anthropic's recommended partner (VOYAGE_API_KEY)
+- **openai**: API-based, high quality (OPENAI_API_KEY)
+- **gemini**: API-based, Google (GEMINI_API_KEY)
+- **ollama**: Local server, auto-detected, any model (OLLAMA_HOST)
+- **sentence-transformers**: Local, CPU/GPU, no API key
 - **MLX**: Apple Silicon optimized, local, no API key
-- **OpenAI**: API-based, requires key, high quality
 
 Dimension determined by model. Must be consistent across indexing and queries.
 
 ### Summarization Providers
 Generate human-readable summaries from content.
 
-- **truncate**: Simple text truncation (default)
-- **first_paragraph**: Extract first meaningful chunk
-- **passthrough**: Store content as-is (with length limit)
+- **anthropic**: LLM-based, cost-effective option (ANTHROPIC_API_KEY or CLAUDE_CODE_OAUTH_TOKEN)
+- **openai**: LLM-based, high quality (OPENAI_API_KEY)
+- **gemini**: LLM-based, Google (GEMINI_API_KEY)
+- **ollama**: LLM-based, local server, auto-detected (OLLAMA_HOST)
 - **MLX**: LLM-based, local, no API key
-- **OpenAI**: LLM-based, API, high quality
+- **truncate**: Simple text truncation (fallback)
+- **passthrough**: Store content as-is (with length limit)
+
+**Contextual Summarization:**
+
+When documents have user tags (domain, topic, project, etc.), the summarizer
+receives context from related items. This produces summaries that highlight
+relevance to the tagged context rather than generic descriptions.
+
+How it works:
+1. When processing pending summaries, the system checks for user tags
+2. Finds similar items that share any of those tags (OR-union)
+3. Boosts scores for items sharing multiple tags (+20% per additional match)
+4. Top 5 related summaries are passed as context to the LLM
+5. The summary reflects what's relevant to that context
+
+Example: Indexing a medieval text with `domain=practice` produces a summary
+highlighting its relevance to contemplative practice, not just "a 13th-century
+guide for anchoresses."
+
+**Tag changes trigger re-summarization:** When user tags are added, removed, or
+changed on an existing document, it's re-queued for contextual summarization
+even if content is unchanged. The existing summary is preserved until the new
+one is ready.
+
+Non-LLM providers (truncate, first_paragraph, passthrough) ignore context.
 
 ### Document Providers
-Fetch content from URIs.
+Fetch content from URIs with content regularization.
 
 - **composite**: Handles file://, https:// (default)
 - Extensible for s3://, gs://, etc.
+
+**Content Regularization:**
+- **PDF**: text extracted via pypdf
+- **HTML**: text extracted via BeautifulSoup (scripts/styles removed)
+- **Other formats**: treated as plain text
+
+This ensures both embedding and summarization receive clean text.
 
 ---
 

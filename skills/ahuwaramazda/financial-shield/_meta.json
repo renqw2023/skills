@@ -1,0 +1,17 @@
+{
+  "owner": "ahuwaramazda",
+  "slug": "financial-shield",
+  "displayName": "Financial Shield",
+  "latest": {
+    "version": "3.0.4",
+    "publishedAt": 1770561723131,
+    "commit": "https://github.com/openclaw/skills/commit/dfa8ab1e8e7fe0a5bf97554e4a5b7ee165ec6ee7"
+  },
+  "history": [
+    {
+      "version": "3.0.3",
+      "publishedAt": 1770561390839,
+      "commit": "https://github.com/openclaw/skills/commit/962ed999c612182c50a2a6b5a4fa8bc66a1f27d9"
+    }
+  ]
+}

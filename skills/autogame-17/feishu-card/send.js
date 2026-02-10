@@ -125,15 +125,14 @@ async function sendCard(options) {
         scanForSecrets(contentText);
 
         if (contentText) {
-            // FUTURE: Implement full markdown parsing from upstream runtime if needed.
-            // For now, raw markdown tag is sufficient as Feishu cards support it natively.
+            // Revert to standard 'markdown' block for best compatibility with code blocks
             // [Bug Fix] Handle escaped newlines from command line args
             const processedText = contentText.replace(/\\n/g, '\n');
             const markdownElement = {
                 tag: 'markdown',
                 content: processedText
             };
-            if (options.textAlign) markdownElement.text_align = options.textAlign;
+            // if (options.textAlign) markdownElement.text_align = options.textAlign;
             elements.push(markdownElement);
         }
 

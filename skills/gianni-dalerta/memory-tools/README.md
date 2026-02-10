@@ -18,7 +18,8 @@ Memory-as-Tools: Agent → decides IF/WHAT to remember → uses tools explicitly
 - **Importance Scoring**: Prioritize critical instructions over nice-to-know facts
 - **Decay/Expiration**: Temporal memories (events) automatically become stale
 - **Semantic Search**: Vector-based similarity search via LanceDB
-- **Hybrid Storage**: SQLite for metadata (debuggable) + LanceDB for vectors (fast)
+- **Hybrid Storage**: SQLite (via WASM) for metadata + LanceDB for vectors
+- **Zero Native Dependencies**: Uses sql.js (WASM) - no C++ compilation, works on any Node version
 - **Standing Instructions**: Auto-inject category="instruction" memories at conversation start
 
 ## Installation
@@ -226,7 +227,7 @@ openclaw memory-tools export
 ┌─────────────────────────────────────────────────────────┐
 │                 Storage Layer                           │
 │  ┌──────────────┐    ┌──────────────┐                  │
-│  │   SQLite     │    │   LanceDB    │                  │
+│  │ SQLite/WASM  │    │   LanceDB    │                  │
 │  │  (metadata)  │◄──►│  (vectors)   │                  │
 │  └──────────────┘    └──────────────┘                  │
 └─────────────────────────────────────────────────────────┘
@@ -274,7 +275,7 @@ Different memory systems optimize for different things:
 
 For agents that maintain ongoing relationships with users—where someone might say "no, my favorite color is purple, not blue"—explicit conflict handling prevents contradictory memories from accumulating. Every memory has a clear provenance: the agent decided it was worth remembering, and corrections replace rather than compete with old information.
 
-The hybrid SQLite + LanceDB storage means you can always `sqlite3 ~/.openclaw/memory/tools/memory.db` to inspect exactly what your agent knows and why.
+The hybrid SQLite (WASM) + LanceDB storage means you can always `sqlite3 ~/.openclaw/memory/tools/memory.db` to inspect exactly what your agent knows and why.
 
 ## References
 

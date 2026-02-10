@@ -1,0 +1,11 @@
+{
+  "owner": "ivangdavila",
+  "slug": "nginx",
+  "displayName": "Nginx",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770684924517,
+    "commit": "https://github.com/openclaw/skills/commit/4c0d470201b6b7cd0e84eaecb93b1c2a540484ff"
+  },
+  "history": []
+}

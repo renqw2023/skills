@@ -3,11 +3,16 @@
   "slug": "coindeskfeedagent-teneo",
   "displayName": "CoindeskFeedAgent - powered by Teneo Protocol",
   "latest": {
-    "version": "1.0.3",
-    "publishedAt": 1770302174718,
-    "commit": "https://github.com/clawdbot/skills/commit/fcb2a1bc672b6062e93bd6fd7612625609725779"
+    "version": "1.0.5",
+    "publishedAt": 1770643196650,
+    "commit": "https://github.com/openclaw/skills/commit/72fb5af5366b664f66f48233eccf9283f9a6538c"
   },
   "history": [
+    {
+      "version": "1.0.3",
+      "publishedAt": 1770302174718,
+      "commit": "https://github.com/clawdbot/skills/commit/fcb2a1bc672b6062e93bd6fd7612625609725779"
+    },
     {
       "version": "1.0.2",
       "publishedAt": 1770216606105,

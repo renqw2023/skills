@@ -3,9 +3,20 @@
   "slug": "ai-notes-ofvideo",
   "displayName": "Ai Notes Ofvideo",
   "latest": {
-    "version": "1.0.3",
-    "publishedAt": 1770501561307,
-    "commit": "https://github.com/openclaw/skills/commit/fe6239d229bba519b487ef6d737e0bf744e4334b"
+    "version": "1.0.6",
+    "publishedAt": 1770608929890,
+    "commit": "https://github.com/openclaw/skills/commit/21c331fe7d5437f0e0ae67980d573c09fd71019e"
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.5",
+      "publishedAt": 1770562972348,
+      "commit": "https://github.com/openclaw/skills/commit/291ea334717f7152f4ebffcbda8d6b906b851c4e"
+    },
+    {
+      "version": "1.0.3",
+      "publishedAt": 1770501561307,
+      "commit": "https://github.com/openclaw/skills/commit/fe6239d229bba519b487ef6d737e0bf744e4334b"
+    }
+  ]
 }

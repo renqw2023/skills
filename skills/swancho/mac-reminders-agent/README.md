@@ -1,11 +1,12 @@
 # Mac Reminders Agent
 
-macOS Reminders app integration skill for OpenClaw/Claude agents.
+**v1.1.0** | macOS Reminders app integration skill for OpenClaw/Claude agents.
 
 ## Features
 
 - 📋 List reminders (today/week/all)
 - ➕ Add new reminders with due dates
+- 🔄 **Native Recurrence**: Weekly, daily, monthly, yearly repeating reminders (single reminder, not duplicates)
 - 🌍 Multi-language support (en, ko, ja, zh)
 - ⏰ Cron-compatible for scheduled checks
 - ☁️ **iCloud Sync**: Reminders sync automatically to all devices (iPhone, iPad, Mac) logged into the same Apple ID
@@ -23,10 +24,13 @@ This means:
 
 ## Requirements
 
-- **macOS only** (uses AppleScript)
+- **macOS only** (uses AppleScript + EventKit)
 - Node.js 18+
 - `applescript` npm module
+- Swift (included with Xcode Command Line Tools)
 - iCloud Reminders enabled (for cross-device sync)
+
+> **Note**: Swift is required for native recurrence support. It's pre-installed on macOS with Xcode Command Line Tools. Run `xcode-select --install` if missing.
 
 ## Installation
 
@@ -95,6 +99,32 @@ node skills/mac-reminders-agent/cli.js add \
   --note "Discuss project timeline"
 ```
 
+### Recurring Reminders (Native Recurrence)
+
+```bash
+# Weekly reminder
+node skills/mac-reminders-agent/cli.js add \
+  --title "Weekly standup" \
+  --due "2026-02-10T09:00:00+09:00" \
+  --repeat weekly
+
+# Bi-weekly reminder
+node skills/mac-reminders-agent/cli.js add \
+  --title "Sprint review" \
+  --due "2026-02-10T14:00:00+09:00" \
+  --repeat weekly \
+  --interval 2
+
+# Monthly reminder with end date
+node skills/mac-reminders-agent/cli.js add \
+  --title "Monthly report" \
+  --due "2026-02-28T17:00:00+09:00" \
+  --repeat monthly \
+  --repeat-end 2026-12-31
+```
+
+> **Why Swift?** macOS Reminders AppleScript doesn't expose the `recurrence` property. Native recurrence requires EventKit (Swift). This creates a **single reminder with repeat rule**, not multiple duplicates.
+
 **Output:**
 ```json
 {
@@ -114,6 +144,9 @@ node skills/mac-reminders-agent/cli.js add \
 | `--title` | Yes (add) | Reminder title |
 | `--due` | No | ISO 8601 format: `YYYY-MM-DDTHH:mm:ss+09:00` |
 | `--note` | No | Additional notes |
+| `--repeat` | No | `daily`, `weekly`, `monthly`, `yearly` |
+| `--interval` | No | Repeat interval (default: 1). e.g., `2` = every 2 weeks |
+| `--repeat-end` | No | End date: `YYYY-MM-DD` |
 | `--locale` | No | `en`, `ko`, `ja`, `zh` (default: `en`) |
 
 ## Customization
@@ -300,6 +333,21 @@ Grant Terminal/iTerm automation permissions:
 ### Reminders not showing
 - Check if reminders are in the **default list**
 - Verify date range with `--scope all`
+
+### "swift: command not found" (recurring reminders)
+Swift is required for native recurrence. Install Xcode Command Line Tools:
+```bash
+xcode-select --install
+```
+
+### Recurrence not working
+- Verify Swift is available: `swift --version`
+- Check `reminders/eventkit-bridge.swift` exists
+- Ensure Reminders app has proper permissions
+
+## Changelog
+
+See [CHANGELOG.md](./CHANGELOG.md) for version history.
 
 ## License
 

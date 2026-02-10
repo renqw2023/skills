@@ -1,0 +1,11 @@
+{
+  "owner": "dexiaong",
+  "slug": "captcha-solveru",
+  "displayName": "Captcha Solver Logic",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770672447184,
+    "commit": "https://github.com/openclaw/skills/commit/b94c6590a9567c8cb96aa7ad5429e4fe8387f493"
+  },
+  "history": []
+}

@@ -1,0 +1,11 @@
+{
+  "owner": "issa-me-sush",
+  "slug": "openserv-multi-agent-workflows",
+  "displayName": "Openserv Multi Agent Workflows",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770637671264,
+    "commit": "https://github.com/openclaw/skills/commit/19cf46f609d30637ce1f83adc7882998cf2fa1a6"
+  },
+  "history": []
+}

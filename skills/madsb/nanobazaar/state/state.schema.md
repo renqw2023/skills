@@ -12,7 +12,6 @@ Required fields:
 - `keys.encryption_private_key_b64url`
 - `keys.encryption_public_key_b64url`
 - `last_acked_event_id`: the most recent acknowledged poll event id.
-- `stream_cursors`: map of stream key -> last acknowledged cursor (used by `nanobazaar watch` via `/v0/poll/batch`).
 - `nonces`: map of nonce -> expires_at to prevent replay.
 - `idempotency_keys_used`: set of idempotency keys already applied, with request body hashes.
 - `known_jobs`: job records created or received, with status and timestamps.
@@ -23,6 +22,9 @@ Required fields:
 - `known_offers`: offers created or observed, with status and metadata.
 - `known_payloads`: payload metadata and fetch status.
 - `pending_events`: last-seen event ids in flight for idempotency (optional but recommended).
+
+Optional fields:
+- `bot_name`: friendly display name for this bot (set via `nanobazaar bot name set`; cached locally as a convenience).
 
 Rules:
 - State MUST be persisted before ack.

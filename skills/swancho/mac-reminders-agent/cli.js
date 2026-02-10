@@ -79,6 +79,9 @@ async function main() {
   node skills/mac-reminders-agent/cli.js list [--scope today|week|all] [--locale en|ko|ja|zh]
   node skills/mac-reminders-agent/cli.js add --title "TITLE" [--due ISO_DATETIME] [--note "MEMO"] [--locale en|ko|ja|zh]
 
+  # 반복(예: 매주) 옵션 예시
+  node skills/mac-reminders-agent/cli.js add --title "Weekly standup" --due "2026-02-10T09:00:00+09:00" --repeat weekly [--interval N] [--repeat-end "2026-06-30"] [--locale ko]
+
 Supported locales: en (English), ko (한국어), ja (日本語), zh (中文)
 `);
     process.exit(0);
@@ -95,16 +98,54 @@ Supported locales: en (English), ko (한국어), ja (日本語), zh (中文)
         items: result
       }));
     } else if (cmd === 'add') {
-      const title = args.title;
+      let title = args.title;
       const due = args.due || '';
       const note = args.note || '';
+
+      // 반복 관련 옵션들 (예: 매주 반복)
+      const repeat = args.repeat || '';
+      const repeatEnd = args['repeat-end'] || '';
+      const interval = args.interval || '';
+
       if (!title) {
         console.error('Error: --title is required for add');
         process.exit(1);
       }
+
+      // 반복 라벨을 제목에 추가 (예: "회의 (매주 화요일)")
+      if (repeat && loc.repeat && loc.repeat.labels) {
+        let repeatLabel = loc.repeat.labels[repeat];
+        if (repeatLabel && due) {
+          // Parse due date to get day/date/month info
+          const dueDate = new Date(due);
+          const dayIndex = dueDate.getDay(); // 0=Sunday, 1=Monday, ...
+          const dateNum = dueDate.getDate();
+          const monthIndex = dueDate.getMonth(); // 0=Jan, 1=Feb, ...
+
+          const dayName = loc.repeat.days ? loc.repeat.days[dayIndex] : '';
+          const monthName = loc.repeat.months ? loc.repeat.months[monthIndex] : String(monthIndex + 1);
+
+          // Replace placeholders
+          repeatLabel = repeatLabel
+            .replace('{day}', dayName)
+            .replace('{date}', String(dateNum))
+            .replace('{month}', monthName);
+
+          title = `${title} (${repeatLabel})`;
+        } else if (repeatLabel) {
+          title = `${title} (${repeatLabel})`;
+        }
+      }
+
       const extra = ['--title', title];
       if (due) extra.push('--due', due);
       if (note) extra.push('--note', note);
+
+      // 반복 옵션들을 bridge 쪽으로 그대로 전달
+      if (repeat) extra.push('--repeat', repeat);
+      if (repeatEnd) extra.push('--repeat-end', repeatEnd);
+      if (interval) extra.push('--interval', interval);
+
       const result = await runReminderBridge('add', extra);
 
       // Format response with locale

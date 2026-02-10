@@ -1,0 +1,11 @@
+{
+  "owner": "eijiac24",
+  "slug": "chitin-id",
+  "displayName": "Chitin",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770671237372,
+    "commit": "https://github.com/openclaw/skills/commit/4b2e2aff01abe8dbfc2be4a401fcf68f0a360654"
+  },
+  "history": []
+}

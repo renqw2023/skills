@@ -46,27 +46,27 @@ function addressToBytes32(address) {
  * Construct a burn intent for transferring USDC from one chain to another.
  *
  * @param {Object} params
- * @param {Object} params.account - The viem account (has .address)
+ * @param {string} params.walletAddress - The wallet address (hex string)
  * @param {Object} params.from - Source chain config (from setup-gateway.js)
  * @param {Object} params.to - Destination chain config (from setup-gateway.js)
  * @param {number} params.amount - Amount of USDC to transfer (in human units, e.g. 2 = 2 USDC)
- * @param {string} [params.recipient] - Destination address (defaults to account.address)
+ * @param {string} [params.recipient] - Destination address (defaults to walletAddress)
  */
-export function burnIntent({ account, from, to, amount, recipient }) {
+export function burnIntent({ walletAddress, from, to, amount, recipient }) {
   return {
     maxBlockHeight: maxUint256, // Needs to be at least 7 days in the future
-    maxFee: 2_010000n,          // 2.01 USDC covers fees on any chain
+    maxFee: 2_010000n, // 2.01 USDC covers fees on any chain
     spec: {
       version: 1,
       sourceDomain: from.domain,
       destinationDomain: to.domain,
-      sourceContract: from.gatewayWallet.address,
-      destinationContract: to.gatewayMinter.address,
-      sourceToken: from.usdc.address,
-      destinationToken: to.usdc.address,
-      sourceDepositor: account.address,
-      destinationRecipient: recipient || account.address,
-      sourceSigner: account.address,
+      sourceContract: from.gatewayWalletAddress,
+      destinationContract: from.gatewayMinterAddress,
+      sourceToken: from.usdcAddress,
+      destinationToken: to.usdcAddress,
+      sourceDepositor: walletAddress,
+      destinationRecipient: recipient || walletAddress,
+      sourceSigner: walletAddress,
       destinationCaller: zeroAddress, // Anyone can submit the attestation
       value: BigInt(Math.floor(amount * 1e6)), // Convert to USDC atomic units (6 decimals)
       salt: "0x" + randomBytes(32).toString("hex"),
@@ -94,7 +94,9 @@ export function burnIntentTypedData(intent) {
         sourceDepositor: addressToBytes32(intent.spec.sourceDepositor),
         destinationRecipient: addressToBytes32(intent.spec.destinationRecipient),
         sourceSigner: addressToBytes32(intent.spec.sourceSigner),
-        destinationCaller: addressToBytes32(intent.spec.destinationCaller ?? zeroAddress),
+        destinationCaller: addressToBytes32(
+          intent.spec.destinationCaller ?? zeroAddress
+        ),
       },
     },
   };

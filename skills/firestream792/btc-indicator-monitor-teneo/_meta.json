@@ -3,11 +3,16 @@
   "slug": "btc-indicator-monitor-teneo",
   "displayName": "BTC Indicator Monitor - powered by Teneo Protocol",
   "latest": {
-    "version": "1.0.6",
-    "publishedAt": 1770302172239,
-    "commit": "https://github.com/clawdbot/skills/commit/bb6c9f0f6c07ea9e1408ab96fc2e37f17553b3eb"
+    "version": "1.0.8",
+    "publishedAt": 1770643193837,
+    "commit": "https://github.com/openclaw/skills/commit/481d08d107d01ec4687bde2bc2cbed595e3040e9"
   },
   "history": [
+    {
+      "version": "1.0.6",
+      "publishedAt": 1770302172239,
+      "commit": "https://github.com/clawdbot/skills/commit/bb6c9f0f6c07ea9e1408ab96fc2e37f17553b3eb"
+    },
     {
       "version": "1.0.5",
       "publishedAt": 1770216603745,

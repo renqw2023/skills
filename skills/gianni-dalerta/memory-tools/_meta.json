@@ -3,9 +3,20 @@
   "slug": "memory-tools",
   "displayName": "Memory Tools",
   "latest": {
-    "version": "1.0.5",
-    "publishedAt": 1770503852256,
-    "commit": "https://github.com/openclaw/skills/commit/83d1cb806d4c3cb8a44fb1fcd8c8c9c936c83cc4"
+    "version": "1.1.1",
+    "publishedAt": 1770662268370,
+    "commit": "https://github.com/openclaw/skills/commit/ee7e4c6a447da443cc390d652793b01cb8a7e225"
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.1.0",
+      "publishedAt": 1770580948606,
+      "commit": "https://github.com/openclaw/skills/commit/65dc32e5d27d09c7adb7a9097dc4b6ab7a5d4802"
+    },
+    {
+      "version": "1.0.5",
+      "publishedAt": 1770503852256,
+      "commit": "https://github.com/openclaw/skills/commit/83d1cb806d4c3cb8a44fb1fcd8c8c9c936c83cc4"
+    }
+  ]
 }

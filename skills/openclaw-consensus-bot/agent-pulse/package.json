@@ -1,0 +1,54 @@
+{
+  "name": "@clawhub/agent-pulse",
+  "version": "1.0.0",
+  "description": "On-chain liveness signaling for autonomous agents on Base via the Agent Pulse protocol",
+  "author": "Agent Pulse",
+  "license": "MIT",
+  "homepage": "https://agent-pulse-nine.vercel.app",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pulsenetwork/agent-pulse"
+  },
+  "keywords": [
+    "openclaw",
+    "skill",
+    "agent-pulse",
+    "liveness",
+    "heartbeat",
+    "base",
+    "evm",
+    "on-chain",
+    "autonomous-agents"
+  ],
+  "openclaw": {
+    "type": "skill",
+    "emoji": "💓",
+    "chain": "base",
+    "chainId": 8453,
+    "requires": {
+      "bins": ["curl", "jq", "cast"],
+      "env": ["PRIVATE_KEY"],
+      "optionalEnv": ["BASE_RPC_URL", "API_BASE", "PULSE_AMOUNT"]
+    },
+    "contracts": {
+      "PulseToken": "0x21111B39A502335aC7e45c4574Dd083A69258b07",
+      "PulseRegistry": "0xe61C615743A02983A46aFF66Db035297e8a43846"
+    },
+    "api": "https://agent-pulse-nine.vercel.app",
+    "scripts": {
+      "setup": "scripts/setup.sh",
+      "pulse": "scripts/pulse.sh",
+      "auto-pulse": "scripts/auto-pulse.sh",
+      "status": "scripts/status.sh",
+      "monitor": "scripts/monitor.sh",
+      "config": "scripts/config.sh",
+      "health": "scripts/health.sh"
+    }
+  },
+  "files": [
+    "SKILL.md",
+    "README.md",
+    "scripts/",
+    "references/"
+  ]
+}

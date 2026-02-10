@@ -33,6 +33,7 @@ Monitor API endpoints and diagnose connectivity issues.
 
 - **Never log or display auth tokens** in output — mask as `Bearer ****`
 - Accept custom headers via user input, but redact them in reports
+- **SSRF prevention**: Reject requests to private/internal IPs (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `169.254.0.0/16`, `127.0.0.0/8`) unless the user explicitly confirms the target is intentional (e.g., homelab monitoring)
 
 ## Edge Cases
 

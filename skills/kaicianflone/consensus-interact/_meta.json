@@ -1,0 +1,17 @@
+{
+  "owner": "kaicianflone",
+  "slug": "consensus-interact",
+  "displayName": "consensus-interact",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1770645324634,
+    "commit": "https://github.com/openclaw/skills/commit/99c7c209dd7cecc1016ba2a93d6c1092ead97693"
+  },
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1770619150361,
+      "commit": "https://github.com/openclaw/skills/commit/ec4edf2be081db3ed1b52dec38aeb110fbf0dbe3"
+    }
+  ]
+}

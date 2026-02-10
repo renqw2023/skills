@@ -21,6 +21,14 @@ metadata:
 
 Parse images and PDF files using PaddleOCR's API. Supports multiple document parsing algorithms with structured output.
 
+## Resource Links
+
+| Resource              | Link                                                                           |
+| --------------------- | ------------------------------------------------------------------------------ |
+| **Official Website**  | [https://www.paddleocr.com](https://www.paddleocr.com)                                     |
+| **API Documentation** | [https://ai.baidu.com/ai-doc/AISTUDIO/Cmkz2m0ma](https://ai.baidu.com/ai-doc/AISTUDIO/Cmkz2m0ma)         |
+| **GitHub**            | [https://github.com/PaddlePaddle/PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR) |
+
 ## Key Features
 
 - **Multi-format support**: PDF and image files (JPG, PNG, BMP, TIFF)
@@ -30,7 +38,7 @@ Parse images and PDF files using PaddleOCR's API. Supports multiple document par
 
 ## Setup
 
-1. Obtain credentials from the [PaddleOCR official website](https://www.paddleocr.com). Click the “API” button, choose the desired algorithm (e.g., PP-Structure, PaddleOCR-VL-1.5), and copy the API URL and the access token.
+1. Obtain credentials from the [PaddleOCR official website](https://www.paddleocr.com). Click the “API” button, choose the desired algorithm (e.g., PP-StructureV3, PaddleOCR-VL-1.5), and copy the API URL and the access token.
 2. Set environment variables:
 
 ```bash

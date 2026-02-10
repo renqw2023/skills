@@ -1,0 +1,11 @@
+{
+  "owner": "chrisagiddings",
+  "slug": "gandi",
+  "displayName": "Gandi",
+  "latest": {
+    "version": "2.1.0",
+    "publishedAt": 1770657406219,
+    "commit": "https://github.com/openclaw/skills/commit/86409812fd283358fdb298374faf31c084eb4d0e"
+  },
+  "history": []
+}

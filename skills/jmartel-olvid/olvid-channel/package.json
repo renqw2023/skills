@@ -1,6 +1,6 @@
 {
-  "name": "openclaw-channel-olvid",
-  "version": "0.0.6",
+  "name": "olvid-channel",
+  "version": "0.0.0-a10",
   "description": "Olvid native channel for OpenClaw.",
   "type": "module",
   "dependencies": {
@@ -8,7 +8,13 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "openclaw": "==2026.2.1"
+    "typescript": "^5.9.3"
+  },
+  "peerDependencies": {
+    "openclaw": "2026.2.6-3"
+  },
+  "scripts": {
+    "publishSkill": "npx clawhub login && npx clawhub publish `pwd` --version '0.0.10' --name 'Olvid Channel' --slug olvid-channel"
   },
   "keywords": [
     "openclaw",
@@ -17,7 +23,9 @@
   ],
   "author": "bot@olvid.io",
   "openclaw": {
-    "extensions": ["./index.ts"],
+    "extensions": [
+      "./index.ts"
+    ],
     "channel": {
       "id": "olvid",
       "label": "olvid",
@@ -28,7 +36,7 @@
       "order": 35
     },
     "install": {
-      "npmSpec": "openclaw-channel-olvid",
+      "npmSpec": "olvid-channel",
       "localPath": "extensions/olvid",
       "defaultChoice": "npm"
     }

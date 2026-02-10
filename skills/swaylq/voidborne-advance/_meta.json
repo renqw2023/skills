@@ -3,11 +3,21 @@
   "slug": "voidborne-advance",
   "displayName": "voidborne",
   "latest": {
-    "version": "1.0.6",
-    "publishedAt": 1770210363212,
-    "commit": "https://github.com/clawdbot/skills/commit/5ce1aa9a8b635dad2516cb42307bfa5bddb4cb94"
+    "version": "1.0.8",
+    "publishedAt": 1770619832790,
+    "commit": "https://github.com/openclaw/skills/commit/202d53ff091888217042297c9198574c1d609676"
   },
   "history": [
+    {
+      "version": "1.0.7",
+      "publishedAt": 1770563644921,
+      "commit": "https://github.com/openclaw/skills/commit/d673df11f3c4d7f1a89ed8e29b6e4128e01d1b16"
+    },
+    {
+      "version": "1.0.6",
+      "publishedAt": 1770210363212,
+      "commit": "https://github.com/clawdbot/skills/commit/5ce1aa9a8b635dad2516cb42307bfa5bddb4cb94"
+    },
     {
       "version": "1.0.5",
       "publishedAt": 1770141562243,

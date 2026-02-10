@@ -1,37 +1,77 @@
-* filter any 'get' by tag (show the most recent that has that tag; for recents only show the ones that have that tag)
 
-* tags themselves should have summaries and full descriptions
-    i.e. somewhere in the "system" store is a docuemnt that describes a tag
-    of course it's optional, you can just tag things in an open-ended way
-    but sure would be useful for convention, as well as maintenance, if tags are documented by whoever uses them.
-    
-    * these are "system" documents, which is kinda a new thing
-      (nowdoc is also a system document because it has specific behavior, but that has hard-coded id)
-      (these could have ids such as `_tag:foo`)
-    * then: provide a set of predefined tag-descriptions as files in `docs/system` that get loaded on `init`
-      and include in there: a description of the "project" tag, a description of the "topic" tag
-      (and whatever else we decide to pre-load... bearing in mind that pre-loaded content is for convention not specification!)
-    * "project" and "topic" are the first two
-      - placeholder descriptions for these are fine initially
-      - load from 'docs/system'
+* can `keep config` return error status if there's no correct configuration yet?
 
-    then when displaying a tag, mark it up with an asterisk if exists a definition-for-that-tag doc
-    and give a shortcut `keep tag --describe` or something
+* `keep reflect --something` that helps trigger "hourly reflection"?
 
-* filter "one for each tag"?
-    - with "projects", "topics" tags
-    - this replaces all the "top-of-mind" stuff in `later/` (except for "recent")
-        - the later thing for "topics" is more explicit than using tasks/projects, but same goal
-        - actually "topics" is a much better word than "tasks" because this is not really a task-focused skill
-    - maybe "project" and "topic" tags (literally) are enough
-        - we'll use them by convention, but show them in all the examples
-        - concrete examples of using the nowdoc by project/topic
-        - need a way to "list current topics", "list current projects" as well as just "get the nowdoc"
-            - maybe that's the default in `keep` with no args:
-              get the no-project/no-topic nowdoc (or default it)
-              get the list of distinct projects, distinct topics, within a reasonable time and count limit
-            - limit 10, and limit to the last 7 days, should be enough for a default?
-                - "last N days" is subtle, not part of this task, don't have any time-limited behavior yet
+* add "remember... when..." stuff, but where? and what's the set of useful "when"?
+    (e.g.: remember to double-check that the documentation is all consistent, when finishing X)
+
+* lectio
+    - encourage "deep reflection" on items that were important
+      e.g. URLs and files that were captured recently
+
+* edges thinking again
+    why don't we do edges, first, as a special think that just links a document to the "now" doc?
+    (maybe not very useful.. still need to capture the /reason/ that it's linked, which is where
+    the semantics all live)
+
+* let's explore some semantic relationships that are important
+    the thing we're talking about is related to (many of):
+    - a meeting or other event
+    - people
+    - places
+    - events in the world
+    do we want to go down the whole "entity extraction" thing? really?
+    but we absolutely do need to handle "hey, note about XYZ, ...." whare XYZ is a capital-E Entity;
+    or "I just talked to Z and T"
+    maybe the entity-extraction is done by the AGENT, huh?
+    - so the agent should tag "entities" in a consistent way, but it's just a convention, not rules
+        -t class=Person entity=Daniel
+
+* let's explore the macOS native entities (not just the filesystem things):
+    - contacts
+    - music (albums, artists, tracks, ...)
+    - notes
+    - health data
+    (etc)...
+    - want URLs for each of these so that we can represent them in our database with summaries and tags
+
+* Some tools (e.g. VS Code) don't really have a global config.
+  But if keep is running within a git project, in one of these tools,
+  and there's no keep "hook" within the project itself, should we prompt to install it?
+
+* USECASES.md "what is this great at"
+    lesson zero: the context window doesn't really matter if you have exponentially-good navigation
+        (tiny chunks loosely joined)
+
+    lesson one: embeddings plus tagging plus summaries is a whole new thing, actually
+        (especially for capturing knowledge about many document, links, references)
+
+    so, the great use cases?
+        - personal agent:
+            - first, like a bookmark-manager with superpowers
+            - or a research-assistant with superpowers
+        - what else?
+
+    And, how do we suggest the agents to /create higher structures/ as they work?
+        - tags: locate your stuff by project, topic
+        - update with all relevant documents as you research
+        - update with all relevant URLs as you research
+        - more tags?  update with descriptions-of-tags?  auto-summarize to make descriptions-of-tags?
+        - or do we actually benefit from "edges" here?
+
+
+* re-test the gemini path
+
+* dynamically detect available models using the provider's API?
+    - we could do this, but when?
+    - no capability for "model migration and re-embedding" yet
+
+* Measure some outcomes.  Describe behavior in openclaw, in claude code, etc.  Show where it works.
+
+* relationships as a separate first-class thing
+    - X and Y with a bidirectional edge
+    (needs more thought about the approach, benefits, etc.)
 
 * tag-by-model ("auto-tag")?
     - is there a model-supported tagging? what would that need to be useful? (specific domains??)
@@ -41,7 +81,7 @@
     - want this to be pluggable, guide the model-driven tagging from a sysdoc that defines how it works
     - want "references" for this too... maybe later
 
-* compare openclaw 'memory-lancedb' plugin
+* compare openclaw 'memory-lancedb' plugin and others
 
 * check - what is your emotional response when encountering this project the first time?
 
@@ -65,6 +105,8 @@
 
 * add an image; same strategy as audio
 
+* also support docx
+
 * openclaw install a heartbeat.  Not too often, but often enough.
 
 * multi-embeddings
@@ -80,19 +122,6 @@
         - or, can we do relevance-per-tag everywhere? so that topics and projects are just tags like everything else?
     - more thinking and research needed
 
-
-
-* Unix has heredoc, keep has nowdoc, what else do we need?
-    - or rather, is there functionality like a heredoc, that we should use for the nowdoc?
-
-
-* other "system" behaviors?
-    - zero, nada by default - is that ok?
-
-* all the pip install extras - yuk
-    makes the decision before you even know really
-    - prefer somthing more dynamic, not sure what
-
 * how do we get the claude-code model context?
 
 * how do we get the vscode model context?  I really don't want to require a plugin too
@@ -105,7 +134,6 @@
     - want something that tracks last-retrieval time
     - not sure how that applies to the ranking for retrieval
     - do we need any of this to be config not code??
-
  
 * compare the openclaw plugin against the other memory plugins on the hub
 
@@ -113,7 +141,7 @@
 
 ----
 
-Done:
+Done: (finished items go at the end)
 
 . start a todo list for notes
 . move the test docs into docs/library (the soul docs)
@@ -177,3 +205,52 @@ Done:
 x `context` text alongside summaries? (no, summary is good now)
 . review how system documents (e.g. "metaschema") are used today, if any
 . consolidated `keep tag` into `keep list`: --tag for filtering, --tags for listing, --since for time filtering
+. changed "context" to "intentions" in `keep now` docs and docstrings
+. `keep --version` flag to show version and exit
+. `_system:library` document with URI templates for library files
+. tag filtering for find, get, now: -t filters results/versions (context-dependent with set behavior)
+. document project/topic segregation: SKILL.md, README.md, REFERENCE.md, AGENT-GUIDE.md; KEEP_COLLECTION envvar
+. reviewed library content and docs for alignment with teachings (AN5.57, impermanence verse, forty-two chapters all support the practice)
+. restructured SKILL.md Layers 1 & 2: integrated Language-Action (ground) + MN61 (mirror) teachings without duplication
+. enhanced `keep config`: get any setting from CLI, added file/tool paths, test with `ls $(keep config tool)`
+. HTML content regularization: HttpDocumentProvider extracts text from HTML at fetch time (matching FileDocumentProvider), fixing web URL summarization
+. tag-based filtering: -t flag on list/find/get/similar filters by tag; --tags lists distinct tag values; --since for time filtering
+. contextual summarization: user tags provide context for LLM summaries; _gather_context finds similar items with matching tags (OR-union, score boosted per tag match); tag changes trigger re-summarization
+. remove `keep init`, streamline API and key selection, and add VoyageAI support for embeddings
+. check functionality using Claude Desktop
+. binary embedding cache: struct.pack float32 replaces json.dumps (~3.3x smaller), transparent migration, migrate() for bulk conversion
+. fix summarizer contamination: removed product-name example from system prompt, context passes topic keywords not raw summaries, boundary instruction in contextual prompt
+. terminal-width-aware summary lines: shutil.get_terminal_size with 120-col default for agents, real terminal width for humans
+. add `keep delete`
+. add `keep reflect` command with reflection instructions
+. better plugin-hooks for claude code
+. better readme: BLUF "what this is and why" replaces "what it does" tagline
+. auto-install integrations: keep/integrations.py with TOOL_CONFIGS pattern, Claude Code hooks auto-installed on first run
+. now.md onboarding: default nowdoc guides agents to read SKILL.md and foundational teachings (SYSTEM_DOCS_VERSION 4)
+. TTY-gated reflect prompt: "As an agent, you should reflect" only shown when stdout is not a TTY
+. shell-safe ID quoting: _shell_quote_id() wraps IDs with special chars in single quotes (text output only, not JSON)
+. last-accessed rank bump: accessed_at column, touch/touch_many, --sort accessed on list, schema v2 migration
+. codebase cleanup: removed dead modules (indexing.py, chunking.py, context.py), dead code (_timestamp, AVAILABLE_SETTINGS, enable_verbose_mode), fixed mock signatures, consolidated tag parsing, unified tag-update output
+. rename for compact usage: `keep update` → `keep put`, `keep delete` → `keep del` (old names kept as hidden aliases)
+. speech-act tagging: `act` tag (commitment, request, offer, assertion, assessment, declaration) and `status` tag (open, fulfilled, declined, withdrawn, renegotiated) with system docs (_tag:act, _tag:status, _tag:project, _tag:topic), woven into conversations.md, domains.md, SKILL.md, AGENT-GUIDE.md, REFERENCE.md, reflect.md
+. tag description system docs: _tag:* IDs with `context: tag-description` frontmatter, loaded via SYSTEM_DOC_IDS registry (SYSTEM_DOCS_VERSION 5)
+. reflect.md updated with act/status tag examples for commitment tracking
+. _accessed and _accessed_date system tags: exposed accessed_at from DocumentStore as queryable tags, added item.accessed property, documented in SYSTEM-TAGS.md
+. surface similar items on create/update: `keep put` and `keep now` show similar items in output as occasions for reflection
+. anthropic OAuth token support: CLAUDE_CODE_OAUTH_TOKEN as alternative to ANTHROPIC_API_KEY, documented distinction between API keys (sk-ant-api03-...) and OAuth tokens (sk-ant-oat01-...) from `claude setup-token`
+. document indexing practice: added guidance to SKILL.md, reflect.md, and Protocol Block instructing agents to index important documents (URLs, files) encountered during work with appropriate tags explaining what and why
+. timestamps: seconds-precision UTC, no timezone suffix in frontmatter (stored and displayed)
+. ID prefix rename: _text:hash → %hash, _system:foo → .foo, _tag:foo → .tag/foo, _now:default → now. Migration renames old IDs, SYSTEM_DOCS_VERSION 6, % added to shell-safe pattern.
+. aligned ID column in `keep list` output (capped at 20 chars)
+. QUICKSTART.md reordered: keep[local] shown before API key options
+. Ollama support: auto-detection via /api/tags (0.5s timeout), smart model selection (embed vs generative), OLLAMA_HOST env var, priority between API keys and MLX
+. `keep put --suggest-tags`: shows tag suggestions from similar items with frequency counts
+. `keep add` as hidden alias for `keep put` (alongside existing `update` alias)
+. openclaw AGENTS.md detection: install protocol block into AGENTS.md in cwd (openclaw sets cwd to workspace)
+. `keep get` accepts multiple IDs: `keep --ids list -n 5 | xargs keep get` works; items separated by `---`
+. `keep del` accepts multiple IDs
+. inline content safety: --summary rejected for inline/stdin, length limit enforced, default max_summary_length bumped 500→2000
+. meta-docs: .meta/* system docs with tag-based contextual resolution; todo/learnings/decisions surface in `now` and `get` frontmatter (SYSTEM_DOCS_VERSION 7)
+. aligned ID column in frontmatter sections (similar, meta, prev/next) — same strategy as `keep list`, capped at 20 chars
+. meta section namespace: `meta/todo:` prefix in frontmatter output prevents conflicts with built-in keys (prev, next, similar)
+. openclaw plugin rework

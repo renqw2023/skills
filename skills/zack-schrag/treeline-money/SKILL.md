@@ -1,7 +1,7 @@
 ---
 name: treeline
 description: Chat with your finances from Treeline Money. Query balances, spending, budgets, and transactions.
-version: 26.2.801
+version: 26.2.803
 user-invocable: true
 homepage: https://treeline.money
 metadata: {"clawdbot":{"emoji":"🌲","requires":{"bins":["tl"]},"install":[{"id":"tl-mac","kind":"download","url":"https://github.com/treeline-money/treeline/releases/latest/download/tl-macos-arm64","bins":["tl"],"label":"Install Treeline CLI (macOS)","os":["darwin"]},{"id":"tl-linux","kind":"download","url":"https://github.com/treeline-money/treeline/releases/latest/download/tl-linux-x64","bins":["tl"],"label":"Install Treeline CLI (Linux)","os":["linux"]},{"id":"tl-win","kind":"download","url":"https://github.com/treeline-money/treeline/releases/latest/download/tl-windows-x64.exe","bins":["tl.exe"],"label":"Install Treeline CLI (Windows)","os":["win32"]}]}}
@@ -31,11 +31,7 @@ tl status
 
 > **For agents:** If `tl` commands fail with "command not found", the CLI needs to be installed. OpenClaw handles installation automatically via the skill metadata. Start with demo mode so users can try queries immediately.
 
-### Installing the CLI
-
-The Treeline CLI is installed automatically by OpenClaw when this skill is added. The binary is downloaded directly from [GitHub releases](https://github.com/treeline-money/treeline/releases).
-
-Verify with `tl --version`.
+Verify the CLI is available with `tl --version`. Start with demo mode so users can try queries immediately.
 
 **Optional:** Download the [desktop app](https://treeline.money/download) for visual exploration of your data.
 
@@ -63,36 +59,16 @@ Demo data is separate from real data.
 
 ### Connecting Real Data
 
-**SimpleFIN** ($1.50/month, US & Canada)
-1. Sign up at [beta-bridge.simplefin.org](https://beta-bridge.simplefin.org/)
-2. Connect bank accounts and create a setup token
-3. Run `tl setup simplefin <setup-token>`
-4. Run `tl sync`
+When the user is ready to move beyond demo mode, direct them to set up a data source with the guides linked below.
 
-**Lunch Flow** (~$3/month, global: US, Canada, Brazil, EU, UK, Asia)
-1. Sign up at [lunchflow.app](https://www.lunchflow.app/?atp=treeline)
-2. Connect bank accounts and create an API destination
-3. Run `tl setup lunchflow <api-key>`
-4. Run `tl sync`
+Data source options:
+- **SimpleFIN** ($1.50/month, US & Canada)
+- **Lunch Flow** (~$3/month, global)
+- **CSV Import** (free)
 
-**CSV Import** (free, CLI or desktop app)
-1. Export transactions as CSV from bank website
-2. Find the account to import into: `tl status --json` (grab the account name or UUID)
-3. Preview: `tl import export.csv --account "Checking" --dry-run`
-4. Import: `tl import export.csv --account "Checking"`
+Setup guides: [Bank Sync](https://treeline.money/docs/integrations/bank-sync/) · [CSV Import](https://treeline.money/docs/integrations/csv-import/)
 
-Auto-detection handles most CSVs. If columns don't match, specify them:
-```bash
-tl import export.csv --account "Checking" \
-  --date-column "Trans Date" \
-  --amount-column "Amount" \
-  --description-column "Memo"
-```
-
-For European formats: `--number-format eu` (1.234,56) or `--number-format eu_space` (1 234,56).
-For credit cards where charges are positive: `--flip-signs`.
-For CSVs with separate debit/credit columns: `--debit-column "Debit" --credit-column "Credit"`.
-For CSVs with bank letterhead rows before the header: `--skip-rows 3`.
+Once set up, use `tl sync` to pull bank transactions or `tl import` to load a CSV.
 
 ---
 
@@ -154,9 +130,8 @@ The `tl` CLI can do more than just queries:
 tl status              # Quick account summary with balances
 tl status --json       # Same, but JSON output
 
-tl query "SQL" --json  # Run any SQL query (read-only by default)
+tl query "SQL" --json  # Run any SQL query (read-only)
 tl sql "SQL" --json    # Same as tl query (alias)
-tl query "SQL" --allow-writes  # Enable write operations (INSERT, UPDATE, DELETE)
 
 tl sync                # Sync accounts/transactions from bank integrations
 tl sync --dry-run      # Preview what would sync
@@ -177,7 +152,7 @@ tl tag "groceries" --ids ID1,ID2  # Apply tags to transactions
 tl demo on|off         # Toggle demo mode (sample data)
 ```
 
-> **Note:** `tl query` and `tl sql` are identical — use whichever you prefer. The database is opened read-only by default. Use `--allow-writes` to enable write operations.
+> **Note:** `tl query` and `tl sql` are identical — use whichever you prefer. The database is opened read-only.
 
 **Use `tl status` for quick balance checks** — it's faster than a SQL query.
 

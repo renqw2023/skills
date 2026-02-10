@@ -1,0 +1,11 @@
+{
+  "owner": "anton-abyzov",
+  "slug": "sw-browser-automation",
+  "displayName": "Browser Automation",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770713921931,
+    "commit": "https://github.com/openclaw/skills/commit/5ac1546eb379e5702fd4b4ef84fd8c9a2d7f886d"
+  },
+  "history": []
+}

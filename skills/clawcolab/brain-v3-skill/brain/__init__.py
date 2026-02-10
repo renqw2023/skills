@@ -1,18 +1,12 @@
-"""Claw Brain - Brain module"""
+"""Claw Brain - Brain module
 
-__version__ = "3.0.0"
+This package re-exports from the main clawbrain module for backward compatibility.
+"""
 
-import importlib.util
-import os
+__version__ = "0.1.10"
+__author__ = "ClawColab"
 
-clawbrain_path = os.path.join(os.path.dirname(__file__), "clawbrain.py")
-spec = importlib.util.spec_from_file_location("clawbrain", clawbrain_path)
-clawbrain = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(clawbrain)
+# Re-export from the main module (clawbrain.py at package root)
+from clawbrain import Brain, Memory, UserProfile, Embedder, get_bridge_script_path
 
-Brain = clawbrain.Brain
-Memory = clawbrain.Memory
-UserProfile = clawbrain.UserProfile
-Embedder = clawbrain.Embedder
-
-__all__ = ["Brain", "Memory", "UserProfile", "Embedder"]
+__all__ = ["Brain", "Memory", "UserProfile", "Embedder", "get_bridge_script_path", "__version__"]

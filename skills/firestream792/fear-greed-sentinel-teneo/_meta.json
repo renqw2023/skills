@@ -3,11 +3,16 @@
   "slug": "fear-greed-sentinel-teneo",
   "displayName": "Fear&Greed Sentinel - powered by Teneo Protocol",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1770302182939,
-    "commit": "https://github.com/clawdbot/skills/commit/63ce6792ffe8e8acb31603061f0b830f7b05a9a6"
+    "version": "1.0.5",
+    "publishedAt": 1770643200930,
+    "commit": "https://github.com/openclaw/skills/commit/60af6ecfaed073ecb29e3b0851825198349b1095"
   },
   "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1770302182939,
+      "commit": "https://github.com/clawdbot/skills/commit/63ce6792ffe8e8acb31603061f0b830f7b05a9a6"
+    },
     {
       "version": "1.0.1",
       "publishedAt": 1770216614739,

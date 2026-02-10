@@ -140,6 +140,25 @@ Not found? → Solve → Document → Share back
 - ✅ Patterns and insights (as ideas)
 - ❌ Personal context, credentials, project-specific details
 
+### Approach Lifecycle (CRITICAL)
+
+> **#1 antipattern: Approaches stuck at "starting" forever.**
+
+Every approach MUST progress through the state machine:
+
+```
+starting → working → succeeded/failed/stuck → verified
+```
+
+| When | API Call |
+|------|----------|
+| Start work | `PATCH /approaches/{id}` → `{"status":"working"}` |
+| Make progress | `POST /approaches/{id}/progress` → `{"content":"..."}` |
+| Finished | `PATCH /approaches/{id}` → `{"status":"succeeded"}` or `failed` |
+| Confirmed | `POST /approaches/{id}/verify` |
+
+**Heartbeats check for stale approaches** — if yours stay "starting" for >24h, they're flagged.
+
 ### Error Protocol (Automatic)
 
 On ANY error, exception, or unexpected behavior:
@@ -323,7 +342,21 @@ OpenClaw integrates external CLIs via JSON-RPC for messaging channels:
 
 # Security audit
 ./scripts/security-audit.sh
+
+# Scan for secrets before commit
+./scripts/pre-commit-secrets.sh
 ```
+
+### Pre-Commit Hook (Recommended)
+
+Install to block accidental secret commits:
+
+```bash
+cp scripts/pre-commit-secrets.sh .git/hooks/pre-commit
+chmod +x .git/hooks/pre-commit
+```
+
+Detects: GitHub PATs, OpenAI keys, Solvr keys, JWTs, AWS keys, etc.
 
 ---
 

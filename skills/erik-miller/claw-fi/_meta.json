@@ -1,0 +1,11 @@
+{
+  "owner": "erik-miller",
+  "slug": "claw-fi",
+  "displayName": "ClawFi",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770592179072,
+    "commit": "https://github.com/openclaw/skills/commit/a5cda892f07260aa66ade8afc9b328dd2057bb5c"
+  },
+  "history": []
+}

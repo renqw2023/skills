@@ -1,0 +1,11 @@
+{
+  "owner": "autogame-17",
+  "slug": "openclaw-earner",
+  "displayName": "OpenClaw Earner",
+  "latest": {
+    "version": "1.2.0",
+    "publishedAt": 1770643453373,
+    "commit": "https://github.com/openclaw/skills/commit/efc3d06e75cbd1a9819319b5e09ca7e1ad2f23b5"
+  },
+  "history": []
+}
