@@ -3,11 +3,16 @@
   "slug": "preisrunter",
   "displayName": "Preisrunter Grocery Search",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1770666172066,
-    "commit": "https://github.com/openclaw/skills/commit/591af7cac1830da3464561c611b54b4e8c6e56d8"
+    "version": "1.0.3",
+    "publishedAt": 1770680352421,
+    "commit": "https://github.com/openclaw/skills/commit/bee1ab3ea88316228bc284162704a08962e670fa"
   },
   "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1770666172066,
+      "commit": "https://github.com/openclaw/skills/commit/591af7cac1830da3464561c611b54b4e8c6e56d8"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1770509622893,

@@ -1,0 +1,11 @@
+{
+  "owner": "datadrivenconstruction",
+  "slug": "portfolio-dashboard",
+  "displayName": "Portfolio Dashboard",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770476398826,
+    "commit": "https://github.com/openclaw/skills/commit/1e564040bf0f3658a6d9108be68323d5e0528cfa"
+  },
+  "history": []
+}

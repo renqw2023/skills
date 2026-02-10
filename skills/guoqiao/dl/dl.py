@@ -189,7 +189,7 @@ def build_options(plan: DownloadPlan) -> dict[str, Any]:
                 {
                     "key": "FFmpegExtractAudio",
                     "preferredcodec": "m4a",
-                    "preferredquality": "256",  # 256kbps
+                    "preferredquality": "192",  # 192kbps
                 },
             ],
             max_filesize=MAX_AUDIO_SIZE,

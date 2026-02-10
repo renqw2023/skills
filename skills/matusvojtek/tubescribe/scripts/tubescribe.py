@@ -25,18 +25,25 @@ Options:
 Author: Jackie 🦊 & Matus
 """
 
-__version__ = "1.1.2"
+__version__ = "1.1.6"
 
 import subprocess
 import json
 import re
 import sys
 import os
-import fcntl
+import tempfile
 import time
 import urllib.request
+from contextlib import contextmanager
 from pathlib import Path
 from datetime import datetime, timedelta
+
+try:
+    import fcntl
+    _HAS_FCNTL = True
+except ImportError:
+    _HAS_FCNTL = False
 
 # Add scripts dir to path for imports
 SCRIPT_DIR = Path(__file__).parent
@@ -200,10 +207,11 @@ def fetch_comments(url: str, max_comments: int = None, timeout: int = None, conf
     
     try:
         # comment_sort=top gets highest-liked comments (default is "new")
-        # Format: max_comments=COUNT,PARENT,REPLY_PARENT,REPLY
+        # Format: max_comments=max-comments,max-parents,max-replies,max-replies-per-thread,max-depth
+        # We fetch top-level parent comments only: depth=1, no replies
         result = subprocess.run(
             [ytdlp, "--dump-json", "--no-download", "--write-comments", 
-             "--extractor-args", f"youtube:comment_sort=top;max_comments={max_comments},all,{max_comments},0",
+             "--extractor-args", f"youtube:comment_sort=top;max_comments={max_comments},{max_comments},0,0,1",
              url],
             capture_output=True, text=True, timeout=timeout
         )
@@ -263,10 +271,10 @@ def safe_unescape(text: str) -> str:
         return json.loads(f'"{text}"')
     except (json.JSONDecodeError, ValueError):
         # Fallback: just handle the common ones manually
+        text = text.replace('\\\\', '\\')
         text = text.replace('\\n', '\n')
         text = text.replace('\\t', '\t')
         text = text.replace('\\"', '"')
-        text = text.replace('\\\\', '\\')
         return text
 
 
@@ -431,15 +439,29 @@ def sanitize_filename(title: str, fallback: str = "untitled") -> str:
     return safe if safe else fallback
 
 
-def prepare_source_data(url: str, temp_dir: str = "/tmp", quiet: bool = False) -> tuple[str | None, str | None, str | None]:
+def _get_temp_dir() -> str:
+    """Get a secure per-user temp directory for TubeScribe."""
+    try:
+        uid = os.getuid()
+    except AttributeError:
+        uid = os.getenv("USERNAME", "default")
+    temp_dir = os.path.join(tempfile.gettempdir(), f"tubescribe-{uid}")
+    os.makedirs(temp_dir, mode=0o700, exist_ok=True)
+    return temp_dir
+
+
+def prepare_source_data(url: str, temp_dir: str = None, quiet: bool = False) -> tuple[str | None, str | None, str | None]:
     """
     Prepare source data for processing.
     Returns: (source_json_path, output_md_path, error_message)
     """
+    if temp_dir is None:
+        temp_dir = _get_temp_dir()
+
     def log(msg: str):
         if not quiet:
             print(msg)
-    
+
     # Validate URL first
     if not is_youtube_url(url):
         return None, None, ERROR_MESSAGES["invalid_url"]
@@ -509,7 +531,9 @@ def prepare_source_data(url: str, temp_dir: str = "/tmp", quiet: bool = False) -
         step += 1
         log(f"\n[{step}/{total_steps}] 💬 Fetching comments...")
         t_start = time.time()
-        comments, _ = fetch_comments(url, max_comments=50)
+        cfg = load_config()
+        max_comments_count = cfg.get("comments", {}).get("max_count", 50)
+        comments, _ = fetch_comments(url, max_comments=max_comments_count, config=cfg)
         timings['comments'] = time.time() - t_start
         if comments:
             log(f"      → {len(comments)} top comments")
@@ -527,6 +551,7 @@ def prepare_source_data(url: str, temp_dir: str = "/tmp", quiet: bool = False) -
             "upload_date": metadata["upload_date"],
             "duration": metadata["duration"],
             "duration_string": metadata["duration_string"],
+            "view_count": metadata.get("view_count", 0),
             "description": metadata["description"],
         },
         "segments": segments,
@@ -562,8 +587,10 @@ def prepare_source_data(url: str, temp_dir: str = "/tmp", quiet: bool = False) -
     return source_path, output_path, None
 
 
-def cleanup_temp_files(video_id: str, quiet: bool = False, temp_dir: str = "/tmp") -> bool:
+def cleanup_temp_files(video_id: str, quiet: bool = False, temp_dir: str = None) -> bool:
     """Remove temp files for a video after successful processing."""
+    if temp_dir is None:
+        temp_dir = _get_temp_dir()
     source_path = f"{temp_dir}/tubescribe_{video_id}_source.json"
     output_path = f"{temp_dir}/tubescribe_{video_id}_output.md"
     tts_path = f"{temp_dir}/tubescribe_{video_id}_tts.py"
@@ -583,7 +610,7 @@ def convert_to_document(md_path: str, output_dir: str, doc_format: str, video_id
     """Convert markdown to final document format."""
     
     # Get title from markdown for filename
-    with open(md_path, 'r') as f:
+    with open(md_path, 'r', encoding='utf-8') as f:
         content = f.read()
     title_match = re.search(r'^# (.+)$', content, re.MULTILINE)
     title = title_match.group(1) if title_match else "TubeScribe Output"
@@ -593,7 +620,7 @@ def convert_to_document(md_path: str, output_dir: str, doc_format: str, video_id
     if doc_format == "md":
         # Just copy/rename markdown
         out_path = os.path.join(output_dir, f"{safe_title}.md")
-        with open(out_path, 'w') as f:
+        with open(out_path, 'w', encoding='utf-8') as f:
             f.write(content)
         return out_path
     
@@ -621,7 +648,9 @@ def convert_to_document(md_path: str, output_dir: str, doc_format: str, video_id
         
         # No pandoc available, fall back to HTML
         print("   pandoc not found, falling back to HTML")
-        return convert_to_document(md_path, output_dir, "html")
+        out_path = os.path.join(output_dir, f"{safe_title}.html")
+        create_html_from_markdown(md_path, out_path)
+        return out_path
     
     return md_path
 
@@ -634,10 +663,209 @@ def generate_audio_summary(summary_text: str, output_path: str, config: dict) ->
 
     print(f"🔊 Generating audio ({tts_engine}, {audio_format})...")
 
-    if tts_engine == "kokoro":
+    if tts_engine == "mlx":
+        return generate_mlx_audio(summary_text, output_path, audio_format, config)
+    elif tts_engine == "kokoro":
         return generate_kokoro_audio(summary_text, output_path, audio_format, config)
     else:
         return generate_builtin_audio(summary_text, output_path, audio_format)
+
+
+def find_mlx_audio(config: dict = None) -> tuple[str | None, str | None]:
+    """
+    Find mlx-audio installation.
+    Returns (python_path, mlx_audio_dir).
+    """
+    if config is None:
+        config = load_config()
+    
+    mlx_config = config.get("mlx_audio", {})
+    mlx_dir = os.path.expanduser(mlx_config.get("path", "~/.openclaw/tools/mlx-audio"))
+    
+    # Check venv inside mlx-audio dir
+    venv_python = os.path.join(mlx_dir, ".venv", "bin", "python3")
+    if os.path.exists(venv_python):
+        try:
+            result = subprocess.run(
+                [venv_python, "-c", "from mlx_audio.tts.generate import generate_audio; print('ok')"],
+                capture_output=True, text=True, timeout=15
+            )
+            if result.returncode == 0:
+                return venv_python, mlx_dir
+        except (subprocess.SubprocessError, OSError, TimeoutError):
+            pass
+    
+    # Check system Python
+    import shutil
+    system_python = shutil.which("python3")
+    if system_python:
+        try:
+            result = subprocess.run(
+                [system_python, "-c", "from mlx_audio.tts.generate import generate_audio; print('ok')"],
+                capture_output=True, text=True, timeout=15
+            )
+            if result.returncode == 0:
+                return system_python, mlx_dir
+        except (subprocess.SubprocessError, OSError, TimeoutError):
+            pass
+    
+    return None, None
+
+
+def _get_or_create_mlx_blended_voice(mlx_python: str, voice_blend: dict, model: str) -> str | None:
+    """
+    Create a blended voice .safetensors file from multiple voices with custom weights.
+    Caches the result so it only runs once.
+    Returns path to the blended .safetensors file, or None on failure.
+    """
+    # Build a deterministic filename from the blend spec
+    parts = sorted(voice_blend.items())
+    blend_name = "_".join(f"{re.sub(r'[^a-z0-9_]', '', name)}_{int(weight*100)}" for name, weight in parts)
+    if not blend_name:
+        return None
+    
+    # Check if blend already exists in HF cache
+    code = f'''
+import json
+from huggingface_hub import snapshot_download
+from pathlib import Path
+
+local_dir = snapshot_download(repo_id={json.dumps(model)}, local_files_only=True)
+blend_path = str(Path(local_dir) / "voices" / "{blend_name}.safetensors")
+
+import os
+if os.path.exists(blend_path):
+    print(blend_path)
+else:
+    print("NEEDS_CREATE")
+    print(local_dir)
+'''
+    try:
+        result = subprocess.run(
+            [mlx_python, "-c", code],
+            capture_output=True, text=True, timeout=15
+        )
+        if result.returncode != 0:
+            return None
+        
+        lines = result.stdout.strip().split('\n')
+        if lines[0] != "NEEDS_CREATE":
+            return lines[0]  # Already exists
+        
+        local_dir = lines[1]
+    except (subprocess.SubprocessError, OSError, TimeoutError):
+        return None
+    
+    # Create the blended voice
+    blend_spec = json.dumps(voice_blend)
+    code = f'''
+import json
+import numpy as np
+import mlx.core as mx
+from mlx_audio.tts.models.kokoro.voice import load_voice_tensor
+from safetensors.numpy import save_file
+
+local_dir = {json.dumps(local_dir)}
+voice_blend = json.loads({json.dumps(blend_spec)})
+
+# Load and blend voices
+voices = []
+weights = []
+for name, weight in voice_blend.items():
+    v = load_voice_tensor(f"{{local_dir}}/voices/{{name}}.safetensors")
+    voices.append(v)
+    weights.append(weight)
+
+blended = sum(w * v for w, v in zip(weights, voices))
+blend_path = f"{{local_dir}}/voices/{blend_name}.safetensors"
+save_file({{"voice": np.array(blended)}}, blend_path)
+print(blend_path)
+'''
+    try:
+        result = subprocess.run(
+            [mlx_python, "-c", code],
+            capture_output=True, text=True, timeout=30
+        )
+        if result.returncode == 0:
+            return result.stdout.strip()
+    except (subprocess.SubprocessError, OSError, TimeoutError):
+        pass
+    
+    return None
+
+
+def generate_mlx_audio(text: str, output_path: str, audio_format: str, config: dict) -> str:
+    """Generate audio using mlx-audio (MLX backend for Kokoro — fastest on Apple Silicon)."""
+    try:
+        wav_path = output_path.replace('.mp3', '.wav') if output_path.endswith('.mp3') else output_path
+        if not wav_path.endswith('.wav'):
+            wav_path = output_path + '.wav'
+
+        mlx_python, mlx_dir = find_mlx_audio(config)
+        if not mlx_python:
+            raise Exception("mlx-audio not found. Falling back to Kokoro PyTorch.")
+
+        mlx_config = config.get("mlx_audio", {})
+        model = mlx_config.get("model", "mlx-community/Kokoro-82M-bf16")
+        voice = mlx_config.get("voice", "af_heart")
+        voice_blend = mlx_config.get("voice_blend", {})
+        lang_code = mlx_config.get("lang_code", "a")
+        speed = mlx_config.get("speed", 1.0)
+
+        # If voice_blend is configured, create/load blended voice
+        if voice_blend and len(voice_blend) > 1:
+            blended_path = _get_or_create_mlx_blended_voice(mlx_python, voice_blend, model)
+            if blended_path:
+                voice = blended_path
+
+        safe_text = json.dumps(text)
+        safe_wav_path = json.dumps(wav_path)
+
+        code = f'''
+import os
+from mlx_audio.tts.generate import generate_audio
+
+text = {safe_text}
+wav_path = {safe_wav_path}
+output_dir = os.path.dirname(wav_path)
+file_prefix = os.path.splitext(os.path.basename(wav_path))[0]
+
+generate_audio(
+    text=text,
+    model={json.dumps(model)},
+    voice={json.dumps(voice)},
+    lang_code={json.dumps(lang_code)},
+    speed={json.dumps(speed)},
+    output_path=output_dir,
+    file_prefix=file_prefix,
+    audio_format="wav",
+    join_audio=True,
+    verbose=False,
+)
+print("OK")
+'''
+        result = subprocess.run(
+            [mlx_python, "-c", code],
+            capture_output=True, text=True, timeout=300
+        )
+
+        if result.returncode == 0 and os.path.exists(wav_path):
+            if audio_format == "mp3":
+                base = output_path[:-4] if output_path.endswith(('.mp3', '.wav')) else output_path
+                mp3_path = base + '.mp3'
+                subprocess.run(
+                    ["ffmpeg", "-y", "-i", wav_path, "-b:a", "128k", mp3_path],
+                    capture_output=True, check=True
+                )
+                os.remove(wav_path)
+                return mp3_path
+            return wav_path
+        else:
+            raise Exception(f"mlx-audio failed: {result.stderr[:300]}")
+
+    except Exception as e:
+        print(f"   mlx-audio failed, falling back to Kokoro PyTorch: {e}")
+        return generate_kokoro_audio(text, output_path, audio_format, config)
 
 
 KOKORO_DEPS = {
@@ -665,11 +893,16 @@ def find_kokoro(use_cache: bool = True, config: dict = None) -> tuple[str | None
     """
     Find Kokoro installation efficiently.
     Returns (python_path, kokoro_dir).
+    
+    Checks (in order):
+    1. Config cache (instant)
+    2. Venv at ~/.openclaw/tools/kokoro/.venv (pip install)
+    3. System Python with kokoro importable
+    4. Legacy locations (cloned repos)
     """
     if config is None:
         config = load_config()
     kokoro_dir = os.path.expanduser("~/.openclaw/tools/kokoro")
-    ml_env_python = os.path.expanduser("~/.openclaw/tools/ml-env/bin/python")
     
     # 1. Check cache first (instant)
     if use_cache:
@@ -678,47 +911,61 @@ def find_kokoro(use_cache: bool = True, config: dict = None) -> tuple[str | None
         cached_dir = cached.get("path")
         
         if cached_python and cached_dir:
-            # Verify cached python still exists
             if cached_python == "system":
                 cached_python = sys.executable
-            if os.path.exists(cached_python) and os.path.exists(cached_dir):
+            if os.path.exists(cached_python):
                 return cached_python, cached_dir
     
-    # 2. Check if kokoro repo exists
-    if not os.path.exists(kokoro_dir):
-        # Try other known locations
-        for alt_dir in ["/tmp/kokoro-coreml", os.path.expanduser("~/kokoro-coreml")]:
-            if os.path.exists(alt_dir):
-                kokoro_dir = alt_dir
-                break
-        else:
-            return None, None  # No kokoro repo found
+    # 2. Check venv at standard location (clean pip install)
+    venv_python = os.path.join(kokoro_dir, ".venv", "bin", "python3")
+    if os.path.exists(venv_python):
+        try:
+            result = subprocess.run(
+                [venv_python, "-c", "from kokoro import KPipeline; print('ok')"],
+                capture_output=True, timeout=10
+            )
+            if result.returncode == 0:
+                _save_kokoro_cache(venv_python, kokoro_dir, "venv")
+                return venv_python, kokoro_dir
+        except (subprocess.SubprocessError, OSError, TimeoutError):
+            pass
     
-    # 3. Find working Python (in order of preference)
-    pythons_to_try = [
-        (sys.executable, "system"),           # System Python (best - no overhead)
-        (ml_env_python, "ml-env"),            # Shared ML env
+    # 3. Check system Python
+    if _check_python_has_deps(sys.executable):
+        try:
+            result = subprocess.run(
+                [sys.executable, "-c", "from kokoro import KPipeline; print('ok')"],
+                capture_output=True, timeout=10
+            )
+            if result.returncode == 0:
+                _save_kokoro_cache(sys.executable, kokoro_dir, "system")
+                return sys.executable, kokoro_dir
+        except (subprocess.SubprocessError, OSError, TimeoutError):
+            pass
+    
+    # 4. Legacy: check old locations (cloned repos, shared ML env)
+    legacy_locations = [
+        kokoro_dir,
+        "/tmp/kokoro-coreml",
+        os.path.expanduser("~/kokoro-coreml"),
+        os.path.expanduser("~/.local/share/kokoro"),
     ]
+    ml_env_python = os.path.expanduser("~/.openclaw/tools/ml-env/bin/python")
     
-    # Also check legacy venv inside kokoro
-    legacy_venv = os.path.join(kokoro_dir, ".venv", "bin", "python")
-    if os.path.exists(legacy_venv):
-        pythons_to_try.append((legacy_venv, "legacy-venv"))
-    
-    for python_path, source in pythons_to_try:
-        if not os.path.exists(python_path):
+    for loc in legacy_locations:
+        if not os.path.exists(loc):
             continue
-        
-        # Check if this Python has deps AND can import kokoro
-        if _check_python_has_deps(python_path):
+        for python_path, source in [(ml_env_python, "ml-env"), (sys.executable, "system")]:
+            if not os.path.exists(python_path):
+                continue
             try:
                 result = subprocess.run(
                     [python_path, "-c", "from kokoro import KPipeline; print('ok')"],
-                    capture_output=True, timeout=10, cwd=kokoro_dir
+                    capture_output=True, timeout=10, cwd=loc
                 )
                 if result.returncode == 0:
-                    _save_kokoro_cache(python_path, kokoro_dir, source)
-                    return python_path, kokoro_dir
+                    _save_kokoro_cache(python_path, loc, source)
+                    return python_path, loc
             except (subprocess.SubprocessError, OSError, TimeoutError):
                 pass
     
@@ -773,7 +1020,7 @@ import json
 
 pipeline = KPipeline(lang_code='a')
 
-voice_blend = json.loads({json.dumps(safe_voice_blend)})
+voice_blend = json.loads({safe_voice_blend!r})
 speed = {safe_speed}
 
 # Try to load custom voice blend, fall back to default
@@ -798,11 +1045,16 @@ sf.write(wav_path, full_audio, 24000)
 print("OK")
 '''
         # Run from kokoro directory so local module is found
-        result = subprocess.run([kokoro_python, "-c", code], capture_output=True, text=True, timeout=300, cwd=kokoro_dir)
+        # cwd=kokoro_dir for legacy cloned repos where kokoro is a local module
+        run_kwargs = {"capture_output": True, "text": True, "timeout": 300}
+        if os.path.exists(os.path.join(kokoro_dir, "kokoro", "__init__.py")):
+            run_kwargs["cwd"] = kokoro_dir
+        result = subprocess.run([kokoro_python, "-c", code], **run_kwargs)
 
         if result.returncode == 0 and os.path.exists(wav_path):
             if audio_format == "mp3":
-                mp3_path = output_path if output_path.endswith('.mp3') else output_path.replace('.wav', '.mp3')
+                base = output_path[:-4] if output_path.endswith(('.mp3', '.wav')) else output_path
+                mp3_path = base + '.mp3'
                 subprocess.run(["ffmpeg", "-y", "-i", wav_path, "-b:a", "128k", mp3_path],
                              capture_output=True, check=True)
                 os.remove(wav_path)
@@ -819,7 +1071,9 @@ print("OK")
 def generate_builtin_audio(text: str, output_path: str, audio_format: str) -> str:
     """Generate audio using macOS say command (fallback)."""
     import tempfile
-    wav_path = output_path.replace('.mp3', '.wav')
+    wav_path = output_path.replace('.mp3', '.wav') if output_path.endswith('.mp3') else output_path
+    if not wav_path.endswith('.wav'):
+        wav_path = output_path + '.wav'
 
     # Write text to temp file to avoid CLI argument length limits
     with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as tf:
@@ -839,7 +1093,8 @@ def generate_builtin_audio(text: str, output_path: str, audio_format: str) -> st
             os.remove(text_file)
 
     if audio_format == "mp3":
-        mp3_path = output_path
+        base = output_path[:-4] if output_path.endswith(('.mp3', '.wav')) else output_path
+        mp3_path = base + '.mp3'
         try:
             subprocess.run(["ffmpeg", "-y", "-i", wav_path, "-b:a", "128k", mp3_path],
                          capture_output=True, check=True)
@@ -858,7 +1113,7 @@ def process_single_url(url: str, config: dict, quiet: bool = False) -> tuple[str
     Returns: (source_path, output_path, error_message)
     Temp files go to /tmp, final output uses config folder.
     """
-    source_path, output_path, error = prepare_source_data(url, "/tmp", quiet)
+    source_path, output_path, error = prepare_source_data(url, _get_temp_dir(), quiet)
     
     if error:
         if not quiet:
@@ -893,6 +1148,9 @@ def main():
     parser.add_argument("--queue-next", action="store_true", help="Process next item in queue")
     # Cleanup
     parser.add_argument("--cleanup", metavar="VIDEO_ID", help="Remove temp files for video ID")
+    # Audio generation from text
+    parser.add_argument("--generate-audio", metavar="TEXT_FILE", help="Generate audio from a text file (reads file, uses TTS config)")
+    parser.add_argument("--audio-output", metavar="PATH", help="Output path for generated audio (used with --generate-audio)")
     
     args = parser.parse_args()
     
@@ -910,6 +1168,30 @@ def main():
     output_dir = args.output_dir or os.path.expanduser(config.get("output", {}).get("folder", "~/Documents/TubeScribe"))
     os.makedirs(output_dir, exist_ok=True)
     
+    # Audio generation from text file
+    if args.generate_audio:
+        text_file = args.generate_audio
+        if not os.path.exists(text_file):
+            print(f"❌ File not found: {text_file}")
+            sys.exit(1)
+        with open(text_file, 'r') as f:
+            text = f.read().strip()
+        if not text:
+            print(f"❌ File is empty: {text_file}")
+            sys.exit(1)
+        audio_output = args.audio_output or os.path.join(output_dir, "summary")
+        try:
+            result = generate_audio_summary(text, audio_output, config)
+        except Exception as e:
+            print(f"❌ Audio generation failed: {e}")
+            sys.exit(1)
+        if result:
+            print(f"✅ Audio: {result}")
+        else:
+            print("❌ Audio generation failed")
+            sys.exit(1)
+        return
+
     # Cleanup operation
     if args.cleanup:
         if cleanup_temp_files(args.cleanup, args.quiet):
@@ -988,38 +1270,44 @@ def main():
 QUEUE_FILE = os.path.expanduser("~/.tubescribe/queue.json")
 
 
+@contextmanager
+def _locked_queue():
+    """Context manager for atomic queue read-modify-write with file locking."""
+    os.makedirs(os.path.dirname(QUEUE_FILE), exist_ok=True)
+    fd = os.open(QUEUE_FILE, os.O_RDWR | os.O_CREAT, 0o644)
+    try:
+        if _HAS_FCNTL:
+            fcntl.flock(fd, fcntl.LOCK_EX)
+        content = b''
+        while True:
+            chunk = os.read(fd, 4096)
+            if not chunk:
+                break
+            content += chunk
+        try:
+            data = json.loads(content.decode('utf-8')) if content.strip() else {"current": None, "queue": []}
+        except json.JSONDecodeError:
+            data = {"current": None, "queue": []}
+
+        yield data
+
+        # Write back (only reached if no exception in with-block)
+        os.ftruncate(fd, 0)
+        os.lseek(fd, 0, os.SEEK_SET)
+        os.write(fd, json.dumps(data, indent=2).encode('utf-8'))
+    finally:
+        os.close(fd)
+
+
 def load_queue() -> dict:
-    """Load queue from file with advisory locking."""
+    """Load queue from file (read-only, no locking)."""
     if os.path.exists(QUEUE_FILE):
         try:
-            fd = os.open(QUEUE_FILE, os.O_RDONLY)
-            try:
-                fcntl.flock(fd, fcntl.LOCK_SH)
-                with os.fdopen(fd, 'r') as f:
-                    fd = -1  # fdopen owns the fd now
-                    return json.load(f)
-            finally:
-                if fd >= 0:
-                    os.close(fd)
+            with open(QUEUE_FILE, 'r') as f:
+                return json.load(f)
         except (json.JSONDecodeError, IOError, OSError):
             pass
     return {"current": None, "queue": []}
-
-
-def save_queue(data: dict):
-    """Save queue to file with advisory locking."""
-    os.makedirs(os.path.dirname(QUEUE_FILE), exist_ok=True)
-    fd = os.open(QUEUE_FILE, os.O_WRONLY | os.O_CREAT, 0o644)
-    try:
-        fcntl.flock(fd, fcntl.LOCK_EX)
-        os.ftruncate(fd, 0)
-        os.lseek(fd, 0, os.SEEK_SET)
-        with os.fdopen(fd, 'w') as f:
-            fd = -1  # fdopen owns the fd now
-            json.dump(data, f, indent=2)
-    finally:
-        if fd >= 0:
-            os.close(fd)
 
 
 def add_to_queue(url: str, title: str = None) -> int:
@@ -1027,62 +1315,59 @@ def add_to_queue(url: str, title: str = None) -> int:
     if not is_youtube_url(url):
         print(ERROR_MESSAGES["invalid_url"])
         return 0
-    
-    data = load_queue()
-    entry = {
-        "url": url,
-        "title": title,
-        "added": datetime.now().astimezone().isoformat()
-    }
-    data["queue"].append(entry)
-    save_queue(data)
-    
-    position = len(data["queue"])
-    if data["current"]:
-        position += 1
-    
+
+    with _locked_queue() as data:
+        entry = {
+            "url": url,
+            "title": title,
+            "added": datetime.now().astimezone().isoformat()
+        }
+        data["queue"].append(entry)
+        position = len(data["queue"])
+        if data["current"]:
+            position += 1
+
     print(f"📋 Added to queue (position {position})")
     return position
 
 
 def pop_from_queue() -> str | None:
     """Get next URL from queue."""
-    data = load_queue()
-    if not data["queue"]:
-        return None
-    
-    entry = data["queue"].pop(0)
-    data["current"] = entry
-    save_queue(data)
-    return entry["url"]
+    with _locked_queue() as data:
+        if not data["queue"]:
+            return None
+        entry = data["queue"].pop(0)
+        data["current"] = entry
+        return entry["url"]
 
 
 def clear_current():
     """Clear current processing item."""
-    data = load_queue()
-    data["current"] = None
-    save_queue(data)
+    with _locked_queue() as data:
+        data["current"] = None
 
 
 def clear_queue():
     """Clear entire queue."""
-    save_queue({"current": None, "queue": []})
+    with _locked_queue() as data:
+        data["current"] = None
+        data["queue"] = []
     print("📋 Queue cleared")
 
 
 def show_queue_status():
     """Show queue status."""
     data = load_queue()
-    
+
     print("📋 TubeScribe Queue")
     print("─" * 40)
-    
+
     if data["current"]:
         title = data["current"].get("title") or data["current"]["url"][:50]
         print(f"▶️  Processing: {title}")
     else:
         print("▶️  Processing: (none)")
-    
+
     if data["queue"]:
         print(f"\n📝 Queued ({len(data['queue'])}):")
         for i, entry in enumerate(data["queue"], 1):
@@ -1094,33 +1379,29 @@ def show_queue_status():
 
 def is_processing(config: dict = None) -> bool:
     """Check if currently processing."""
-    data = load_queue()
-    if not data["current"]:
-        return False
-
-    # Get stale timeout from config
     if config is None:
         config = load_config()
     stale_minutes = config.get("queue", {}).get("stale_minutes", 30)
-    
-    # Check if stale
-    try:
-        added_str = data["current"].get("added", "")
-        if added_str:
-            # Parse ISO format and ensure timezone-aware comparison
-            added = datetime.fromisoformat(added_str.replace("Z", "+00:00"))
-            now = datetime.now().astimezone()
-            # Ensure both are timezone-aware for correct comparison
-            if added.tzinfo is None:
-                added = added.astimezone()
-            if now - added > timedelta(minutes=stale_minutes):
-                # Stale, clear it
-                clear_current()
-                return False
-    except (ValueError, TypeError):
-        pass
-    
-    return True
+
+    with _locked_queue() as data:
+        if not data["current"]:
+            return False
+
+        # Check if stale
+        try:
+            added_str = data["current"].get("added", "")
+            if added_str:
+                added = datetime.fromisoformat(added_str.replace("Z", "+00:00"))
+                now = datetime.now().astimezone()
+                if added.tzinfo is None:
+                    added = added.astimezone()
+                if now - added > timedelta(minutes=stale_minutes):
+                    data["current"] = None
+                    return False
+        except (ValueError, TypeError):
+            pass
+
+        return True
 
 
 if __name__ == "__main__":

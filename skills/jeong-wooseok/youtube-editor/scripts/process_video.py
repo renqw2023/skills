@@ -7,6 +7,9 @@ import argparse
 import subprocess
 import shutil
 import re
+import html
+import ipaddress
+from urllib.parse import urlparse
 from datetime import datetime
 from openai import OpenAI
 from rembg import remove
@@ -18,6 +21,43 @@ def setup_env():
         print("Error: OPENAI_API_KEY environment variable is not set.")
         exit(1)
 
+
+def _is_private_or_local_host(hostname: str) -> bool:
+    if not hostname:
+        return True
+    host = hostname.strip().lower()
+    if host in {"localhost", "127.0.0.1", "::1"}:
+        return True
+    try:
+        ip = ipaddress.ip_address(host)
+        return ip.is_private or ip.is_loopback or ip.is_link_local
+    except ValueError:
+        return False
+
+
+def validate_youtube_url(url: str) -> bool:
+    try:
+        parsed = urlparse(url)
+    except Exception:
+        return False
+
+    if parsed.scheme not in {"http", "https"}:
+        return False
+
+    host = (parsed.hostname or "").lower()
+    if _is_private_or_local_host(host):
+        return False
+
+    allowed_hosts = {
+        "youtube.com",
+        "www.youtube.com",
+        "m.youtube.com",
+        "youtu.be",
+        "www.youtu.be",
+    }
+    return host in allowed_hosts or host.endswith(".youtube.com")
+
+
 def extract_audio(input_file, output_audio):
     print(f"🎬 Extracting audio from {input_file}...")
     cmd = [
@@ -26,7 +66,7 @@ def extract_audio(input_file, output_audio):
         output_audio
     ]
     try:
-        subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=900)
     except FileNotFoundError:
         print("Error: FFmpeg not found. Please install ffmpeg.")
         exit(1)
@@ -95,19 +135,14 @@ def analyze_content(transcript_text):
 
 def generate_image(prompt, output_file, input_image=None):
     print(f"🎨 Generating image: {prompt}")
-    
+
+    script_dir = os.path.dirname(os.path.abspath(__file__))
     possible_paths = [
-        "../nano-banana-pro/scripts/generate_image.py", 
-        os.path.join(os.getcwd(), "skills/nano-banana-pro/scripts/generate_image.py"),
-        os.path.expanduser("~/.openclaw/workspace/skills/nano-banana-pro/scripts/generate_image.py")
+        os.path.expanduser("~/.openclaw/workspace/skills/nano-banana-pro/scripts/generate_image.py"),
+        os.path.abspath(os.path.join(script_dir, "../../nano-banana-pro/scripts/generate_image.py")),
     ]
-    
-    skill_path = None
-    for p in possible_paths:
-        if os.path.exists(p):
-            skill_path = p
-            break
-            
+
+    skill_path = next((p for p in possible_paths if os.path.exists(p)), None)
     if not skill_path:
         print("⚠️ Nano Banana Pro skill not found.")
         return False
@@ -129,7 +164,7 @@ def generate_image(prompt, output_file, input_image=None):
         cmd.extend(["--api-key", api_key])
         
     try:
-        subprocess.run(cmd, check=True)
+        subprocess.run(cmd, check=True, timeout=900)
         return True
     except subprocess.CalledProcessError:
         print("⚠️ Image generation failed.")
@@ -166,6 +201,11 @@ def render_thumbnail(title, sub_title, author, avatar_path, output_file):
         avatar_html = f'<img src="{os.path.abspath(avatar_path)}" class="lobster-img">'
     else:
         avatar_html = ""
+
+    # Escape user/model-generated text before embedding into HTML.
+    title_safe = html.escape(title or "")
+    subtitle_safe = html.escape(sub_title or "")
+    author_safe = html.escape(author or "")
 
     html_content = f"""
     <!DOCTYPE html>
@@ -247,11 +287,11 @@ def render_thumbnail(title, sub_title, author, avatar_path, output_file):
     </style>
     </head>
     <body>
-        <div class="author">{author}</div>
+        <div class="author">{author_safe}</div>
         <div class="overlay"></div>
         <div class="text-container">
-            <h3>{sub_title}</h3>
-            <h1>{title}</h1>
+            <h3>{subtitle_safe}</h3>
+            <h1>{title_safe}</h1>
             <h2>AI 파트너와 함께하는 생산성 혁명</h2>
         </div>
         {avatar_html}
@@ -268,7 +308,7 @@ def render_thumbnail(title, sub_title, author, avatar_path, output_file):
         with sync_playwright() as p:
             browser = p.chromium.launch()
             page = browser.new_page(viewport={"width": 1280, "height": 720})
-            page.goto(f"file://{html_path}")
+            page.goto(f"file://{os.path.abspath(html_path)}")
             page.screenshot(path=output_file)
             browser.close()
         print(f"✅ Thumbnail saved to {output_file}")
@@ -296,8 +336,8 @@ def main():
     if args.url:
         print(f"📥 Downloading from URL: {args.url}")
         video_path = os.path.join(output_dir, "downloaded_video.mp4")
-        if not re.match(r'^https?://', args.url):
-            print("Error: Invalid URL")
+        if not validate_youtube_url(args.url):
+            print("Error: Invalid or unsafe URL. Only YouTube URLs are allowed.")
             return
         try:
             import yt_dlp

@@ -118,3 +118,9 @@ On each heartbeat:
 
 ## 라이선스
 MIT
+
+## 문의 / Feedback
+
+버그 리포트, 기능 요청, 피드백은 아래로 보내주세요.
+- Email: contact@garibong.dev
+- Developer: Garibong Labs (가리봉랩스)

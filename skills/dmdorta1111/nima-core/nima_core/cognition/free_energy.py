@@ -104,13 +104,43 @@ class SchemaBasedModel:
             try:
                 from ..utils import safe_torch_load
                 data = safe_torch_load(schema_file)
-                theme = data.get('theme', schema_file.stem)
-                self.schemas[theme] = data['vector']
-                self.schema_metadata[theme] = {
-                    'strength': data.get('strength', 0.5),
-                    'distinctness': data.get('distinctness', 0.5),
-                    'created_at': data.get('created_at', ''),
-                }
+                
+                # Handle both old format (raw tensor) and new format (dict)
+                if isinstance(data, dict):
+                    # New format: dict with metadata
+                    theme = data.get('theme', schema_file.stem)
+                    vector = data['vector']
+                    metadata = {
+                        'strength': data.get('strength', 0.5),
+                        'distinctness': data.get('distinctness', 0.5),
+                        'created_at': data.get('created_at', ''),
+                    }
+                else:
+                    # Old format: raw tensor - try to load metadata from JSON
+                    theme = schema_file.stem
+                    vector = data
+                    
+                    # Try to load metadata from corresponding JSON file
+                    json_path = schema_file.with_suffix('.json')
+                    if json_path.exists():
+                        import json
+                        with open(json_path, 'r') as f:
+                            json_data = json.load(f)
+                        metadata = {
+                            'strength': json_data.get('strength', 0.5),
+                            'distinctness': json_data.get('distinctness', 0.5),
+                            'created_at': json_data.get('created_at', ''),
+                        }
+                    else:
+                        metadata = {
+                            'strength': 0.5,
+                            'distinctness': 0.5,
+                            'created_at': '',
+                        }
+                
+                self.schemas[theme] = vector
+                self.schema_metadata[theme] = metadata
+                
             except Exception as e:
                 logger.warning(f"Could not load schema {schema_file}: {e}")
         

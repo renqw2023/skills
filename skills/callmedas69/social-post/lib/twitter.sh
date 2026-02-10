@@ -3,10 +3,32 @@
 
 TWITTER_POST_SCRIPT="/home/phan_harry/.openclaw/workspace/scripts/twitter-post.sh"
 
+# Get credentials based on TWITTER_ACCOUNT env var
+get_twitter_credentials() {
+  source /home/phan_harry/.openclaw/.env
+  
+  if [ "$TWITTER_ACCOUNT" = "oxdasx" ]; then
+    export X_CONSUMER_KEY="$OXDASX_API_KEY"
+    export X_CONSUMER_SECRET="$OXDASX_API_KEY_SECRET"
+    export X_ACCESS_TOKEN="$OXDASX_ACCESS_TOKEN"
+    export X_ACCESS_TOKEN_SECRET="$OXDASX_ACCESS_TOKEN_SECRET"
+    export X_USERNAME="0xdasx"
+  else
+    # Default to mr_crtee
+    export X_CONSUMER_KEY="${X_CONSUMER_KEY}"
+    export X_CONSUMER_SECRET="${X_CONSUMER_SECRET}"
+    export X_ACCESS_TOKEN="${X_ACCESS_TOKEN}"
+    export X_ACCESS_TOKEN_SECRET="${X_ACCESS_TOKEN_SECRET}"
+    export X_USERNAME="${X_USERNAME:-mr_crtee}"
+  fi
+}
+
 # Post text-only to Twitter
 twitter_post_text() {
   local text="$1"
   local reply_to_id="$2"
+  
+  get_twitter_credentials
   
   if [ ! -f "$TWITTER_POST_SCRIPT" ]; then
     echo "Error: Twitter post script not found at $TWITTER_POST_SCRIPT" >&2
@@ -15,8 +37,6 @@ twitter_post_text() {
   
   if [ -n "$reply_to_id" ]; then
     # Post as reply (for threads)
-    source /home/phan_harry/.openclaw/.env
-    
     python3 - "$text" "$reply_to_id" <<'EOF'
 import requests
 from requests_oauthlib import OAuth1
@@ -67,7 +87,7 @@ twitter_upload_image() {
   fi
   
   # Load credentials
-  source /home/phan_harry/.openclaw/.env
+  get_twitter_credentials
   
   # Upload to Twitter media endpoint
   local upload_response=$(python3 - "$image_path" <<'EOF'
@@ -124,9 +144,7 @@ twitter_post_with_image() {
   
   echo "Image uploaded (media_id: $media_id)" >&2
   
-  # Post with media_id
-  source /home/phan_harry/.openclaw/.env
-  
+  # Post with media_id (credentials already loaded)
   python3 - "$text" "$media_id" <<'EOF'
 import requests
 from requests_oauthlib import OAuth1

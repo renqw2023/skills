@@ -1,11 +1,17 @@
 {
   "owner": "fumarole16-afk",
   "slug": "ai-bill-intelligence",
-  "displayName": "AI Bill Intelligence",
+  "displayName": "Ai Bill Clawhub",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1770547153537,
-    "commit": "https://github.com/openclaw/skills/commit/cdd932a2b1bc715e27e7ee1e1fd022773eddcd8d"
+    "version": "2.0.0",
+    "publishedAt": 1770727709016,
+    "commit": "https://github.com/openclaw/skills/commit/baf02138a0a152ea301ad71f57b07e915e083934"
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1770547153537,
+      "commit": "https://github.com/openclaw/skills/commit/cdd932a2b1bc715e27e7ee1e1fd022773eddcd8d"
+    }
+  ]
 }

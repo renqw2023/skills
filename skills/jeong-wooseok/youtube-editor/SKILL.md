@@ -1,7 +1,7 @@
 ---
 name: youtube-editor
 description: Automate YouTube video editing workflow: Download -> Transcribe (Whisper) -> Analyze (GPT-4) -> High-Quality Thumbnail (Korean & Character Consistency).
-version: 1.0.10
+version: 1.0.12
 author: Flux
 ---
 
@@ -23,6 +23,10 @@ This skill automates the boring parts of video production, now with **Full Korea
     - **Custom Fonts:** Paperlogy ExtraBold included.
     - **Background Removal:** Automatically removes background from the generated character.
     - **Layout:** Professional Black & Gold design.
+- **🛡️ Security Hardening (v1.0.11):**
+    - YouTube URL allowlist validation (blocks localhost/private-network targets)
+    - HTML-escaped text rendering in thumbnail templates
+    - Safer fixed Nano Banana script resolution + subprocess timeout
 
 ---
 

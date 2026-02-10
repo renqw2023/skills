@@ -1,7 +1,7 @@
 ---
 name: nima-core
 description: Biologically-inspired cognitive memory for AI agents. Panksepp affects, Free Energy consolidation, VSA binding, sparse retrieval, temporal prediction, metacognition. Website - https://nima-core.ai
-version: 1.1.3
+version: 1.1.8
 metadata:
   {
     "openclaw":

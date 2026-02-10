@@ -1,13 +1,18 @@
 {
   "owner": "mrsirg97-rgb",
   "slug": "torchmarket",
-  "displayName": "torch.market",
+  "displayName": "Torch Market",
   "latest": {
-    "version": "3.0.5",
-    "publishedAt": 1770594931538,
-    "commit": "https://github.com/openclaw/skills/commit/28f76c59b57def49fe80050446e661705f9db9e5"
+    "version": "3.0.9",
+    "publishedAt": 1770693807129,
+    "commit": "https://github.com/openclaw/skills/commit/9deefd81f783794c4d4802a2684f1778204a9e84"
   },
   "history": [
+    {
+      "version": "3.0.5",
+      "publishedAt": 1770594931538,
+      "commit": "https://github.com/openclaw/skills/commit/28f76c59b57def49fe80050446e661705f9db9e5"
+    },
     {
       "version": "2.0.5",
       "publishedAt": 1770516117920,

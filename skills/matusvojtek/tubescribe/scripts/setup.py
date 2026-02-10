@@ -27,6 +27,7 @@ from config import (
 from tubescribe import (
     find_ytdlp as _find_ytdlp,
     find_kokoro as _find_kokoro,
+    find_mlx_audio as _find_mlx_audio,
     KOKORO_DEPS,
 )
 
@@ -151,6 +152,12 @@ def check_kokoro() -> bool:
     return found
 
 
+def check_mlx_audio() -> bool:
+    """Check if mlx-audio is installed and working."""
+    python_path, _ = _find_mlx_audio()
+    return python_path is not None
+
+
 def run_checks() -> dict:
     """Run all dependency checks and return results."""
     return {
@@ -162,6 +169,7 @@ def run_checks() -> dict:
             "pandoc": check_pandoc(),
         },
         "audio": {
+            "mlx_audio": check_mlx_audio(),
             "kokoro": check_kokoro(),
             "ffmpeg": check_command("ffmpeg"),
         },
@@ -180,10 +188,12 @@ def print_status(name: str, installed: bool, required: bool = False):
 
 
 def determine_config(checks: dict) -> dict:
-    """Determine best config based on available dependencies."""
-    from config import deep_copy, DEFAULT_CONFIG
-    
-    config = deep_copy(DEFAULT_CONFIG)
+    """Determine best config based on available dependencies.
+    Starts from existing user config to preserve customizations,
+    falls back to defaults for missing keys."""
+    from config import deep_copy, deep_merge, DEFAULT_CONFIG
+
+    config = deep_merge(deep_copy(DEFAULT_CONFIG), load_config())
     
     # Document format: DOCX if possible, else HTML
     if checks["document"]["pandoc"]:
@@ -199,8 +209,10 @@ def determine_config(checks: dict) -> dict:
     else:
         config["audio"]["format"] = "wav"
     
-    # TTS engine: Kokoro if available, else builtin
-    if checks["audio"]["kokoro"]:
+    # TTS engine: mlx-audio (fastest) > Kokoro PyTorch > builtin
+    if checks["audio"]["mlx_audio"]:
+        config["audio"]["tts_engine"] = "mlx"
+    elif checks["audio"]["kokoro"]:
         config["audio"]["tts_engine"] = "kokoro"
     else:
         config["audio"]["tts_engine"] = "builtin"
@@ -288,7 +300,10 @@ def install_pandoc() -> bool:
                     target = os.path.realpath(os.path.join(tools_dir, member.name))
                     if not target.startswith(os.path.realpath(tools_dir)):
                         raise ValueError(f"Unsafe tar entry: {member.name}")
-                t.extractall(tools_dir)
+                extract_kwargs = {"path": tools_dir}
+                if sys.version_info >= (3, 12):
+                    extract_kwargs["filter"] = "data"
+                t.extractall(**extract_kwargs)
 
         # Find and move the binary
         extracted_dir = os.path.join(tools_dir, f"pandoc-{version}")
@@ -395,95 +410,177 @@ def install_ytdlp() -> bool:
         return False
 
 
-def install_kokoro() -> bool:
-    """Install Kokoro TTS with maximum efficiency.
+def is_apple_silicon() -> bool:
+    """Check if running on Apple Silicon (M1/M2/M3/M4)."""
+    import platform
+    return platform.system() == "Darwin" and platform.machine() == "arm64"
+
+
+def install_mlx_audio() -> bool:
+    """Install mlx-audio in a dedicated venv at ~/.openclaw/tools/mlx-audio/.
     
-    Strategy:
-    1. Check if system Python has all deps → use directly (no venv!)
-    2. If some missing → offer to pip install just those
-    3. If user declines → offer isolated env as fallback
+    Only works on Apple Silicon (requires MLX framework).
+    Creates a Python venv, installs mlx-audio + dependencies.
     """
-    kokoro_dir = get_kokoro_path()
-    ml_env = get_ml_env_path()
-    tools_dir = os.path.dirname(kokoro_dir)
-    legacy_venv = os.path.join(kokoro_dir, ".venv")
+    import platform
+    
+    if not is_apple_silicon():
+        print("  ❌ mlx-audio requires Apple Silicon (M1/M2/M3/M4)")
+        print("     Use Kokoro TTS (PyTorch) instead.")
+        return False
+    
+    mlx_dir = os.path.expanduser("~/.openclaw/tools/mlx-audio")
+    venv_dir = os.path.join(mlx_dir, ".venv")
     
     try:
-        os.makedirs(tools_dir, exist_ok=True)
+        os.makedirs(mlx_dir, exist_ok=True)
         
-        # Step 1: Check what ML deps we already have in system Python
-        print("  → Checking system Python for ML dependencies...")
-        deps = check_ml_deps()
-        missing = [pkg for pkg, installed in deps.items() if not installed]
-        present = [pkg for pkg, installed in deps.items() if installed]
+        # Find a suitable Python (3.10-3.12 work best with MLX)
+        python_candidates = [
+            "/usr/local/bin/python3.12",
+            "/opt/homebrew/bin/python3.12",
+            "/opt/homebrew/bin/python3.13",
+            sys.executable,
+        ]
+        python_bin = None
+        for p in python_candidates:
+            if os.path.exists(p):
+                python_bin = p
+                break
         
-        if present:
-            print(f"  ✓ Found: {', '.join(present)}")
+        if not python_bin:
+            print("  ❌ No suitable Python found")
+            return False
         
-        if not missing:
-            print("  ✅ All ML dependencies available in system Python!")
-            print("  → No virtual environment needed.")
+        # Create venv
+        if not os.path.exists(venv_dir):
+            print(f"  → Creating venv with {os.path.basename(python_bin)}...")
+            subprocess.run([python_bin, "-m", "venv", venv_dir], check=True)
+        
+        venv_pip = os.path.join(venv_dir, "bin", "pip")
+        venv_python = os.path.join(venv_dir, "bin", "python3")
+        
+        # Install mlx-audio + deps
+        print("  → Installing mlx-audio (this may take a minute)...")
+        subprocess.run(
+            [venv_pip, "install", "--quiet", "mlx-audio", "misaki", "num2words",
+             "spacy", "espeakng_loader"],
+            check=True
+        )
+        
+        # Patch misaki/espeak.py if homebrew espeak-ng is available
+        brew_lib = "/opt/homebrew/lib/libespeak-ng.dylib"
+        if os.path.exists(brew_lib):
+            import glob
+            espeak_files = glob.glob(os.path.join(venv_dir, "lib", "python3.*",
+                                                   "site-packages", "misaki", "espeak.py"))
+            for espeak_py in espeak_files:
+                with open(espeak_py, 'r') as f:
+                    content = f.read()
+                if "espeakng_loader.get_data_path()" in content and "/opt/homebrew" not in content:
+                    print("  → Patching misaki for homebrew espeak-ng...")
+                    content = content.replace(
+                        "EspeakWrapper.set_library(espeakng_loader.get_library_path())\n"
+                        "# Change data_path as needed when editing espeak-ng phonemes\n"
+                        "EspeakWrapper.set_data_path(espeakng_loader.get_data_path())",
+                        
+                        "import os as _os\n"
+                        "_brew_lib = '/opt/homebrew/lib/libespeak-ng.dylib'\n"
+                        "_brew_data = '/opt/homebrew/share/espeak-ng-data'\n"
+                        "if _os.path.exists(_brew_lib):\n"
+                        "    EspeakWrapper.set_library(_brew_lib)\n"
+                        "    EspeakWrapper.data_path = _brew_data\n"
+                        "else:\n"
+                        "    EspeakWrapper.set_library(espeakng_loader.get_library_path())\n"
+                        "    EspeakWrapper.data_path = espeakng_loader.get_data_path()"
+                    )
+                    with open(espeak_py, 'w') as f:
+                        f.write(content)
+        
+        # Verify it works
+        print("  → Verifying mlx-audio...")
+        result = subprocess.run(
+            [venv_python, "-c", "from mlx_audio.tts.generate import generate_audio; print('OK')"],
+            capture_output=True, text=True, timeout=30
+        )
+        
+        if result.returncode == 0 and "OK" in result.stdout:
+            print("  ✅ mlx-audio installed and working!")
+            print(f"  📁 Location: {mlx_dir}")
+            print("  ℹ️  Kokoro model (~345MB) will download on first use")
+            return True
         else:
-            print(f"  ✗ Missing: {', '.join(missing)}")
+            print(f"  ❌ Verification failed: {result.stderr[:200]}")
+            return False
         
-        # Step 2: Clone kokoro repo if needed
-        if not os.path.exists(kokoro_dir):
-            print("  → Cloning Kokoro repository...")
-            subprocess.run(
-                ["git", "clone", "https://github.com/lucasnewman/kokoro-coreml.git", kokoro_dir],
-                check=True
-            )
-        else:
-            print("  ✓ Kokoro repo already exists")
-        
-        # Step 2b: Clean up legacy venv if exists and system has all deps
-        if os.path.exists(legacy_venv) and not missing:
-            print(f"  ℹ️  Found legacy venv at {legacy_venv}")
-            if prompt_yn("    Remove it (system Python has all deps)?"):
-                shutil.rmtree(legacy_venv)
-                print("  ✓ Legacy venv removed")
-        
-        # Step 3: Install missing dependencies
-        if missing:
-            size_note = " (~2GB for PyTorch)" if "torch" in missing else ""
-            print(f"  → Installing {', '.join(missing)}{size_note}...")
-            
-            try:
-                # Try system Python first
-                subprocess.run(
-                    [sys.executable, "-m", "pip", "install"] + missing,
-                    check=True
-                )
-                print("  ✅ Installed to system Python")
-            except subprocess.CalledProcessError:
-                # Fallback to isolated environment
-                print("  ⚠️  System install failed, creating isolated environment...")
-                if not os.path.exists(ml_env):
-                    subprocess.run([sys.executable, "-m", "venv", ml_env], check=True)
-                
-                ml_pip = os.path.join(ml_env, "bin", "pip")
-                subprocess.run([ml_pip, "install"] + missing, check=True)
-                print(f"  ✅ ML environment ready at {ml_env}")
-        
-        # Step 4: Verify it works
-        print("  → Verifying Kokoro...")
-        python_path, _ = get_python_for_kokoro()
-        if python_path:
-            result = subprocess.run(
-                [python_path, "-c", "from kokoro import KPipeline; print('OK')"],
-                capture_output=True, text=True, cwd=kokoro_dir
-            )
-            if result.returncode == 0:
-                print("  ✅ Kokoro installed and working!")
-                print(f"  📁 Repo: {kokoro_dir}")
-                print(f"  🐍 Python: {python_path}")
-                if python_path == sys.executable:
-                    print("  ℹ️  Using system Python (no venv overhead)")
-                print("  ℹ️  Voice model (~326MB) will download on first use")
-                return True
-        
-        print("  ❌ Verification failed")
+    except subprocess.CalledProcessError as e:
+        print(f"  ❌ Installation failed: {e}")
         return False
+    except Exception as e:
+        print(f"  ❌ Error: {e}")
+        return False
+
+
+def install_kokoro() -> bool:
+    """Install Kokoro TTS (PyTorch) in a clean venv.
+    
+    Creates ~/.openclaw/tools/kokoro/.venv with kokoro + torch.
+    No git clone needed — kokoro is available on PyPI.
+    """
+    kokoro_dir = get_kokoro_path()
+    venv_dir = os.path.join(kokoro_dir, ".venv")
+    
+    try:
+        os.makedirs(kokoro_dir, exist_ok=True)
+        
+        # Find a suitable Python
+        python_candidates = [
+            "/usr/local/bin/python3.12",
+            "/opt/homebrew/bin/python3.12",
+            "/opt/homebrew/bin/python3.13",
+            sys.executable,
+        ]
+        python_bin = None
+        for p in python_candidates:
+            if os.path.exists(p):
+                python_bin = p
+                break
+        
+        if not python_bin:
+            print("  ❌ No suitable Python found")
+            return False
+        
+        # Create venv
+        if not os.path.exists(venv_dir):
+            print(f"  → Creating venv with {os.path.basename(python_bin)}...")
+            subprocess.run([python_bin, "-m", "venv", venv_dir], check=True)
+        
+        venv_pip = os.path.join(venv_dir, "bin", "pip")
+        venv_python = os.path.join(venv_dir, "bin", "python3")
+        
+        # Install kokoro + deps (~500MB for PyTorch)
+        print("  → Installing Kokoro + PyTorch (this may take a few minutes)...")
+        subprocess.run(
+            [venv_pip, "install", "--quiet", "kokoro", "soundfile", "torch",
+             "misaki", "num2words", "spacy"],
+            check=True
+        )
+        
+        # Verify it works
+        print("  → Verifying Kokoro...")
+        result = subprocess.run(
+            [venv_python, "-c", "from kokoro import KPipeline; print('OK')"],
+            capture_output=True, text=True, timeout=30
+        )
+        
+        if result.returncode == 0 and "OK" in result.stdout:
+            print("  ✅ Kokoro installed and working!")
+            print(f"  📁 Location: {kokoro_dir}")
+            print("  ℹ️  Voice model (~326MB) will download on first use")
+            return True
+        else:
+            print(f"  ❌ Verification failed: {result.stderr[:200]}")
+            return False
         
     except subprocess.CalledProcessError as e:
         print(f"  ❌ Installation failed: {e}")
@@ -526,6 +623,7 @@ def main(check_only: bool = False, quiet: bool = False):
         print("\nDocument output:")
         print_status("pandoc", checks["document"]["pandoc"])
         print("\nAudio output:")
+        print_status("mlx-audio", checks["audio"]["mlx_audio"])
         print_status("kokoro", checks["audio"]["kokoro"])
         print_status("ffmpeg", checks["audio"]["ffmpeg"])
         
@@ -553,7 +651,12 @@ def main(check_only: bool = False, quiet: bool = False):
         
         audio_format = config["audio"]["format"]
         tts_engine = config["audio"]["tts_engine"]
-        audio_note = " (high-quality voices)" if tts_engine == "kokoro" else " (built-in macOS voice)"
+        if tts_engine == "mlx":
+            audio_note = " (MLX — fastest on Apple Silicon)"
+        elif tts_engine == "kokoro":
+            audio_note = " (Kokoro PyTorch)"
+        else:
+            audio_note = " (built-in macOS voice)"
         print(f"  🔊 Audio:    {audio_format.upper()}{audio_note}")
         print(f"  📁 Output:   {config['output']['folder']}")
     
@@ -579,16 +682,28 @@ def main(check_only: bool = False, quiet: bool = False):
             "config_update": lambda c: c["audio"].update({"format": "mp3"}),
         })
     
-    if not checks["audio"]["kokoro"]:
-        missing_upgrades.append({
-            "name": "Kokoro TTS",
-            "desc": "High-quality voices",
-            "why": "Natural-sounding speech instead of robotic macOS voice",
-            "brew": None,
-            "installer": install_kokoro,
-            "install_note": "Requires ~500MB download (one-time)",
-            "config_update": lambda c: c["audio"].update({"tts_engine": "kokoro"}),
-        })
+    if not checks["audio"]["mlx_audio"] and not checks["audio"]["kokoro"]:
+        # Neither TTS backend available — offer the best one for this platform
+        if is_apple_silicon():
+            missing_upgrades.append({
+                "name": "mlx-audio",
+                "desc": "High-quality voices (MLX — fastest on Apple Silicon)",
+                "why": "Natural-sounding speech, 3-4x faster than PyTorch on M-series chips",
+                "brew": None,
+                "installer": install_mlx_audio,
+                "install_note": "Requires ~900MB download (one-time)",
+                "config_update": lambda c: c["audio"].update({"tts_engine": "mlx"}),
+            })
+        else:
+            missing_upgrades.append({
+                "name": "Kokoro TTS",
+                "desc": "High-quality voices (PyTorch)",
+                "why": "Natural-sounding speech instead of robotic macOS voice",
+                "brew": None,
+                "installer": install_kokoro,
+                "install_note": "Requires ~500MB download (one-time)",
+                "config_update": lambda c: c["audio"].update({"tts_engine": "kokoro"}),
+            })
     
     if not checks["comments"]["yt-dlp"]:
         missing_upgrades.append({

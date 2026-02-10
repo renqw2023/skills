@@ -314,9 +314,7 @@ response = requests.get(
 | 429 | Rate limited (10 req/sec per account) |
 | 4xx/5xx | Passthrough error from Google Forms API |
 
-### Troubleshooting: Invalid API Key
-
-**When you receive a "Invalid API key" error, ALWAYS follow these steps before concluding there is an issue:**
+### Troubleshooting: API Key Issues
 
 1. Check that the `MATON_API_KEY` environment variable is set:
 
@@ -335,6 +333,13 @@ print(json.dumps(json.load(urllib.request.urlopen(req)), indent=2))
 EOF
 ```
 
+### Troubleshooting: Invalid App Name
+
+1. Ensure your URL path starts with `google-forms`. For example:
+
+- Correct: `https://gateway.maton.ai/google-forms/v1/forms/{formId}`
+- Incorrect: `https://gateway.maton.ai/forms/v1/forms/{formId}`
+
 ## Resources
 
 - [Forms API Overview](https://developers.google.com/workspace/forms/api/reference/rest)
@@ -342,3 +347,5 @@ EOF
 - [Create Form](https://developers.google.com/workspace/forms/api/reference/rest/v1/forms/create)
 - [Batch Update](https://developers.google.com/workspace/forms/api/reference/rest/v1/forms/batchUpdate)
 - [List Responses](https://developers.google.com/workspace/forms/api/reference/rest/v1/forms.responses/list)
+- [Maton Community](https://discord.com/invite/dBfFAcefs2)
+- [Maton Support](mailto:support@maton.ai)

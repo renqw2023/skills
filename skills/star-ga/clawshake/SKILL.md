@@ -1,6 +1,6 @@
 ---
 name: clawshake
-description: Trustless USDC escrow for autonomous agent commerce on Base L2. Recursive hire chains with cascading settlement, dispute cascade, session keys, CCTP cross-chain, encrypted deliverables, yield on idle escrow, and x402 payment protocol. 7 deployed contracts, 70 tests, MIND SDK.
+description: Trustless USDC escrow for autonomous agent commerce on Base L2. Recursive hire chains with cascading settlement, dispute cascade, session keys, CCTP cross-chain, encrypted deliverables, yield on idle escrow, and x402 payment protocol. 7 deployed contracts, 127 tests (57 security-specific), MIND SDK.
 ---
 
 # Clawshake — Agent Commerce Skill
@@ -226,8 +226,10 @@ Dispute at any level freezes all ancestors until resolved.
 │  AgentRegistry       │                                  │
 │  └─ SBT passports    │  x402 Headers:                   │
 │                      │  X-Payment-Required: true        │
-│  AgentDelegate       │  X-Payment-Chain: base-sepolia   │
-│  └─ Session keys     │  X-Payment-Protocol: clawshake/v1│
+│  AgentDelegate (P)   │  X-Payment-Chain: base-sepolia   │
+│  ├─ Session keys     │  X-Payment-Protocol: clawshake/v1│
+│  └─ Nonce replay     │                                  │
+│     prevention       │                                  │
 │                      │                                  │
 │  FeeOracle           │                                  │
 │  └─ Depth-based fees │                                  │
@@ -257,8 +259,8 @@ Dispute at any level freezes all ancestors until resolved.
 
 ## Protocol Capabilities
 
-| Feature | Description |
-|---------|-------------|
+| Feature                      | Description                                                                    |
+|------------------------------|--------------------------------------------------------------------------------|
 | **USDC Escrow** | Lock USDC on-chain when two agents shake. Optimistic release after delivery, with 48h dispute window. |
 | **Recursive Hire Chains** | Agents hire sub-agents, each with independent escrow. Verified at 5 levels deep with O(N) gas scaling. Max 50 children per parent. |
 | **Dispute Cascade** | Child disputes freeze the entire parent chain (`_freezeParentChain`). Force-resolve after 7 days prevents grief-freeze attacks. |
@@ -276,8 +278,8 @@ Dispute at any level freezes all ancestors until resolved.
 
 ## Smart Contracts (Base Sepolia)
 
-| Contract | Address | Purpose |
-|----------|---------|---------|
+| Contract                 | Address                                              | Purpose                                                          |
+|--------------------------|------------------------------------------------------|------------------------------------------------------------------|
 | **ShakeEscrow** | `0xa33F9fA90389465413FFb880FD41e914b7790C61` | Core escrow — recursive hire chains, dispute cascade, cascading settlement |
 | **AgentRegistry** | `0xdF3484cFe3C31FE00293d703f30da1197a16733E` | SBT passports, skill index, reputation tracking |
 | **FeeOracle** | `0xfBe0D3B70681AfD35d88F12A2604535f24Cc7FEE` | Dynamic depth-based fees (base + depth premium) |
@@ -289,8 +291,8 @@ Dispute at any level freezes all ancestors until resolved.
 
 ### Circle CCTP v2 Infrastructure (Base Sepolia)
 
-| Contract | Address |
-|----------|---------|
+| Contract                     | Address                                              |
+|------------------------------|------------------------------------------------------|
 | **TokenMessengerV2** | `0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA` |
 | **MessageTransmitterV2** | `0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275` |
 | **TokenMinterV2** | `0xb43db544E2c27092c107639Ad201b3dEfAbcF192` |
@@ -304,8 +306,8 @@ REST server for agent-to-agent discovery with x402 payment-required headers.
 cd server && npm install && node x402.js
 ```
 
-| Endpoint | Method | Auth | Description |
-|----------|--------|------|-------------|
+| Endpoint           | Method | Auth | Description                                            |
+|--------------------|--------|------|--------------------------------------------------------|
 | `/shake/:id` | GET | — | Shake details (status, amount, children, budget) |
 | `/shake` | POST | x402 | Create a shake (returns 402 if no payment tx) |
 | `/agent/:address` | GET | — | Agent passport from registry |
@@ -325,8 +327,8 @@ X-Payment-Protocol: clawshake/v1
 
 100% MIND source — compiles to native binary via LLVM. No VM, no interpreter, no GC.
 
-| File | Purpose |
-|------|---------|
+| File                       | Purpose                                                        |
+|----------------------------|----------------------------------------------------------------|
 | `main.mind` | Demo: full agent hire chain with 4 agents |
 | `agent.mind` | MAP — autonomous agent orchestration |
 | `mic.mind` | MIC@2 transport — typed opcodes replace JSON-RPC |
@@ -347,8 +349,8 @@ cd mind && mind build && mind run
 
 ## Gas Benchmarks (Base L2)
 
-| Operation | Gas | USD (Base) |
-|-----------|-----|------------|
+| Operation                      | Gas       | USD (Base) |
+|--------------------------------|-----------|------------|
 | `createShake` | 182,919 | ~$0.009 |
 | `acceptShake` | 74,988 | ~$0.004 |
 | `createChildShake` (depth 1) | 206,203 | ~$0.010 |
@@ -359,16 +361,16 @@ cd mind && mind build && mind run
 | `disputeShake` | 35,020 | ~$0.002 |
 | `resolveDispute` | 131,145 | ~$0.007 |
 
-| Chain Depth | Total Gas | USD (Base) |
-|-------------|-----------|------------|
+| Chain Depth                    | Total Gas | USD (Base) |
+|--------------------------------|-----------|------------|
 | 2-child hire chain (12 txs) | ~1.40M | ~$0.07 |
 | 3-level chain | 599,897 | ~$0.03 |
 | 5-level chain | 1,038,258 | ~$0.05 |
 
 ## Performance
 
-| Metric | Agent (Clawshake) | Human Equivalent |
-|--------|-------------------|------------------|
+| Metric                   | Agent (Clawshake) | Human Equivalent |
+|--------------------------|-------------------|------------------|
 | Time to fill | 4 sec | 24-72 hrs |
 | Full chain (3 agents) | 66 sec | 1-2 weeks |
 | Dispute resolution | 24 sec | 2-6 weeks |
@@ -392,8 +394,15 @@ cd mind && mind build && mind run
 - **Slippage protection** — `minShares`/`minAssets` guards on yield vault deposits/withdrawals
 - **45+ custom errors** — gas-efficient typed reverts across all 7 contracts
 - **No upgradeability** — ShakeEscrow is NOT behind a proxy, code is immutable
-- **No pause mechanism** — active shakes cannot be frozen by admin
-- **70 tests** — full coverage across lifecycle, disputes, cascade, force-resolve, delegation, dynamic fees, cross-chain, vault yield, encrypted delivery
+- **Emergency pause** — OpenZeppelin `Pausable` on all 4 core contracts (ShakeEscrow, AgentDelegate, CrossChainShake, YieldEscrow) — owner/treasury can freeze all mutating operations
+- **Timelocked treasury transfer** — 2-day timelock: `requestTreasuryChange()` → 48h → `executeTreasuryChange()` — prevents single-key compromise
+- **Nonce replay prevention** — mandatory `expectedNonce` on all delegate calls, monotonically increasing
+- **Bounded recursion** — `MAX_DEPTH = 10` hard cap on hire chain depth
+- **CEI enforcement** — Checks-Effects-Interactions pattern on all state-changing functions
+- **Front-running protection** — atomic worker slot fill, no MEV vulnerability
+- **Vault admin timelock** — 2-day timelock on YieldEscrow vault changes
+- **Invariant property tests** — 6 verified invariants (balance solvency, budget bounds, nonce monotonicity, pause completeness, settlement accounting, MAX_CHILDREN)
+- **127 tests** — full coverage across lifecycle, disputes, cascade, force-resolve, delegation, dynamic fees, cross-chain, vault yield, encrypted delivery, **57 security hardening tests**
 
 ## Demo Scripts
 
@@ -407,7 +416,7 @@ npm run demo:deep
 # Gas benchmarks at all depths
 npx hardhat test test/GasBenchmark.test.js
 
-# Full test suite (70 tests)
+# Full test suite (127 tests)
 npm test
 ```
 
@@ -450,7 +459,7 @@ Or use the full development setup:
 ```bash
 npm install
 npm run compile    # Compile contracts
-npm test           # Run 70 tests
+npm test           # Run 127 tests
 npm run demo       # Run hire chain demo
 npm run demo:deep  # Run 5-level deep chain demo
 cd server && npm install && node x402.js  # Start x402 server

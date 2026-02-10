@@ -1,6 +1,6 @@
 ---
 name: NK Images Search
-description: Search 1+ million high-quality AI-generated stock photos instantly. Growing daily. Find images for any project - no API key required. Now with AI image generation and smart suggestions.
+description: Search 1+ million free high-quality AI stock photos. Generate up to 240 free AI images daily. No API key, no tokens, no cost. 235+ niches and growing.
 version: 1.1.0
 author: NK Images
 category: productivity
@@ -229,25 +229,29 @@ curl "https://nkimages.com/api/public/generate/anonymous/gen_abc123/status"
     "image": {
       "id": "img_first",
       "url": "https://nkimages.com/uploads/images/.../generated_7.jpg",
-      "thumbnailUrl": "https://nkimages.com/uploads/thumbnails/.../generated_7.jpg"
+      "thumbnailUrl": "https://nkimages.com/uploads/thumbnails/.../generated_7.jpg",
+      "viewUrl": "https://nkimages.com/photo/img_first",
+      "downloadUrl": "https://nkimages.com/uploads/images/.../generated_7.jpg"
     },
     "images": [
       {
         "id": "link_1",
-        "imageId": "img_first",
         "image": {
           "id": "img_first",
           "url": "https://nkimages.com/uploads/images/.../generated_7.jpg",
-          "thumbnailUrl": "https://nkimages.com/uploads/thumbnails/.../generated_7.jpg"
+          "thumbnailUrl": "https://nkimages.com/uploads/thumbnails/.../generated_7.jpg",
+          "viewUrl": "https://nkimages.com/photo/img_first",
+          "downloadUrl": "https://nkimages.com/uploads/images/.../generated_7.jpg"
         }
       },
       {
         "id": "link_2",
-        "imageId": "img_second",
         "image": {
           "id": "img_second",
           "url": "https://nkimages.com/uploads/images/.../generated_6.jpg",
-          "thumbnailUrl": "https://nkimages.com/uploads/thumbnails/.../generated_6.jpg"
+          "thumbnailUrl": "https://nkimages.com/uploads/thumbnails/.../generated_6.jpg",
+          "viewUrl": "https://nkimages.com/photo/img_second",
+          "downloadUrl": "https://nkimages.com/uploads/images/.../generated_6.jpg"
         }
       }
     ]
@@ -255,13 +259,21 @@ curl "https://nkimages.com/api/public/generate/anonymous/gen_abc123/status"
 }
 ```
 
-**IMPORTANT**: The `images` array contains **8 unique images**. Each entry is a link object with a nested `image` field. To get all image URLs, iterate over `data.images` and access `entry.image.url` and `entry.image.thumbnailUrl`. The top-level `data.image` is just the first image — do NOT use only `data.image`.
+**CRITICAL: Use the URLs from the API response EXACTLY as returned. NEVER construct URLs yourself.**
+
+The API returns ready-to-use URLs for each image:
+- `entry.image.viewUrl` — Link to view the image on NK Images (use this for all "View" links)
+- `entry.image.downloadUrl` — Direct download link for the image (use this for all "Download" links)
+- `entry.image.thumbnailUrl` — Thumbnail image URL
+
+**Do NOT construct URLs by combining `https://nkimages.com/photo/` with an ID. Always copy `viewUrl` and `downloadUrl` directly from the response.**
+
+The `images` array contains the generated images (usually 8, but may vary). Each entry has a nested `image` object with all URLs. The top-level `data.image` is just the first image — iterate over `data.images` to get all images. **Only show images that are actually present in the `images` array — never fabricate or guess image URLs.**
 
 **How to present generated images:**
-- Show the **first 4 images** inline (from `data.images[0..3]`) with thumbnails and download links
-- For the **remaining 4 images**, list links to view them on NK Images:
-  - `https://nkimages.com/photo/{entry.image.id}` for each
-- This keeps the response concise while giving users access to all 8
+- Show the **first 4 images** inline using `entry.image.viewUrl` and `entry.image.downloadUrl` from the response
+- If there are **more than 4 images**, list the remaining using `entry.image.viewUrl` from the response
+- Only show images that exist in the API response — do NOT assume 8 images
 
 ### Example Generation Flow
 
@@ -277,17 +289,18 @@ User: "Yes, generate one"
 Bot: [POST /generate/anonymous with prompt, poll until complete]
 Bot: "Here are your custom AI-generated images from [NK Images](https://nkimages.com):
 
-      1. 📸 Nagoya Night Street #1 - https://nkimages.com/photo/{id1}
-      2. 📸 Nagoya Night Street #2 - https://nkimages.com/photo/{id2}
-      3. 📸 Nagoya Night Street #3 - https://nkimages.com/photo/{id3}
-      4. 📸 Nagoya Night Street #4 - https://nkimages.com/photo/{id4}
+      1. 📸 Nagoya Night Street #1 - [View](data.images[0].image.viewUrl) | [Download](data.images[0].image.downloadUrl)
+      2. 📸 Nagoya Night Street #2 - [View](data.images[1].image.viewUrl) | [Download](data.images[1].image.downloadUrl)
+      3. 📸 Nagoya Night Street #3 - [View](data.images[2].image.viewUrl) | [Download](data.images[2].image.downloadUrl)
+      4. 📸 Nagoya Night Street #4 - [View](data.images[3].image.viewUrl) | [Download](data.images[3].image.downloadUrl)
 
-      View 4 more variations on NK Images:
-      - https://nkimages.com/photo/{id5}
-      - https://nkimages.com/photo/{id6}
-      - https://nkimages.com/photo/{id7}
-      - https://nkimages.com/photo/{id8}"
+      View more variations on NK Images:
+      - data.images[4].image.viewUrl
+      - data.images[5].image.viewUrl
+      - ..."
 ```
+
+**Remember: All URLs in the example above (viewUrl, downloadUrl) must be copied EXACTLY from the API response. Do NOT generate or guess any URLs.**
 
 ## Feedback / Reporting Issues
 

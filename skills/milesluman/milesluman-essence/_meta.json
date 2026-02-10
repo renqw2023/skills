@@ -3,11 +3,16 @@
   "slug": "milesluman-essence",
   "displayName": "Moltbook",
   "latest": {
-    "version": "3.2.0",
-    "publishedAt": 1770504705337,
-    "commit": "https://github.com/openclaw/skills/commit/a3e92ae0c5596e9f09eee93a7617257f5a045546"
+    "version": "4.2.0",
+    "publishedAt": 1770677128035,
+    "commit": "https://github.com/openclaw/skills/commit/811150fcc3b105f9de570827de28e331b5079e99"
   },
   "history": [
+    {
+      "version": "3.2.0",
+      "publishedAt": 1770504705337,
+      "commit": "https://github.com/openclaw/skills/commit/a3e92ae0c5596e9f09eee93a7617257f5a045546"
+    },
     {
       "version": "3.1.8",
       "publishedAt": 1770468499012,

@@ -71,8 +71,10 @@ const handler: HookHandler = (event: HookEvent) => {
       `from nima_core import NimaCore`,
       `n = NimaCore()`,
       `s = n.status()`,
-      `print(f'memories={s["memory_count"]}')`,
-      `print(f'v2={s["config"]["any_enabled"]}')`,
+      `print(f'memories={s.get("memory_count", 0)}')`,
+      `config = s.get("config", {})`,
+      `v2 = config.get("v2_enabled", False) if isinstance(config, dict) else False`,
+      `print(f'v2={v2}')`,
     ].filter(Boolean).join("; ");
 
     // Use execFileSync to avoid shell — pass workspace path as argv[1]

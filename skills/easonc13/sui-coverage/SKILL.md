@@ -13,6 +13,8 @@ metadata:
 
 Analyze and automatically improve Sui Move test coverage with security analysis.
 
+**GitHub:** <https://github.com/EasonC13-agent/sui-skills/tree/main/sui-coverage>
+
 ## Prerequisites
 
 ### Install Sui CLI
@@ -33,8 +35,8 @@ sui --version
 ## Quick Reference
 
 ```bash
-# Location of tools
-SKILL_DIR=~/clawd/skills/sui-coverage
+# Location of tools (adjust to your skill installation path)
+SKILL_DIR=<your-workspace>/skills/sui-coverage
 
 # Full workflow
 cd /path/to/move/package
@@ -49,7 +51,7 @@ python3 $SKILL_DIR/analyze_source.py -m <module> -o coverage.md
 ```bash
 cd <package_path>
 sui move test --coverage --trace
-python3 ~/clawd/skills/sui-coverage/analyze_source.py -m <module_name> -o coverage.md
+python3 $SKILL_DIR/analyze_source.py -m <module_name> -o coverage.md
 ```
 
 ### Step 2: Read the Coverage Report
@@ -99,7 +101,7 @@ fun test_<function>_when_<condition_false>() { ... }
 
 ```bash
 sui move test --coverage --trace
-python3 ~/clawd/skills/sui-coverage/analyze_source.py -m <module_name>
+python3 $SKILL_DIR/analyze_source.py -m <module_name>
 ```
 
 ---
@@ -109,7 +111,7 @@ python3 ~/clawd/skills/sui-coverage/analyze_source.py -m <module_name>
 ### 1. analyze_source.py (Primary Tool)
 
 ```bash
-python3 ~/clawd/skills/sui-coverage/analyze_source.py --module <name> [options]
+python3 $SKILL_DIR/analyze_source.py --module <name> [options]
 
 Options:
   -m, --module    Module name (required)
@@ -123,7 +125,7 @@ Options:
 
 ```bash
 sui move coverage lcov
-python3 ~/clawd/skills/sui-coverage/analyze.py lcov.info -f "<package>" -s sources/
+python3 $SKILL_DIR/analyze.py lcov.info -f "<package>" -s sources/
 
 Options:
   -f, --filter       Filter by path pattern
@@ -135,7 +137,7 @@ Options:
 ### 3. parse_bytecode.py (Low-level)
 
 ```bash
-sui move coverage bytecode --module <name> | python3 ~/clawd/skills/sui-coverage/parse_bytecode.py
+sui move coverage bytecode --module <name> | python3 $SKILL_DIR/parse_bytecode.py
 ```
 
 ---
@@ -237,9 +239,9 @@ fun test_invalid_input() { ... }
 
 ```bash
 # 1. Analyze current coverage
-cd ~/project/my_package
+cd /path/to/my_package
 sui move test --coverage --trace
-python3 ~/clawd/skills/sui-coverage/analyze_source.py -m my_module -o coverage.md
+python3 $SKILL_DIR/analyze_source.py -m my_module -o coverage.md
 
 # 2. Review what's missing
 cat coverage.md
@@ -252,7 +254,7 @@ cat coverage.md
 
 # 4. Verify improvement
 sui move test --coverage --trace
-python3 ~/clawd/skills/sui-coverage/analyze_source.py -m my_module
+python3 $SKILL_DIR/analyze_source.py -m my_module
 
 # 5. Repeat until 100% coverage
 ```
@@ -408,7 +410,7 @@ fun test_total_supply_invariant() {
 ```bash
 # 1. Coverage analysis
 sui move test --coverage --trace
-python3 ~/clawd/skills/sui-coverage/analyze_source.py -m <module> -o coverage.md
+python3 $SKILL_DIR/analyze_source.py -m <module> -o coverage.md
 
 # 2. While writing tests, document security findings
 # Create SECURITY.md alongside coverage.md
@@ -423,12 +425,19 @@ python3 ~/clawd/skills/sui-coverage/analyze_source.py -m <module> -o coverage.md
 
 ## Related Skills
 
-This skill works great with the Sui development skill suite:
+This skill is part of the Sui development skill suite:
 
-- **sui-decompile**: Fetch and read on-chain contract source code. Decompile a protocol, then write tests to verify your understanding.
-- **sui-move**: Write and deploy Move smart contracts. Use coverage analysis to ensure your code is production-ready.
+| Skill | Description |
+|-------|-------------|
+| [sui-decompile](https://clawhub.ai/EasonC13/sui-decompile) | Fetch and read on-chain contract source code |
+| [sui-move](https://clawhub.ai/EasonC13/sui-move) | Write and deploy Move smart contracts |
+| **sui-coverage** | Analyze test coverage with security analysis |
+| [sui-agent-wallet](https://clawhub.ai/EasonC13/sui-agent-wallet) | Build and test DApps frontend |
 
-**Typical workflow:**
-1. `sui-decompile` - Study how a contract works
-2. `sui-move` - Write your own implementation
-3. `sui-coverage` - Achieve 100% test coverage with security analysis
+**Workflow:**
+```
+sui-decompile → sui-move → sui-coverage → sui-agent-wallet
+    Study        Write      Test & Audit   Build DApps
+```
+
+All skills: <https://github.com/EasonC13-agent/sui-skills>

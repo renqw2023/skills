@@ -408,32 +408,41 @@ class NimaCore:
         what: str,
         importance: float = 0.5,
         memory_type: str = "conversation",
-    ) -> bool:
+    ) -> Dict[str, Any]:
         """
         Explicitly capture a memory (bypasses FE gate).
-        
+
         Args:
             who: Who said/did it
             what: What happened
             importance: Importance score [0-1]
             memory_type: Type tag
-        
+
         Returns:
-            True if captured successfully
+            Dict with stored, who, what, importance, timestamp
         """
+        result = {
+            "who": who,
+            "what": what,
+            "importance": importance,
+            "stored": False,
+            "timestamp": datetime.now().isoformat(),
+        }
         try:
             self._store_memory({
                 "who": who,
                 "what": what,
                 "importance": importance,
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": result["timestamp"],
                 "type": memory_type,
                 "context": "explicit",
             })
-            return True
+            result["stored"] = True
         except Exception as e:
             logger.error(f"Capture failed: {e}")
-            return False
+            result["error"] = str(e)
+
+        return result
     
     def synthesize(
         self,
@@ -442,7 +451,7 @@ class NimaCore:
         sparked_by: str = "",
         importance: float = 0.85,
         max_chars: int = 280,
-    ) -> bool:
+    ) -> Dict[str, Any]:
         """
         Capture a synthesized insight — lightweight by design.
 
@@ -458,16 +467,25 @@ class NimaCore:
             max_chars: Max length for insight text (default 280, like a tweet)
 
         Returns:
-            True if captured successfully
+            Dict with stored, insight, domain, sparked_by, importance, timestamp
 
         Example:
             nima.synthesize(
                 "Mercy (eleison) shares root with olive oil (elaion) — "
                 "not legal pardon but healing ointment.",
                 domain="theology",
-                sparked_by="Melissa",
+                sparked_by="user",
             )
         """
+        result = {
+            "insight": insight,
+            "domain": domain,
+            "sparked_by": sparked_by,
+            "importance": importance,
+            "stored": False,
+            "timestamp": datetime.now().isoformat(),
+        }
+
         # Enforce brevity — truncate with ellipsis if over limit
         if len(insight) > max_chars:
             base = insight[: max_chars - 3]
@@ -475,6 +493,7 @@ class NimaCore:
             if " " in base:
                 base = base.rsplit(" ", 1)[0]
             insight = base + "..."
+            result["insight"] = insight  # Update with truncated version
             logger.info(f"Synthesis truncated to {max_chars} chars")
 
         # Build compact memory
@@ -487,16 +506,19 @@ class NimaCore:
             self._store_memory({
                 "who": self.name,
                 "what": what,
-                "importance": min(importance, 0.95),  # Cap at 0.95
-                "timestamp": datetime.now().isoformat(),
+                "importance": importance,
+                "timestamp": result["timestamp"],
                 "type": "synthesis",
-                "context": "insight",
+                "context": "synthesis",
                 "domain": domain,
+                "sparked_by": sparked_by,
             })
-            return True
+            result["stored"] = True
         except Exception as e:
-            logger.error(f"Synthesis capture failed: {e}")
-            return False
+            logger.error(f"Synthesis failed: {e}")
+            result["error"] = str(e)
+
+        return result
 
     def dream(self, hours: int = 24, deep: bool = False) -> Dict:
         """

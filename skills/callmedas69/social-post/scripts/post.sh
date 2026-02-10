@@ -12,6 +12,7 @@ source "$LIB_DIR/twitter.sh"
 source "$LIB_DIR/farcaster.sh"
 source "$LIB_DIR/threads.sh"
 source "$LIB_DIR/links.sh"
+source "$LIB_DIR/variation.sh"
 
 # Defaults
 POST_TWITTER=false
@@ -22,7 +23,9 @@ DRY_RUN=false
 THREAD_MODE=false
 SHORTEN_LINKS=false
 AUTO_CONFIRM=false
+VARY_TEXT=false
 TEXT=""
+TWITTER_ACCOUNT="mr_crtee"  # Default account
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -59,6 +62,14 @@ while [[ $# -gt 0 ]]; do
       AUTO_CONFIRM=true
       shift
       ;;
+    --account)
+      TWITTER_ACCOUNT="$2"
+      shift 2
+      ;;
+    --vary)
+      VARY_TEXT=true
+      shift
+      ;;
     --help|-h)
       cat <<EOF
 Usage: post.sh [OPTIONS] "Your message"
@@ -68,6 +79,8 @@ Post to Twitter and/or Farcaster with text and optional image.
 Options:
   --twitter         Post to Twitter only
   --farcaster       Post to Farcaster only
+  --account <name>  Twitter account (mr_crtee or oxdasx, default: mr_crtee)
+  --vary            Auto-vary text to avoid duplicate content detection
   --image <path>    Attach image
   --truncate        Auto-truncate if over limit
   --thread          Split long text into thread
@@ -77,8 +90,10 @@ Options:
   --help            Show this help
 
 Examples:
-  post.sh "gm!"                                        # Both platforms
-  post.sh --twitter "Twitter only"                     # Twitter only
+  post.sh "gm!"                                        # Both platforms (mr_crtee)
+  post.sh --twitter "Twitter only"                     # Twitter only (mr_crtee)
+  post.sh --account oxdasx --twitter "From 0xdas"      # Twitter as @0xdasx
+  post.sh --vary --twitter "Same text, auto-varied"    # Auto-vary to avoid dupes
   post.sh --farcaster "Farcaster only"                 # Farcaster only
   post.sh --image photo.jpg "Check this out"          # Both with image
   post.sh --thread "Very long text..."                # Auto-thread
@@ -184,17 +199,37 @@ if { [ "$POST_TWITTER" = true ] && [ "$TWITTER_VALID" = false ]; } || \
   fi
 fi
 
+# Apply text variation if --vary flag is set
+if [ "$VARY_TEXT" = true ]; then
+  echo "→ Applying text variation to avoid duplicate content detection..."
+  ORIGINAL_TEXT="$TEXT"
+  TEXT=$(vary_text "$TEXT")
+  echo ""
+fi
+
 # Show draft preview
 echo "=== Draft Preview ==="
 echo ""
-echo "Text to post:"
-echo "─────────────────────────────────────────────"
-echo "$TEXT"
-echo "─────────────────────────────────────────────"
+if [ "$VARY_TEXT" = true ] && [ -n "$ORIGINAL_TEXT" ]; then
+  echo "Original text:"
+  echo "─────────────────────────────────────────────"
+  echo "$ORIGINAL_TEXT"
+  echo "─────────────────────────────────────────────"
+  echo ""
+  echo "Varied text (will be posted):"
+  echo "─────────────────────────────────────────────"
+  echo "$TEXT"
+  echo "─────────────────────────────────────────────"
+else
+  echo "Text to post:"
+  echo "─────────────────────────────────────────────"
+  echo "$TEXT"
+  echo "─────────────────────────────────────────────"
+fi
 [ -n "$IMAGE_PATH" ] && echo "Image: $IMAGE_PATH"
 echo ""
 echo "Targets:"
-[ "$POST_TWITTER" = true ] && echo "  • Twitter"
+[ "$POST_TWITTER" = true ] && echo "  • Twitter (@${TWITTER_ACCOUNT})"
 [ "$POST_FARCASTER" = true ] && echo "  • Farcaster"
 echo ""
 
@@ -220,6 +255,9 @@ elif [ "$AUTO_CONFIRM" = true ]; then
   echo "Auto-confirmed (--yes flag). Proceeding..."
   echo ""
 fi
+
+# Export Twitter account for library to use
+export TWITTER_ACCOUNT
 
 # Post to platforms
 echo "=== Posting ==="

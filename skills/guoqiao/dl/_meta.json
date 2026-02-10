@@ -3,11 +3,16 @@
   "slug": "dl",
   "displayName": "Media Downloader",
   "latest": {
-    "version": "0.0.9",
-    "publishedAt": 1770635575819,
-    "commit": "https://github.com/openclaw/skills/commit/d060199c494c3c310d103b1870c7bd326364b46f"
+    "version": "0.1.0",
+    "publishedAt": 1770686418940,
+    "commit": "https://github.com/openclaw/skills/commit/9a24dc7959e148750aa71166479538b335b45083"
   },
   "history": [
+    {
+      "version": "0.0.9",
+      "publishedAt": 1770635575819,
+      "commit": "https://github.com/openclaw/skills/commit/d060199c494c3c310d103b1870c7bd326364b46f"
+    },
     {
       "version": "0.0.7",
       "publishedAt": 1770596173733,

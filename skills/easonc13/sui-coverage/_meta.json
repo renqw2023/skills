@@ -3,11 +3,16 @@
   "slug": "sui-coverage",
   "displayName": "Sui Coverage",
   "latest": {
-    "version": "1.1.0",
-    "publishedAt": 1770642891851,
-    "commit": "https://github.com/openclaw/skills/commit/e16aa46a66860deb8c88b4b2b82155c18d65e1fd"
+    "version": "1.1.1",
+    "publishedAt": 1770682852782,
+    "commit": "https://github.com/openclaw/skills/commit/737a8c61a950a45cba2eef85430ffdf27e425016"
   },
   "history": [
+    {
+      "version": "1.1.0",
+      "publishedAt": 1770642891851,
+      "commit": "https://github.com/openclaw/skills/commit/e16aa46a66860deb8c88b4b2b82155c18d65e1fd"
+    },
     {
       "version": "1.0.2",
       "publishedAt": 1770553398432,

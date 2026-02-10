@@ -35,10 +35,23 @@ DEFAULT_CONFIG = {
     "audio": {
         "enabled": True,                # Generate audio summary
         "format": "mp3",                # mp3, wav
-        "tts_engine": "builtin",        # builtin (macOS say), kokoro
+        "tts_engine": "mlx",            # mlx (mlx-audio, fastest), kokoro (PyTorch), builtin (macOS say)
     },
     
-    # Kokoro TTS settings (if installed)
+    # MLX-Audio TTS settings (preferred on Apple Silicon)
+    "mlx_audio": {
+        "path": str(Path.home() / ".openclaw" / "tools" / "mlx-audio"),
+        "model": "mlx-community/Kokoro-82M-bf16",
+        "voice": "af_heart",             # Single voice name or path to .safetensors
+        "voice_blend": {                  # Custom voice mix (overrides voice if set)
+            "af_heart": 0.6,
+            "af_sky": 0.4,
+        },
+        "lang_code": "a",
+        "speed": 1.05,                    # Playback speed (1.0 = normal, 1.05 = 5% faster)
+    },
+    
+    # Kokoro TTS settings (PyTorch fallback)
     "kokoro": {
         "path": str(Path.home() / ".openclaw" / "tools" / "kokoro"),
         "voice_blend": {                # Custom voice mix

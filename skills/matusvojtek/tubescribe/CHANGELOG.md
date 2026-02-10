@@ -2,6 +2,108 @@
 
 All notable changes to TubeScribe.
 
+## [1.1.6] - 2026-02-10
+
+### Fixed
+- Wrapped long code line in SKILL.md that caused horizontal scroll on ClawHub page
+
+## [1.1.5] - 2026-02-10
+
+### Added
+- **MLX-Audio TTS backend** — 3-4x faster audio generation on Apple Silicon via Apple's MLX framework
+  - Uses `mlx-community/Kokoro-82M-bf16` — same Kokoro model, native Metal GPU backend
+  - New `mlx_audio` config section for model, voice, language, and speed settings
+  - Custom voice blending support (`voice_blend` config with arbitrary weights, e.g. 60% af_heart + 40% af_sky)
+  - Blended voices cached as `.safetensors` — created once, reused on subsequent runs
+  - Graceful fallback chain: mlx → kokoro (PyTorch) → builtin (macOS say)
+- **`find_mlx_audio()` helper** — detects mlx-audio venv or system install
+- **`_get_or_create_mlx_blended_voice()`** — creates and caches blended voice tensors in HF cache
+- **Setup wizard with platform-aware TTS install** — detects Apple Silicon, offers mlx-audio; offers PyTorch Kokoro on other platforms
+- **`install_mlx_audio()`** — creates venv, installs deps, patches misaki/espeak for homebrew, verifies
+- **`is_apple_silicon()` helper** — platform detection for install decisions
+
+### Changed
+- **Default TTS engine is now `mlx`** — fastest option on Apple Silicon (M1/M2/M3/M4)
+- **TTS engine priority:** `mlx` > `kokoro` > `builtin` (was: `kokoro` > `builtin`)
+- **Config default updated** — `audio.tts_engine` default changed from `builtin` to `mlx`
+- **Kokoro install rewritten** — clean venv + pip install (no more git clone of 2GB repo with CoreML models)
+- **`find_kokoro()` simplified** — checks venv first, then system Python, then legacy locations
+- **SKILL.md** — updated audio generation instructions with mlx-audio commands
+- **`fcntl` import is now conditional** — prevents crash on non-Unix systems; queue locking degrades gracefully to no-op
+- **`determine_config` uses `deep_merge`** — was using shallow `.update()` which could lose nested user customizations
+- **Atomic queue operations** — replaced separate `load_queue()` + `save_queue()` with `_locked_queue()` context manager that holds exclusive lock across read-modify-write
+- **Temp files use per-user directory** — `/tmp/tubescribe-{uid}/` with `0o700` permissions instead of predictable `/tmp/tubescribe_{video_id}_*` paths
+
+### Fixed
+- **Double JSON encoding in Kokoro TTS** — `voice_blend` was double-encoded via `json.dumps(json.dumps(...))`, now uses `!r` repr formatting
+- **Builtin TTS mp3 path handling** — `generate_builtin_audio` could produce wrong filenames when `output_path` didn't end with `.mp3`; now matches the defensive checks in mlx/kokoro generators
+- **HTML injection via raw passthrough** — markdown lines starting with `<` were passed through unescaped; dangerous tags (`script`, `iframe`, `object`, `embed`, `form`, etc.) are now escaped
+- **Recursive fallback in `convert_to_document`** — docx-to-html fallback used a recursive call; replaced with direct HTML generation
+- **Dead code in `install_mlx_audio`** — removed unused `espeak_py` variable that was immediately overwritten by glob
+- **`safe_unescape` replacement order** — backslash escapes were processed in wrong order; `\\n` in input would incorrectly become a newline instead of literal `\n`. Double-backslash replacement now runs first
+- **Hardcoded `max_comments` ignored config** — `prepare_source_data` passed `max_comments=50` directly, ignoring `comments.max_count` from config
+- **`view_count` dropped from source data** — `get_video_metadata` returned `view_count` but `prepare_source_data` didn't include it in the output JSON
+- **Missing `encoding='utf-8'` in `convert_to_document`** — file reads/writes could break on systems where default encoding isn't UTF-8
+- **Unhandled exception in `--generate-audio`** — if all TTS engines failed, raw traceback was shown instead of clean error message
+- **`text=True` missing in `find_mlx_audio`** — subprocess calls were inconsistent with the rest of the codebase
+- **yt-dlp `max_comments` format** — was passing 4 values (undocumented format); now uses correct 5-value format `COUNT,COUNT,0,0,1` per yt-dlp docs (`max-comments,max-parents,max-replies,max-replies-per-thread,max-depth`); `max-depth=1` fetches top-level comments only
+
+### Security
+- **XSS via HTML tag blocklist bypass** — dangerous tags like `<svg onload=...>`, `<img onerror=...>` bypassed the blocklist. Replaced with strict allowlist of safe tags and strips all `on*` event handler attributes
+- **Protocol-relative URL bypass** — URLs like `//evil.com` started with `/` and passed link validation. Now explicitly blocked
+- **TOCTOU race in queue operations** — concurrent processes could corrupt the queue. Fixed with atomic `_locked_queue()` context manager
+- **`tarfile.extractall` without filter** — added `filter='data'` on Python 3.12+ for defense-in-depth against path traversal
+
+### Other
+- **`.gitignore`** — excludes `.DS_Store`, `__pycache__/`, `*.pyc`
+
+### Benchmark (M1 Max, 2026-02-08)
+
+| Text | PyTorch Gen | MLX Gen | Speedup |
+|------|------------|---------|---------|
+| Short (192 chars) | 2.35s | 0.76s | **3.1x** |
+| Long (619 chars) | 8.20s | 2.05s | **4.0x** |
+
+---
+
+## [1.1.4] - 2026-02-08
+
+### Fixed
+- Wrapped long line in SKILL.md that caused horizontal scroll on ClawHub page
+
+---
+
+## [1.1.3] - 2026-02-08
+
+### Fixed
+- **YouTube URL normalization** — `/live/`, `/shorts/` and other non-standard URL formats now handled correctly
+- **False-positive error detection** — error patterns only checked when command actually fails (was triggering on successful runs)
+- **Queue file locking** — proper lock-before-open semantics with `os.open()` + `os.fdopen()` (prevents corruption)
+- **Timezone comparison crash** — stale job detection now ensures timezone-aware datetime comparison
+- **HTML link double-encoding** — URLs with `&` were getting double-escaped; links now extracted before HTML escaping
+- **Built-in TTS for long text** — uses temp file to avoid CLI argument length limits with macOS `say`
+- **HTML headings/tables** — now render bold, italic, and links correctly (was only escaping, not formatting)
+- **Cleanup includes TTS temp files** — removes `_tts.py` alongside source JSON and output markdown
+
+### Security
+- **Zip-slip prevention** — validates zip/tar entries during pandoc/yt-dlp install to prevent path traversal attacks
+- **Single-quote escaping** — added `'` → `&#39;` in HTML escape function
+- **Sub-agent install guard** — SKILL.md now instructs sub-agents to never install software
+
+### Changed
+- **Kokoro voice blend from config** — reads voice blend dict + speed from `~/.tubescribe/config.json` instead of hardcoded values
+- **Config uses nested keys throughout** — `config["audio"]["format"]` instead of flat `config["audio_format"]`
+- **Renamed `config.set()` → `config.set_value()`** — avoids shadowing Python builtin
+- **DRY: setup.py delegates to tubescribe.py** — imports `find_ytdlp`, `find_kokoro`, `KOKORO_DEPS` instead of duplicating
+- **Uses `find_ytdlp()` helper** — multi-path search instead of raw `subprocess.run(["yt-dlp", ...])`
+- **SKILL.md uses relative paths** — portable across installations
+- **TTS respects config** — reads `tts_engine` setting (kokoro/builtin/disabled)
+- **Better error for missing `say`** — FileNotFoundError with helpful message about Kokoro alternative
+- **Removed `live_stream` error pattern** — was unreliable, caused false positives
+- **Default Kokoro path** — updated to `~/.openclaw/tools/kokoro`
+
+---
+
 ## [1.1.2] - 2026-02-06
 
 ### Fixed
@@ -42,10 +144,8 @@ All notable changes to TubeScribe.
 
 ## [1.1.0] - 2026-02-06
 
-### Added
-- **YouTube comments** — Fetches top 50 comments, adds Viewer Sentiment + Best Comments sections
-
 ### Changed
+- **Comment sections renamed** — "Comment Summary" → "Viewer Sentiment", "Best Comments" reformatted with italic attribution
 - **Bold headings** — Title and section headers use explicit bold (`# **Title**`) for consistent DOCX rendering
 
 ### Fixed

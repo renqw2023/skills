@@ -1,52 +1,100 @@
 ---
 name: ai-picture-book
-description: The AI picture book tool is provided by Baidu and can generate static and dynamic picture book videos based on the content described by users
+description: Generate static or dynamic picture book videos using Baidu AI
 metadata: { "openclaw": { "emoji": "📔", "requires": { "bins": ["python3"], "env":["BAIDU_API_KEY"]},"primaryEnv":"BAIDU_API_KEY" } }
 ---
 
-# AI Picture Book Generation
+# AI Picture Book
 
-This skill allows OpenClaw agents to generate AI picture book, Based solely on a story or description provided by the user.
-
-
-## API table
-|    name    |               path              |            description                |
-|------------|---------------------------------|---------------------------------------|
-|AIPictureBookTaskCreate|/v2/tools/ai_picture_book/task_create|Create AI pictrue book task based on a story or description provided by the user|
-|AIPictureBookTaskQuery| /v2/tools/ai_note/query   |Query AI pictrue book task result based on task id|
-
+Generate picture book videos from stories or descriptions.
 
 ## Workflow
 
-1. The AIPictureBookTaskCreate API executes the Python script located at `scripts/ai_picture_book_task_create.py`
-2. The AIPictureBookTaskQuery API executes the Python script located at `scripts/ai_picture_book_task_query.py`
-3. The first step ,call the AIPictureBookTaskCreate API to create a task and get the task ID, must give the type of picture book(9 or 10) and a story or description of thing.
-4. The second step ,call the AIPictureBookTaskQuery API to query the task result based on the task ID.
-5. Repeat the second step until the task status is completed.The task success identifier is status=2. status=0,1 or 3 indicates that the task is in progress. All other status codes are failures
-6. Once the task is completed, the result can be found  video_bos_url and video_cdn_url in the task query result.
+1. **Create Task**: Submit story + type → get task ID
+2. **Poll Status**: Query every 5-10s until completion
+3. **Get Results**: Retrieve video URLs when status = 2
 
-## APIS
+## Book Types
 
-### AIPictureBookTaskCreate API 
+| Type | Method | Description |
+|------|--------|-------------|
+| Static | 9 | Static picture book |
+| Dynamic | 10 | Dynamic picture book |
 
-#### Parameters
+**Required**: User must specify type (static/9 or dynamic/10). If not provided, ask them to choose.
 
-- `method`: Task Type, 9: Create static picture books; 10: Create dynamic picture books (required)
-- `content`: Story or description (required)
+## Status Codes
 
-#### Example Usage
+| Code | Status | Action |
+|-------|---------|---------|
+| 0, 1, 3 | In Progress | Continue polling |
+| 2 | Completed | Return results |
+| Other | Failed | Show error |
+
+## APIs
+
+### Create Task
+
+**Endpoint**: `POST /v2/tools/ai_picture_book/task_create`
+
+**Parameters**:
+- `method` (required): `9` for static, `10` for dynamic
+- `content` (required): Story or description
+
+**Example**:
 ```bash
-python3 scripts/ai_picture_book_task_create.py 9 "This is a story about a little girl who loves to read books."
+python3 scripts/ai_picture_book_task_create.py 9 "A brave cat explores the world."
 ```
 
-### AIPictureBookTaskQuery API 
-
-#### Parameters
-
-- `task_ids`: task id from AIPictureBookTaskCreate API return, If multiple task results are queried, the request parameter is the comma-separated task ID （required）
-
-
-#### Example Usage
-```bash
-python3 scripts/ai_picture_book_task_query.py "26943ed4-f5a9-4306-a05b-b087665433a0"
+**Response**:
+```json
+{ "task_id": "uuid-string" }
 ```
+
+### Query Task
+
+**Endpoint**: `GET /v2/tools/ai_picture_book/query`
+
+**Parameters**:
+- `task_id` (required): Task ID from create endpoint
+
+**Example**:
+```bash
+python3 scripts/ai_picture_book_task_query.py "task-id-here"
+```
+
+**Response** (Completed):
+```json
+{
+  "status": 2,
+  "video_bos_url": "https://...",
+}
+```
+
+## Polling Strategy
+
+### Auto Polling (Recommended)
+```bash
+python3 scripts/ai_picture_book_poll.py <task_id> [max_attempts] [interval_seconds]
+```
+
+**Examples**:
+```bash
+# Default: 20 attempts, 5s intervals
+python3 scripts/ai_picture_book_poll.py "task-id-here"
+
+# Custom: 30 attempts, 10s intervals
+python3 scripts/ai_picture_book_poll.py "task-id-here" 30 10
+```
+
+### Manual Polling
+1. Create task → store `task_id`
+2. Query every 5-10s until status = 2
+3. Timeout after 2-3 minutes
+
+## Error Handling
+
+- Invalid content: "Content cannot be empty"
+- Invalid type: "Invalid type. Use 9 (static) or 10 (dynamic)"
+- Processing error: "Failed to generate picture book"
+- Timeout: "Task timed out. Try again later"

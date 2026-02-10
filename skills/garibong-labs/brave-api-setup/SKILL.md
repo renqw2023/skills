@@ -93,3 +93,9 @@ If user doesn't have an account:
 3. Subscribe to Free plan (requires credit card)
 4. Create API key in dashboard
 5. Then run this skill
+
+## 문의 / Feedback
+
+버그 리포트, 기능 요청, 피드백은 아래로 보내주세요.
+- Email: contact@garibong.dev
+- Developer: Garibong Labs (가리봉랩스)

@@ -72,16 +72,16 @@ Run the COMPLETE pipeline — do not stop until all steps are done.
 ```bash
 python3 skills/tubescribe/scripts/tubescribe.py "{youtube_url}"
 ```
-Note the video_id from the output (e.g., "Source: /tmp/tubescribe_ABC123_source.json" → video_id is ABC123).
+Note the **Source** and **Output** paths from the script output. The temp directory varies by OS (e.g., `/var/folders/.../tubescribe-501/` on macOS, `/tmp/tubescribe-1000/` on Linux).
 
 ### Step 2: Read source JSON
-Read `/tmp/tubescribe_<video_id>_source.json` and note:
+Read the Source path from Step 1 output and note:
 - metadata.title (for filename)
 - metadata.video_id
 - metadata.channel, upload_date, duration_string
 
 ### Step 3: Create formatted markdown
-Write to `/tmp/tubescribe_<video_id>_output.md`:
+Write to the Output path from Step 1:
 
 1. `# **<title>**`
 ---
@@ -123,14 +123,25 @@ Write to `/tmp/tubescribe_<video_id>_output.md`:
 ### Step 4: Create DOCX
 Clean the title for filename (remove special chars), then:
 ```bash
-pandoc /tmp/tubescribe_<video_id>_output.md -o ~/Documents/TubeScribe/<safe_title>.docx
+pandoc <output_path> -o ~/Documents/TubeScribe/<safe_title>.docx
 ```
 
 ### Step 5: Generate audio
-Read `~/.tubescribe/config.json` to check `audio.tts_engine` and `kokoro.path`.
-- If `tts_engine` is `"kokoro"`: activate Kokoro from the configured path, generate with voice blend from config, save as MP3 to the configured output folder.
-- If `tts_engine` is `"builtin"`: use `say` command (macOS) to generate audio.
-- If `audio.enabled` is `false`: skip this step.
+Write the summary text to a temp file, then use TubeScribe's built-in audio generation:
+```bash
+# Write summary to temp file (use python3 to write, avoids shell escaping issues)
+python3 -c "
+text = '''YOUR SUMMARY TEXT HERE'''
+with open('<temp_dir>/tubescribe_<video_id>_summary.txt', 'w') as f:
+    f.write(text)
+"
+
+# Generate audio (auto-detects engine, voice, format from config)
+python3 skills/tubescribe/scripts/tubescribe.py \
+  --generate-audio <temp_dir>/tubescribe_<video_id>_summary.txt \
+  --audio-output ~/Documents/TubeScribe/<safe_title>_summary
+```
+This reads `~/.tubescribe/config.json` and uses the configured TTS engine (mlx/kokoro/builtin), voice blend, and speed automatically. Output format (mp3/wav) comes from config.
 
 ### Step 6: Cleanup
 ```bash
@@ -174,7 +185,14 @@ Config file: `~/.tubescribe/config.json`
   "audio": {
     "enabled": true,
     "format": "mp3",
-    "tts_engine": "builtin"
+    "tts_engine": "mlx"
+  },
+  "mlx_audio": {
+    "path": "~/.openclaw/tools/mlx-audio",
+    "model": "mlx-community/Kokoro-82M-bf16",
+    "voice": "af_heart",
+    "lang_code": "a",
+    "speed": 1.05
   },
   "kokoro": {
     "path": "~/.openclaw/tools/kokoro",
@@ -207,9 +225,19 @@ Config file: `~/.tubescribe/config.json`
 |--------|---------|--------|-------------|
 | `audio.enabled` | `true` | `true`, `false` | Generate audio summary |
 | `audio.format` | `mp3` | `mp3`, `wav` | Audio format (mp3 needs ffmpeg) |
-| `audio.tts_engine` | `builtin` | `builtin`, `kokoro` | TTS engine (builtin = macOS say) |
+| `audio.tts_engine` | `mlx` | `mlx`, `kokoro`, `builtin` | TTS engine (mlx = fastest on Apple Silicon) |
 
-### Kokoro TTS Options (optional)
+### MLX-Audio Options (preferred on Apple Silicon)
+| Option | Default | Description |
+|--------|---------|-------------|
+| `mlx_audio.path` | `~/.openclaw/tools/mlx-audio` | mlx-audio venv location |
+| `mlx_audio.model` | `mlx-community/Kokoro-82M-bf16` | MLX model to use |
+| `mlx_audio.voice` | `af_heart` | Voice preset (used if no voice_blend) |
+| `mlx_audio.voice_blend` | `{af_heart: 0.6, af_sky: 0.4}` | Custom voice mix (weighted blend) |
+| `mlx_audio.lang_code` | `a` | Language code (a=US English) |
+| `mlx_audio.speed` | `1.05` | Playback speed (1.0 = normal, 1.05 = 5% faster) |
+
+### Kokoro PyTorch Options (fallback)
 | Option | Default | Description |
 |--------|---------|-------------|
 | `kokoro.path` | `~/.openclaw/tools/kokoro` | Kokoro repo location |
@@ -253,7 +281,8 @@ After generation, opens the folder (not individual files) so you can access ever
 - `pandoc` — DOCX output: `brew install pandoc`
 - `ffmpeg` — MP3 audio: `brew install ffmpeg`
 - `yt-dlp` — YouTube comments: `brew install yt-dlp`
-- Kokoro TTS — High-quality voices: see https://github.com/hexgrad/kokoro
+- mlx-audio — Fastest TTS on Apple Silicon: `pip install mlx-audio` (uses MLX backend for Kokoro)
+- Kokoro TTS — PyTorch fallback: see https://github.com/hexgrad/kokoro
 
 ### yt-dlp Search Paths
 

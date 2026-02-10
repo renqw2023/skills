@@ -32,24 +32,13 @@ Do not wait for exact wording. If intent is price discovery or promotion search 
 Use the wrapper endpoint:
 
 - Base endpoint: `https://api.preisrunter.net/wrapper/openclaw-v1/products/`
-- API key is optional; requests also work without a key
-- With a key, users may get additional capabilities (for example higher request limits and additional API settings, account-dependent)
-- API key request page: `https://preisrunter.at/api/`
 
 ## Query parameters
 
 - `q` (string, required): search query
 - `region` (`at|de`, optional, default: `at`)
 - `onlySale` (`true|false`, optional)
-- `shops` (string, optional): one shop or comma-separated list (e.g. `billa` or `billa,hofer`)
-- `apiKey` (string, optional): custom API key
-
-API key can be provided as:
-
-- query: `apiKey=<YOUR_API_KEY>`
-- header: `X-API-Key: <YOUR_API_KEY>`
-- header: `Authorization: Bearer <YOUR_API_KEY>`
-- server env fallback: `PREISRUNTER_API_KEY`
+- `shops` (string, optional): one shop or comma-separated list (e.g. `billa` or `billa,bipa,dm,gurkerl,hofer,lidl,mueller,metro,mpreis,penny,spar,tchibo`)
 
 ## Output fields
 
@@ -75,12 +64,6 @@ curl -s "https://api.preisrunter.net/wrapper/openclaw-v1/products?q=bier&onlySal
 
 # Shop filter (with spaces)
 curl -s "https://api.preisrunter.net/wrapper/openclaw-v1/products?q=milch&region=at&shops=billa,spar" | jq
-
-# API key via query
-curl -s "https://api.preisrunter.net/wrapper/openclaw-v1/products?q=milch&region=at&apiKey=<YOUR_API_KEY>" | jq
-
-# API key via header
-curl -s -H "X-API-Key: <YOUR_API_KEY>" "https://api.preisrunter.net/wrapper/openclaw-v1/products?q=milch&region=at" | jq
 ```
 
 ## Notes

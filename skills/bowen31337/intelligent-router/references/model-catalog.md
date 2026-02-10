@@ -1,123 +1,398 @@
-# Model Catalog
+# Model Selection Guide
 
-Complete reference of available LLM models with specifications, capabilities, costs, and limitations.
+This guide helps you evaluate and select LLM models for each tier in the intelligent router system. Rather than prescribing specific models, it teaches you how to assess models for your own setup.
 
-## Model Reference Table
+## Understanding the Tier System
 
-| Provider | Model ID | Alias | Input Cost ($/M) | Output Cost ($/M) | Context Window | Capabilities | Best Use Cases | Known Limitations |
-|----------|----------|-------|------------------|-------------------|----------------|--------------|----------------|------------------|
-| **Local Models** | | | **Free** | **Free** | | | | |
-| Ollama | ollama/qwen2.5:1.5b | Qwen 2.5 1.5B | 0.00 | 0.00 | 32K | Text, basic reasoning | Testing, prototyping, simple tasks | Very limited reasoning, small context |
-| Ollama | ollama/qwen2.5:32b | Qwen 2.5 32B | 0.00 | 0.00 | 32K | Text, code, reasoning | General purpose, local development | Requires local GPU, slower than cloud |
-| Ollama | ollama/llama3.3 | Llama 3.3 70B | 0.00 | 0.00 | 128K | Text, code, reasoning | High-quality local work | Resource intensive, slower response |
-| **z.ai Proxy** | | | **Low Cost** | **Low Cost** | | | | |
-| z.ai | anthropic-proxy-4/glm-4.7 | GLM-4.7 (Proxy 4) | 0.50 | 1.50 | 131K | Text, code, reasoning, vision | General purpose, cost-effective | Proxy layer may add latency |
-| z.ai | anthropic-proxy-6/glm-4.7 | GLM-4.7 (Proxy 6) | 0.50 | 1.50 | 131K | Text, code, reasoning, vision | General purpose, reliable | Same as above |
-| z.ai | anthropic-proxy-6/glm-4.5-air | GLM-4.5-Air | 0.10 | 0.10 | 131K | Text, summarization, basic tasks | Monitoring, checks, summaries | Limited complex reasoning |
-| **NVIDIA NIM** | | | **Medium Cost** | **Medium Cost** | | | | |
-| NVIDIA | nvidia-nim/meta/llama-3.3-70b-instruct | Llama 3.3 70B NIM | 0.40 | 0.40 | 131K | Text, code, reasoning | General purpose, balanced cost/quality | Less creative than frontier models |
-| NVIDIA | nvidia-nim/deepseek-ai/deepseek-v3.2 | DeepSeek V3.2 | 0.40 | 1.30 | 131K | Text, code, reasoning (excellent) | Code generation, complex logic | Higher output cost |
-| NVIDIA | nvidia-nim/nvidia/llama-3.1-nemotron-ultra-253b-v1 | Nemotron Ultra 253B | 2.50 | 5.00 | 131K | Text, reasoning (excellent) | Complex reasoning, analysis | Very expensive |
-| **Other Proxies** | | | **Variable Cost** | **Variable Cost** | | | | |
-| DeepSeek | anthropic-proxy-5/deepseek-chat | DeepSeek Chat | 3.00 | 15.00 | 64K | Text, code, reasoning | ⚠️ AVOID — use `nvidia-nim/deepseek-ai/deepseek-v3.2` instead at $0.40/$1.30 | Massively overpriced via proxy |
-| **Anthropic** | | | **Premium** | **Premium** | | | | |
-| Anthropic | anthropic/claude-sonnet-4-5 | Claude Sonnet 4.5 | 3.00 | 15.00 | 200K | Text, code, reasoning, vision | High-quality general purpose | Expensive |
-| Anthropic | anthropic/claude-opus-4-6 | Claude Opus 4.6 | 5.00 | 25.00 | 1M | Text, code, reasoning, vision (best) | Critical tasks, security, production | Most expensive |
+### SIMPLE Tier — Efficiency First
 
-## Detailed Specifications
+**Purpose:** High-frequency, low-complexity operations where speed and cost matter more than sophistication.
 
-### Local Models (Free)
+**Ideal characteristics:**
+- **Cost:** Under $0.50/M input tokens
+- **Speed:** Fast response times (< 2 seconds)
+- **Reliability:** Consistent output for routine tasks
+- **Context:** 8K-32K context window sufficient
 
-**Ollama/qwen2.5:1.5b**
-- **Capabilities**: Basic text processing, simple Q&A, format conversion
-- **Best for**: Prototyping, testing pipelines, simple text transformations
-- **Limitations**: Cannot handle complex logic, limited context, poor at code
-- **When to use**: When cost is zero priority and task is trivial
+**Good for:**
+- Status checks and monitoring
+- API calls with minimal processing
+- Simple summarization
+- Data extraction and filtering
+- Heartbeat operations
 
-**Ollama/qwen2.5:32b**
-- **Capabilities**: Good general reasoning, decent code generation, summarization
-- **Best for**: Local development, privacy-sensitive tasks, offline work
-- **Limitations**: Slower than cloud, requires GPU memory, limited compared to frontier models
-- **When to use**: When privacy/local processing is required
+**Not good for:**
+- Complex reasoning
+- Creative writing
+- Multi-step logic
+- Code generation
 
-**Ollama/llama3.3**
-- **Capabilities**: High-quality local model, good at code and reasoning
-- **Best for**: Complex local work when cloud costs are prohibitive
-- **Limitations**: Resource intensive (70B parameters), slower inference
-- **When to use**: High-quality local work without cloud costs
+**How to evaluate:**
+Test your candidate model on these tasks:
+```
+Task: "Summarize this JSON: {simple_status_object}"
+Task: "Extract error messages from this log"
+Task: "Check if this API response indicates success"
+```
 
-### z.ai Proxy Models (Low Cost)
+If it handles these reliably without overthinking, it's SIMPLE tier material.
 
-**GLM-4.7 Series**
-- **Capabilities**: Strong general purpose, good code generation, vision support
-- **Best for**: Everyday tasks, general coding, research, analysis
-- **Limitations**: Proxy layer adds some latency, may default to Chinese in edge cases
-- **Cost efficiency**: Excellent value for general purpose work
+**Common model types:**
+- Small parameter models (< 10B parameters)
+- Distilled versions of larger models
+- Provider "mini" or "fast" variants
+- Local models optimized for speed
 
-**GLM-4.5-Air**
-- **Capabilities**: Optimized for summarization, monitoring, basic tasks
-- **Best for**: Heartbeat checks, status monitoring, simple fetches
-- **Limitations**: Not suitable for complex reasoning or creative work
-- **Cost efficiency**: Cheapest cloud option ($0.10/$0.10 per M)
+---
 
-### NVIDIA NIM Models (Medium Cost)
+### MEDIUM Tier — Balanced Capability
 
-**Llama 3.3 70B NIM**
-- **Capabilities**: Well-rounded, good balance of capabilities
-- **Best for**: General coding, documentation, medium-complexity tasks
-- **Limitations**: Less creative/insightful than frontier models
-- **Cost efficiency**: Good balance at $0.40/$0.40
+**Purpose:** General-purpose work requiring moderate intelligence — the workhorse tier.
 
-**DeepSeek V3.2**
-- **Capabilities**: Excellent at code, strong reasoning, mathematical ability
-- **Best for**: Complex coding tasks, debugging, algorithm design
-- **Limitations**: Higher output cost ($1.30/M), less creative writing
-- **Cost efficiency**: Great for code-heavy work
+**Ideal characteristics:**
+- **Cost:** $0.50-$3.00/M input tokens
+- **Capabilities:** Good at code, reasoning, and analysis
+- **Context:** 32K-128K context window
+- **Quality:** Reliable output, minimal hallucination
 
-**Nemotron Ultra 253B**
-- **Capabilities**: Exceptional reasoning, analysis, complex problem-solving
-- **Best for**: Critical analysis, strategic planning, complex logic
-- **Limitations**: Very expensive ($2.50/$5.00), overkill for simple tasks
-- **Cost efficiency**: Only for highest-stakes work
+**Good for:**
+- Code fixes and refactoring
+- Research and documentation
+- Data analysis
+- Testing and validation
+- General Q&A
 
-### Premium Models
+**Not good for:**
+- Complex architecture decisions
+- Security-critical operations
+- Novel algorithm design
+- Multi-file system builds
 
-**Claude Sonnet 4.5**
-- **Capabilities**: High-quality general purpose, creative writing, analysis
-- **Best for**: Important but non-critical tasks, creative work, analysis
-- **Limitations**: Expensive ($3/$15), not the absolute best
-- **When to use**: When quality matters but cost sensitivity exists
+**How to evaluate:**
+Test your candidate model on these tasks:
+```
+Task: "Fix the bug in this 20-line Python function"
+Task: "Research and summarize recent developments in [topic]"
+Task: "Review this code for obvious issues"
+```
 
-**Claude Opus 4.6**
-- **Capabilities**: Frontier model, best overall quality, 1M context
-- **Best for**: Security audits, production code, financial analysis, critical work
-- **Limitations**: Most expensive option ($5/$25)
-- **When to use**: When failure is not an option
+If it produces competent, correct results most of the time, it's MEDIUM tier material.
 
-## Cost Comparison Examples
+**Common model types:**
+- Mid-size models (10B-70B parameters)
+- Code-specialized models
+- General-purpose frontier models from previous generations
+- Cost-optimized variants of premium models
 
-**Scenario**: Processing 1000 tokens input + 500 tokens output:
-- **GLM-4.5-Air**: $0.0001 + $0.0001 = $0.0002
-- **Llama 3.3 70B**: $0.0004 + $0.0004 = $0.0008
-- **DeepSeek V3.2**: $0.0004 + $0.0013 = $0.0017
-- **Claude Opus**: $0.005 + $0.025 = $0.030
+---
 
-**Rule of thumb**: Opus is ~150x more expensive than GLM-4.5-Air for the same task.
+### COMPLEX Tier — High Quality
 
-## Selection Guidelines
+**Purpose:** Sophisticated work requiring deep reasoning, creativity, or technical expertise.
 
-1. **Start cheap**: Always try the cheapest suitable model first
-2. **Escalate on failure**: Move up one tier if results are unsatisfactory
-3. **Consider task volume**: High-volume tasks benefit more from cheaper models
-4. **Factor in retry costs**: Expensive models may reduce retry needs
-5. **Know your priorities**: Cost vs quality vs speed trade-offs
+**Ideal characteristics:**
+- **Cost:** $3.00-$5.00/M input tokens (quality justifies cost)
+- **Capabilities:** Excellent code, strong reasoning, creative problem-solving
+- **Context:** 100K+ context window
+- **Quality:** Reliable on hard problems, minimal supervision needed
 
-## Updates
+**Good for:**
+- Feature development (multi-file)
+- Complex debugging
+- Architectural design
+- Algorithm development
+- Technical writing
 
-This catalog should be updated periodically as:
-- New models become available
-- Pricing changes occur
-- Capabilities evolve
-- Performance benchmarks update
+**Not good for:**
+- Routine monitoring (overkill)
+- Simple repetitive tasks (wasteful)
+- High-frequency operations (too expensive)
 
-Check with the maintainer for the latest version.
+**How to evaluate:**
+Test your candidate model on these tasks:
+```
+Task: "Design a caching layer for this API with Redis"
+Task: "Debug this race condition in concurrent code"
+Task: "Implement a new authentication flow with JWT"
+```
+
+If it produces production-quality results with minimal revision, it's COMPLEX tier material.
+
+**Common model types:**
+- Current-generation frontier models
+- Large parameter models (70B-200B+)
+- Models with extended reasoning capabilities
+- Specialized code generation models
+
+---
+
+### CRITICAL Tier — Best Available
+
+**Purpose:** High-stakes operations where failure has serious consequences.
+
+**Ideal characteristics:**
+- **Cost:** Secondary to quality and reliability
+- **Capabilities:** State-of-the-art across all dimensions
+- **Context:** Large context (200K-1M+) for thorough analysis
+- **Quality:** Exceptional accuracy, careful reasoning, safety-aware
+
+**Good for:**
+- Security audits
+- Production deployments
+- Financial analysis
+- Legal document review
+- High-stakes decision support
+
+**Not good for:**
+- Routine operations (expensive overkill)
+- Development/testing (use COMPLEX instead)
+- High-volume tasks (cost prohibitive)
+
+**How to evaluate:**
+Test your candidate model on these tasks:
+```
+Task: "Audit this authentication code for security vulnerabilities"
+Task: "Review this database migration for potential issues"
+Task: "Analyze this financial data for compliance"
+```
+
+If it identifies subtle issues and provides thorough, careful analysis, it's CRITICAL tier material.
+
+**Common model types:**
+- Flagship frontier models (the "flagship" from each major provider)
+- Models with extended thinking/reasoning modes
+- Large context models (500K-1M+ tokens)
+- Models marketed for enterprise/production use
+
+---
+
+## Capability Matrix
+
+Different tiers need different capabilities. Use this matrix to match models to requirements:
+
+| Capability | SIMPLE | MEDIUM | COMPLEX | CRITICAL |
+|------------|--------|--------|---------|----------|
+| **Text comprehension** | ✓ Basic | ✓✓ Good | ✓✓✓ Excellent | ✓✓✓ Excellent |
+| **Code generation** | ✗ Limited | ✓✓ Good | ✓✓✓ Excellent | ✓✓✓ Excellent |
+| **Reasoning** | ✓ Basic | ✓✓ Moderate | ✓✓✓ Deep | ✓✓✓ Deep + careful |
+| **Vision** | ✗ Optional | ✓ Helpful | ✓✓ Useful | ✓✓ Important |
+| **Function calling** | ✗ Rare | ✓ Useful | ✓✓ Important | ✓✓✓ Critical |
+| **Context window** | 8K-32K | 32K-128K | 100K-200K | 200K-1M |
+| **Extended thinking** | ✗ Not needed | ✗ Wasteful | ✓ Beneficial | ✓✓ Valuable |
+
+**Key:**
+- ✓ = Basic/sufficient
+- ✓✓ = Good/recommended
+- ✓✓✓ = Excellent/required
+- ✗ = Not needed/wasteful
+
+---
+
+## Provider Landscape
+
+Understanding different providers helps you build a well-rounded model portfolio.
+
+### Major Cloud Providers
+
+**Anthropic (Claude)**
+- **Strengths:** Excellent reasoning, code quality, safety-focused
+- **Tiers:** Haiku (SIMPLE/MEDIUM), Sonnet (COMPLEX), Opus (CRITICAL)
+- **Cost range:** $0.25-$15/M input
+- **Best for:** General purpose, code, careful reasoning
+
+**OpenAI (GPT)**
+- **Strengths:** Broad capabilities, function calling, good ecosystem
+- **Tiers:** GPT-4o Mini (MEDIUM), GPT-4o (COMPLEX), o1/o3 (CRITICAL)
+- **Cost range:** $0.15-$15/M input
+- **Best for:** Function calling, multimodal tasks, integrations
+
+**Google (Gemini)**
+- **Strengths:** Large context windows, multimodal, good at code
+- **Tiers:** Flash (MEDIUM), Pro (COMPLEX), Ultra (CRITICAL)
+- **Cost range:** $0.075-$7/M input
+- **Best for:** Long documents, multimodal tasks, context-heavy work
+
+**Meta (Llama)**
+- **Strengths:** Open weights, customizable, cost-effective
+- **Tiers:** Llama 3.3 70B (MEDIUM/COMPLEX)
+- **Cost range:** Free (self-hosted) or $0.40-$0.80/M via providers
+- **Best for:** Cost optimization, self-hosting, customization
+
+### Specialized Providers
+
+**DeepSeek**
+- **Strengths:** Excellent at code, math, reasoning
+- **Cost:** Very competitive ($0.14-$0.55/M typically)
+- **Best for:** Code-heavy workloads
+
+**Cohere**
+- **Strengths:** Optimized for retrieval, enterprise features
+- **Best for:** RAG applications, search, embeddings
+
+**Mistral**
+- **Strengths:** European provider, open models, good performance
+- **Best for:** Code, general purpose, privacy-conscious deployments
+
+### Local/Self-Hosted
+
+**Ollama**
+- **Strengths:** Free, private, no API costs
+- **Models:** Llama, Qwen, Mistral, etc.
+- **Best for:** SIMPLE tier, development, privacy-sensitive tasks
+- **Trade-off:** Slower, requires hardware, limited context
+
+---
+
+## Cost-Quality Trade-offs
+
+Understanding when to spend more (or less) on model quality:
+
+### When Cheaper is Smarter
+
+- **High volume:** Running thousands of similar tasks daily
+- **Well-defined:** Task has clear success criteria
+- **Low stakes:** Mistakes are easily caught and fixed
+- **Redundant:** Multiple checks/retries are acceptable
+- **Examples:** Heartbeat monitoring, status checks, log parsing
+
+### When Premium is Worth It
+
+- **Low volume:** One-off or infrequent tasks
+- **Ill-defined:** Task requires judgment and interpretation
+- **High stakes:** Mistakes have serious consequences
+- **One-shot:** No opportunity for retries or refinement
+- **Examples:** Security audits, production code, financial analysis
+
+### The Retry Paradox
+
+**Key insight:** Sometimes the "expensive" model is cheaper overall.
+
+**Example calculation:**
+- **Cheap model:** $0.0005 per task, 70% success rate → avg $0.00071 per success (with retries)
+- **Premium model:** $0.0050 per task, 98% success rate → $0.0051 per success
+- **If time has value:** Premium model wins (no retry delays)
+
+**Rule of thumb:** For critical tasks, calculate: `(cost per attempt) / (success rate)` to find true cost.
+
+---
+
+## Benchmarking Your Models
+
+To properly assign tiers, benchmark candidates on representative tasks.
+
+### SIMPLE Tier Benchmark Suite
+
+```
+1. Status check: "Parse this JSON and report the status field"
+2. Summarization: "Summarize these 5 log entries in one sentence each"
+3. Extraction: "Extract all error codes from this output"
+4. Comparison: "Is value A greater than value B?"
+5. Simple classification: "Is this message urgent, normal, or low priority?"
+```
+
+**Passing criteria:** ≥95% accuracy, <3s response time, no overthinking
+
+### MEDIUM Tier Benchmark Suite
+
+```
+1. Code fix: "Fix the bug in this 30-line function"
+2. Research: "Summarize recent developments in [technical topic]"
+3. Analysis: "Identify performance bottlenecks in this code"
+4. Documentation: "Write API documentation for this function"
+5. Testing: "Generate unit tests for this module"
+```
+
+**Passing criteria:** ≥85% quality, good code understanding, reasonable cost
+
+### COMPLEX Tier Benchmark Suite
+
+```
+1. Feature build: "Implement a caching layer with Redis"
+2. Debugging: "Find and fix this race condition"
+3. Architecture: "Design a microservices split for this monolith"
+4. Algorithm: "Implement an efficient solution to [problem]"
+5. Refactoring: "Refactor this module for better maintainability"
+```
+
+**Passing criteria:** Production-quality output, minimal revision needed, handles edge cases
+
+### CRITICAL Tier Benchmark Suite
+
+```
+1. Security: "Audit this authentication flow for vulnerabilities"
+2. Production: "Review this deployment script for risks"
+3. Financial: "Analyze this transaction log for anomalies"
+4. Compliance: "Check this code for GDPR compliance issues"
+5. Architecture review: "Evaluate this system design for scalability and security"
+```
+
+**Passing criteria:** Exceptional thoroughness, identifies subtle issues, provides detailed reasoning
+
+---
+
+## Building Your Model Portfolio
+
+**Ideal portfolio structure:**
+
+1. **One reliable SIMPLE tier model** for high-frequency tasks
+   - Optimize for cost and speed
+   - Consider local/self-hosted if volume is very high
+
+2. **One or two MEDIUM tier models** for everyday work
+   - Balance cost and capability
+   - Consider one code-specialized, one general-purpose
+
+3. **One strong COMPLEX tier model** for sophisticated work
+   - Current-generation frontier model
+   - Excellent code and reasoning capabilities
+
+4. **One CRITICAL tier model** (can be same as COMPLEX)
+   - Best available quality
+   - Use sparingly, only for high-stakes work
+
+**Budget-conscious portfolio:**
+- SIMPLE: Local Ollama model (free)
+- MEDIUM: GPT-4o Mini or Gemini Flash ($0.15-$0.30/M)
+- COMPLEX: Claude Sonnet or GPT-4o ($3-$5/M)
+- CRITICAL: Use COMPLEX tier model, add extended thinking mode
+
+**Performance-focused portfolio:**
+- SIMPLE: GPT-4o Mini ($0.15/M)
+- MEDIUM: Claude Sonnet ($3/M)
+- COMPLEX: Claude Sonnet with thinking ($3-$9/M effective)
+- CRITICAL: Claude Opus or GPT o1 ($15-$30/M)
+
+---
+
+## Updating Your Configuration
+
+Model capabilities and pricing change frequently. Review quarterly:
+
+1. **Check for new models** from your providers
+2. **Review pricing changes** (often trending downward)
+3. **Re-benchmark existing models** against new options
+4. **Adjust tier assignments** if model capabilities have improved
+5. **Update cost estimates** in your `config.json`
+
+**Resources for updates:**
+- Provider pricing pages
+- Model release announcements
+- Benchmark leaderboards (HumanEval, MMLU, etc.)
+- Community discussions and reviews
+
+---
+
+## Summary: Model Selection Checklist
+
+**For each model you're considering:**
+
+- [ ] Identify which tier(s) it fits best
+- [ ] Verify current pricing (input/output per million tokens)
+- [ ] Check context window size
+- [ ] List supported capabilities (vision, function-calling, etc.)
+- [ ] Run benchmark tasks for target tier
+- [ ] Document any limitations or quirks
+- [ ] Add to `config.json` with appropriate metadata
+- [ ] Validate with `python scripts/router.py health`
+
+**Remember:** The "best" model configuration depends on your specific workload, budget, and quality requirements. Start conservative, measure results, and adjust based on real-world performance.

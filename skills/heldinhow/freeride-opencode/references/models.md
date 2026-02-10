@@ -1,17 +1,31 @@
 # OpenCode Zen Free Models Reference
 
+> **⚠️ API Keys Required:**
+> - **OpenCode models:** Requires OpenCode Zen API key
+> - **OpenRouter models:** Requires OpenRouter API key
+>
+> Configure both keys in your OpenCode settings for full fallback coverage.
+
 ## Complete Model List
 
-### MiniMax M2.1 Free
+### MiniMax M2.1 Free (Primary)
 - **ID:** `opencode/minimax-m2.1-free`
-- **Provider:** MiniMax
+- **Provider:** MiniMax (via OpenCode)
 - **Best for:** Complex coding tasks, reasoning, multi-step workflows
 - **Context:** Large context window
 - **Strengths:** Strong coding capability, good reasoning
 
-### Kimi K2.5 Free
+### Trinity Large Free (Fallback 1 - Different Provider)
+- **ID:** `openrouter/arcee-ai/trinity-large-preview:free`
+- **Provider:** Arcee AI (via OpenRouter)
+- **Best for:** Complex reasoning, coding, multi-step workflows
+- **Context:** Large context window
+- **Strengths:** High-quality model, **different provider** for rate limit resilience
+- **Why Fallback 1:** Being on OpenRouter, this model remains available when OpenCode models are rate-limited
+
+### Kimi K2.5 Free (Fallback 2)
 - **ID:** `opencode/kimi-k2.5-free`
-- **Provider:** Moonshot AI (Kimi)
+- **Provider:** Moonshot AI (Kimi) (via OpenCode)
 - **Best for:** General purpose, balanced performance
 - **Context:** Large context window
 - **Strengths:** Good all-around model, reliable responses
@@ -32,59 +46,56 @@
 
 ## Provider Information
 
-### MiniMax
-- API: `https://api.minimax.io/anthropic`
-- Documentation: OpenCode Zen docs
+### OpenCode (MiniMax, Moonshot AI/Kimi)
+- Primary provider for free models
+- Requires OpenCode Zen API key
+- Models: MiniMax M2.1, Kimi K2.5
 
-### Moonshot AI (Kimi)
-- Known for: Kimi long-context model
-- Strong in: Document understanding, conversation
-
-### Zhipu AI (GLM)
-- Chinese AI company
-- Focus: Multilingual and Chinese language tasks
-
-### OpenAI
-- Established provider
-- GPT 5 Nano: Lightweight, fast variant
+### OpenRouter (Arcee AI/Trinity Large)
+- **Different provider** from OpenCode
+- Aggregation platform with multiple model providers
+- Trinity Large: Arcee AI's large language model
+- Focus: High-quality reasoning and coding
+- **Requires OpenRouter API key** (separate from OpenCode Zen)
+- **Key benefit:** Rate limits on OpenCode do NOT affect OpenRouter models
 
 ## Rate Limits by Model
 
 | Model | Typical Rate Limits | Notes |
 |-------|--------------------|-------|
 | MiniMax M2.1 Free | Medium | Most popular free model |
-| Kimi K2.5 Free | Medium-High | Good availability |
-| GLM 4.7 Free | Medium | Alternative option |
-| GPT 5 Nano | High | Generous limits |
+| Trinity Large Free | Medium | **Different provider** - available when OpenCode is rate-limited |
+| Kimi K2.5 Free | Medium-High | Good availability within OpenCode |
 
 ## Performance Comparison
 
-| Model | Speed | Capability | Cost |
-|-------|-------|------------|------|
-| MiniMax M2.1 Free | Medium | Highest | Free |
-| Kimi K2.5 Free | Medium-High | High | Free |
-| GLM 4.7 Free | Medium | Medium-High | Free |
-| GPT 5 Nano | Fastest | Medium | Free |
+| Model | Speed | Capability | Provider Diversification |
+|-------|-------|------------|-------------------------|
+| MiniMax M2.1 Free | Medium | Highest | Primary (OpenCode) |
+| Trinity Large Free | Medium | High | Fallback 1 (OpenRouter) ✅ |
+| Kimi K2.5 Free | Medium-High | High | Fallback 2 (OpenCode) |
 
 ## Configuration Tips
 
 ### For High-Volume Tasks
 ```
-Primary: MiniMax M2.1 Free
-Fallbacks: Kimi K2.5 Free → GLM 4.7 Free → GPT 5 Nano
+Primary: MiniMax M2.1 Free (OpenCode)
+Fallback 1: Trinity Large Free (OpenRouter) ✅ Provider Diversification
+Fallback 2: Kimi K2.5 Free (OpenCode)
 ```
 
 ### For Critical Tasks
 ```
-Primary: MiniMax M2.1 Free
-Fallbacks: Kimi K2.5 Free → GLM 4.7 Free
-(Remove GPT 5 Nano for higher quality)
+Primary: MiniMax M2.1 Free (OpenCode)
+Fallback 1: Trinity Large Free (OpenRouter) ✅ Provider Diversification
+Fallback 2: Kimi K2.5 Free (OpenCode)
+(Ensure at least one fallback is from different provider)
 ```
 
 ### For Cost-Sensitive Setups
 ```
 Primary: GPT 5 Nano
-Fallbacks: Kimi K2.5 Free → MiniMax M2.1 Free
+Fallbacks: Kimi K2.5 Free → Trinity Large Free → MiniMax M2.1 Free
 (Use cheapest first, upgrade only if needed)
 ```
 
@@ -97,8 +108,9 @@ Fallbacks: Kimi K2.5 Free → MiniMax M2.1 Free
    - Prevention: More fallbacks configured
 
 2. **Auth Error (401/403)**
-   - Action: Try next fallback
-   - Check: API keys configured in OpenCode
+   - **OpenCode models:** Check OpenCode Zen API key
+   - **OpenRouter models:** Check OpenRouter API key
+   - Action: Try next fallback (may be from different provider)
 
 3. **Timeout (408/504)**
    - Action: Try next fallback
@@ -107,6 +119,11 @@ Fallbacks: Kimi K2.5 Free → MiniMax M2.1 Free
 4. **Model Not Found (404)**
    - Action: Remove from fallback chain
    - Check: Model ID and availability
+   - OpenRouter models may require additional access/credits
+
+5. **Provider-Specific Errors**
+   - OpenCode errors: Verify OpenCode Zen API key and subscription
+   - OpenRouter errors: Verify OpenRouter API key has credits
 
 ### Health Check Commands
 
@@ -128,9 +145,8 @@ Set friendly names in configuration:
 ```json
 "models": {
   "opencode/minimax-m2.1-free": { "alias": "MiniMax" },
-  "opencode/kimi-k2.5-free": { "alias": "Kimi" },
-  "opencode/glm-4.7-free": { "alias": "GLM" },
-  "opencode/gpt-5-nano": { "alias": "Nano" }
+  "openrouter/arcee-ai/trinity-large-preview:free": { "alias": "Trinity Large" },
+  "opencode/kimi-k2.5-free": { "alias": "Kimi" }
 }
 ```
 
@@ -146,16 +162,20 @@ If migrating from the OpenRouter FreeRide skill:
 }
 ```
 
-**After (OpenCode Zen):**
+**After (OpenCode Zen with OpenRouter fallback - v1.2.0):**
 ```json
 "model": {
   "primary": "opencode/minimax-m2.1-free",
-  "fallbacks": ["opencode/kimi-k2.5-free", "opencode/glm-4.7-free", "opencode/gpt-5-nano"]
+  "fallbacks": ["openrouter/arcee-ai/trinity-large-preview:free", "opencode/kimi-k2.5-free"]
 }
 ```
 
 **Key differences:**
-- No API key needed (uses OpenCode Zen credentials)
-- Multiple high-quality free options
-- Fallback to GPT 5 Nano available
-- No router overhead
+- Uses OpenCode Zen credentials (plus optional OpenRouter API key)
+- **Provider diversification:** First fallback is on OpenRouter (different provider)
+- High-quality free options with cross-provider resilience
+- Simplified 2-fallback chain
+
+**API Keys Needed:**
+- OpenCode Zen API key (primary)
+- OpenRouter API key (required for Trinity Large fallback)

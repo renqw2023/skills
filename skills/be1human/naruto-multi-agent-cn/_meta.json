@@ -1,0 +1,17 @@
+{
+  "owner": "be1human",
+  "slug": "naruto-multi-agent-cn",
+  "displayName": "Naruto Multi-Agent CN",
+  "latest": {
+    "version": "1.1.0",
+    "publishedAt": 1770724742643,
+    "commit": "https://github.com/openclaw/skills/commit/e0d54b601a4fa992cd7b29b9430a9c83f73301a4"
+  },
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1770724423074,
+      "commit": "https://github.com/openclaw/skills/commit/dfc75d4952d5fac9ee6f2b43b0a4308e2e1cfb81"
+    }
+  ]
+}

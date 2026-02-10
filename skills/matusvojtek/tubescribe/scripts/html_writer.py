@@ -78,13 +78,25 @@ def markdown_to_html(md_text: str) -> str:
                 table_past_separator = False
             html_lines.append('')
         elif line.lstrip().startswith('<') and not line.lstrip().startswith('<http'):
-            # Raw HTML line - pass through without wrapping in <p>
-            # Check if it looks like an HTML tag (not a markdown link starting with <http)
+            # Raw HTML line - pass through safe tags only, escape everything else
             if in_table:
                 html_lines.append('</table>')
                 in_table = False
                 table_past_separator = False
-            html_lines.append(line)
+            stripped = line.lstrip()
+            # Allowlist of safe HTML tags (reject unknown tags entirely)
+            safe_tags = {'div', 'span', 'br', 'p', 'ul', 'ol', 'li', 'pre', 'code',
+                         'sub', 'sup', 'details', 'summary', 'dl', 'dt', 'dd',
+                         'abbr', 'cite', 'small', 'mark', 'ins', 'del',
+                         'figcaption', 'figure'}
+            tag_match = re.match(r'<\s*/?\s*(\w+)', stripped)
+            if tag_match and tag_match.group(1).lower() in safe_tags:
+                # Strip event handler attributes (on*="...")
+                safe_line = re.sub(r'\s+on\w+\s*=\s*["\'][^"\']*["\']', '', line, flags=re.IGNORECASE)
+                safe_line = re.sub(r'\s+on\w+\s*=\s*\S+', '', safe_line, flags=re.IGNORECASE)
+                html_lines.append(safe_line)
+            else:
+                html_lines.append(f'<p>{escape_html(line)}</p>')
         else:
             if in_table:
                 html_lines.append('</table>')
@@ -144,7 +156,7 @@ def process_inline_formatting(text: str) -> str:
     # Restore links with safe URL validation
     for placeholder, (link_text, url) in link_placeholders.items():
         safe_text = escape_html(link_text)
-        if url.startswith(('http://', 'https://', '/')):
+        if url.startswith(('http://', 'https://')) or (url.startswith('/') and not url.startswith('//')):  # block protocol-relative URLs
             safe_url = url.replace('&', '&amp;').replace('"', '&quot;')
             link_html = f'<a href="{safe_url}" target="_blank">{safe_text}</a>'
         else:

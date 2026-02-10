@@ -23,6 +23,7 @@ AUTO_CONFIRM=false
 TEXT=""
 TWITTER_ID=""
 FARCASTER_HASH=""
+TWITTER_ACCOUNT="mr_crtee"  # Default account
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -57,6 +58,10 @@ while [[ $# -gt 0 ]]; do
       AUTO_CONFIRM=true
       shift
       ;;
+    --account)
+      TWITTER_ACCOUNT="$2"
+      shift 2
+      ;;
     --help|-h)
       cat <<EOF
 Usage: reply.sh [OPTIONS] "Your reply text"
@@ -66,6 +71,7 @@ Reply to tweets on Twitter and/or casts on Farcaster.
 Options:
   --twitter <tweet_id>       Reply to Twitter tweet with this ID
   --farcaster <cast_hash>    Reply to Farcaster cast with this hash
+  --account <name>           Twitter account (mr_crtee or oxdasx, default: mr_crtee)
   --image <path>             Attach image to reply
   --truncate                 Auto-truncate if over limit
   --shorten-links            Shorten URLs to save characters
@@ -211,7 +217,7 @@ echo "────────────────────────�
 [ -n "$IMAGE_PATH" ] && echo "Image: $IMAGE_PATH"
 echo ""
 echo "Replying to:"
-[ "$REPLY_TWITTER" = true ] && echo "  • Twitter tweet: $TWITTER_ID"
+[ "$REPLY_TWITTER" = true ] && echo "  • Twitter tweet: $TWITTER_ID (as @${TWITTER_ACCOUNT})"
 [ "$REPLY_FARCASTER" = true ] && echo "  • Farcaster cast: $FARCASTER_HASH"
 echo ""
 
@@ -237,6 +243,9 @@ elif [ "$AUTO_CONFIRM" = true ]; then
   echo "Auto-confirmed (--yes flag). Proceeding..."
   echo ""
 fi
+
+# Export Twitter account for library to use
+export TWITTER_ACCOUNT
 
 # Post replies
 echo "=== Posting Replies ==="

@@ -41,7 +41,7 @@ No waiting, no freezing — just seamless async processing.
 python skills/tubescribe/scripts/setup.py
 ```
 
-Checks and installs: `summarize` CLI, `pandoc`, `ffmpeg`, Kokoro TTS
+Checks and installs: `summarize` CLI, `pandoc`, `ffmpeg`, TTS engine (mlx-audio on Apple Silicon, Kokoro PyTorch elsewhere)
 
 ## Output Example
 
@@ -84,7 +84,8 @@ Config file: `~/.tubescribe/config.json`
 |---------|---------|---------|
 | `document.format` | `docx` | `docx`, `html`, `md` |
 | `audio.format` | `mp3` | `mp3`, `wav` |
-| `audio.tts_engine` | `builtin` | `builtin`, `kokoro` |
+| `audio.tts_engine` | `mlx` | `mlx`, `kokoro`, `builtin` |
+| `mlx_audio.voice_blend` | `{af_heart: 0.6, af_sky: 0.4}` | any voice mix |
 | `output.folder` | `~/Documents/TubeScribe` | any path |
 
 ## Requirements
@@ -94,7 +95,8 @@ Config file: `~/.tubescribe/config.json`
   - `pandoc` — DOCX output (`brew install pandoc`)
   - `ffmpeg` — MP3 audio (`brew install ffmpeg`)
   - `yt-dlp` — YouTube comments (`brew install yt-dlp`)
-  - Kokoro TTS — High-quality voices (auto-installed)
+  - mlx-audio — Fastest TTS on Apple Silicon (auto-installed via setup)
+  - Kokoro TTS — PyTorch fallback for non-Apple-Silicon (auto-installed via setup)
 
 ### yt-dlp Installation
 
@@ -123,14 +125,23 @@ Clear messages for common issues:
 ### Code Injection (Fixed in v1.1.0)
 Earlier development versions had a vulnerability where video text could be injected into dynamically executed Python code. This was fixed by properly escaping all text with `json.dumps()`.
 
+### HTML Output (Fixed in v1.1.2+)
+- XSS prevention: all text escaped before inline formatting
+- Single-quote escaping added in v1.1.3
+- Link double-encoding fixed in v1.1.3
+
+### Archive Extraction (Fixed in v1.1.3)
+Zip-slip path traversal prevention when installing pandoc/yt-dlp via setup script.
+
 ### Shell Commands
-The skill uses subprocess to call external CLI tools (`summarize`, `yt-dlp`, `pandoc`, `ffmpeg`). YouTube URLs are validated before processing, and filenames are sanitized. However, as with any tool that processes external content, review the code if you have concerns.
+The skill uses subprocess to call external CLI tools (`summarize`, `yt-dlp`, `pandoc`, `ffmpeg`). YouTube URLs are validated and normalized before processing, and filenames are sanitized. However, as with any tool that processes external content, review the code if you have concerns.
 
 ### External Dependencies
 The setup script downloads tools from official sources:
 - **pandoc** — from Homebrew or official releases
-- **yt-dlp** — from GitHub releases (yt-dlp/yt-dlp)  
-- **Kokoro TTS** — pip install from PyPI
+- **yt-dlp** — from GitHub releases (yt-dlp/yt-dlp)
+- **mlx-audio** — pip install from PyPI (Apple Silicon only, uses MLX framework)
+- **Kokoro TTS** — pip install from PyPI (PyTorch, cross-platform fallback)
 
 All sources are well-known and widely used. Review `scripts/setup.py` if you have concerns about supply chain security.
 

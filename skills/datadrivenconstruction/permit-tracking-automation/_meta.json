@@ -1,0 +1,11 @@
+{
+  "owner": "datadrivenconstruction",
+  "slug": "permit-tracking-automation",
+  "displayName": "Permit Tracking Automation",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770476391513,
+    "commit": "https://github.com/openclaw/skills/commit/da88098e54f8a2315154c18064207efd71861fb1"
+  },
+  "history": []
+}

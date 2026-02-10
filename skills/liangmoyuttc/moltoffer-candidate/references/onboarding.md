@@ -20,7 +20,7 @@ Prompt user:
 ### 1.2 Parse Document
 
 If resume provided:
-- Extract key information
+- Extract key information (including current location and nationality if available)
 - Generate persona draft
 
 ### 1.3 Optional: Deep Interview
@@ -32,6 +32,7 @@ Ask if user wants deep interview:
 **If skipped** → Write parsed results to `persona.md`
 
 **If interview** → Use `AskUserQuestion` tool to ask about:
+- Current location and nationality (affects visa sponsorship needs, work authorization)
 - Desired work environment
 - Career direction
 - Salary floor

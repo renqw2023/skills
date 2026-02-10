@@ -9,9 +9,8 @@
       "model": {
         "primary": "opencode/minimax-m2.1-free",
         "fallbacks": [
-          "opencode/kimi-k2.5-free",
-          "opencode/glm-4.7-free",
-          "opencode/gpt-5-nano"
+          "openrouter/arcee-ai/trinity-large-preview:free",
+          "opencode/kimi-k2.5-free"
         ]
       }
     }
@@ -28,20 +27,19 @@
       "model": {
         "primary": "opencode/minimax-m2.1-free",
         "fallbacks": [
-          "opencode/kimi-k2.5-free",
-          "opencode/glm-4.7-free",
-          "opencode/gpt-5-nano"
+          "openrouter/arcee-ai/trinity-large-preview:free",
+          "opencode/kimi-k2.5-free"
         ]
       },
       "models": {
         "opencode/minimax-m2.1-free": { "alias": "MiniMax M2.1" },
+        "openrouter/arcee-ai/trinity-large-preview:free": { "alias": "Trinity Large" },
         "opencode/kimi-k2.5-free": { "alias": "Kimi K2.5" },
-        "opencode/glm-4.7-free": {},
-        "opencode/gpt-5-nano": {}
+        "opencode/glm-4.7-free": { "alias": "GLM 4.7" }
       },
       "heartbeat": {
         "every": "30m",
-        "model": "opencode/gpt-5-nano"
+        "model": "opencode/glm-4.7-free"
       },
       "subagents": {
         "model": "opencode/kimi-k2.5-free"
@@ -58,18 +56,17 @@
   "agents": {
     "defaults": {
       "model": {
-        "primary": "opencode/gpt-5-nano",
+        "primary": "opencode/glm-4.7-free",
         "fallbacks": [
-          "opencode/kimi-k2.5-free",
-          "opencode/minimax-m2.1-free",
-          "opencode/glm-4.7-free"
+          "openrouter/arcee-ai/trinity-large-preview:free",
+          "opencode/kimi-k2.5-free"
         ]
       },
       "heartbeat": {
-        "model": "opencode/gpt-5-nano"
+        "model": "opencode/glm-4.7-free"
       },
       "subagents": {
-        "model": "opencode/gpt-5-nano"
+        "model": "opencode/kimi-k2.5-free"
       }
     }
   }
@@ -85,11 +82,11 @@
       "model": {
         "primary": "opencode/minimax-m2.1-free",
         "fallbacks": [
-          "opencode/kimi-k2.5-free"
+          "openrouter/arcee-ai/trinity-large-preview:free"
         ]
       },
       "heartbeat": {
-        "model": "opencode/gpt-5-nano"
+        "model": "opencode/glm-4.7-free"
       },
       "subagents": {
         "model": "opencode/kimi-k2.5-free"
@@ -120,7 +117,7 @@
   "agents": {
     "defaults": {
       "model": {
-        "primary": "opencode/gpt-5-nano",
+        "primary": "opencode/glm-4.7-free",
         "fallbacks": [
           "opencode/kimi-k2.5-free"
         ]
@@ -132,6 +129,12 @@
 
 ## Applying Templates
 
+> **⚠️ Prerequisites:** Ensure you have both API keys configured before applying templates:
+> - OpenCode Zen API key (for `opencode/*` models)
+> - OpenRouter API key (for `openrouter/*` models - Trinity Large)
+>
+> Without both keys, fallbacks will fail when switching providers.
+
 ### Via CLI
 
 ```bash
@@ -140,7 +143,7 @@ openclaw config.patch --raw '{
     "defaults": {
       "model": {
         "primary": "opencode/minimax-m2.1-free",
-        "fallbacks": ["opencode/kimi-k2.5-free", "opencode/glm-4.7-free", "opencode/gpt-5-nano"]
+        "fallbacks": ["openrouter/arcee-ai/trinity-large-preview:free", "opencode/kimi-k2.5-free"]
       }
     }
   }
@@ -151,7 +154,7 @@ openclaw config.patch --raw '{
 
 ```bash
 openclaw gateway call config.patch --params '{
-  "raw": "{\"agents\":{\"defaults\":{\"model\":{\"primary\":\"opencode/minimax-m2.1-free\",\"fallbacks\":[\"opencode/kimi-k2.5-free\",\"opencode/glm-4.7-free\",\"opencode/gpt-5-nano\"]}}}}"
+  "raw": "{\"agents\":{\"defaults\":{\"model\":{\"primary\":\"opencode/minimax-m2.1-free\",\"fallbacks\":[\"openrouter/arcee-ai/trinity-large-preview:free\",\"opencode/kimi-k2.5-free\"]}}}}"
 }'
 ```
 
