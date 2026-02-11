@@ -1,0 +1,11 @@
+{
+  "owner": "anton-abyzov",
+  "slug": "sw-distributed-tracing",
+  "displayName": "Distributed Tracing",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770713667568,
+    "commit": "https://github.com/openclaw/skills/commit/35b6a193c169129aacd07e5faed8ed6f4b3fbf9b"
+  },
+  "history": []
+}

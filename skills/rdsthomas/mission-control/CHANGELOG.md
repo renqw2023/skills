@@ -5,6 +5,16 @@ All notable changes to Mission Control will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.2] - 2026-02-10
+
+### Security
+
+- **User data excluded from version control** — `data/tasks.json` and `data/crons.json` added to `.gitignore` to prevent personal task data from being committed to the public repo
+- **Demo data templates** — Renamed to `demo-tasks.json` and `demo-crons.json` as safe templates for new installations
+- **Branch protection enabled** — Direct pushes to `main` blocked; PRs with review required
+
+---
+
 ## [2.2.1] - 2026-02-07
 
 ### Security

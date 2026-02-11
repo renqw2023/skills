@@ -1,0 +1,11 @@
+{
+  "owner": "bitbw",
+  "slug": "fuxi-api",
+  "displayName": "fuxi-api",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770714577675,
+    "commit": "https://github.com/openclaw/skills/commit/20fccf968cf72c1890c52419cffdf65ddcc5618a"
+  },
+  "history": []
+}

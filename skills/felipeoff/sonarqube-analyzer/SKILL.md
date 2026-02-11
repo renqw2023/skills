@@ -69,17 +69,17 @@ SONAR_TOKEN=admin                      # Token de autenticação
 
 ### Analisar uma PR específica:
 ```bash
-node scripts/analyze.js --project=openclaw-panel --pr=5
+node scripts/analyze.js --project=my-project --pr=5
 ```
 
 ### Gerar relatório de issues:
 ```bash
-node scripts/report.js --project=openclaw-panel --format=markdown
+node scripts/report.js --project=my-project --format=markdown
 ```
 
 ### Verificar Quality Gate:
 ```bash
-node scripts/quality-gate.js --project=openclaw-panel --pr=5
+node scripts/quality-gate.js --project=my-project --pr=5
 ```
 
 ## Estrutura de Resposta
@@ -161,8 +161,9 @@ Exemplo de uso em GitHub Actions:
 ```yaml
 - name: Analyze with SonarQube Skill
   run: |
-    node /home/crew/.openclaw/workspace/skills/sonarqube-analyzer/scripts/analyze.js \
-      --project=openclaw-panel \
+    npm install -g @felipeoff/sonarqube-analyzer
+    sonarqube-analyzer \
+      --project=my-project \
       --pr=${{ github.event.pull_request.number }} \
       --suggest-fixes
 ```

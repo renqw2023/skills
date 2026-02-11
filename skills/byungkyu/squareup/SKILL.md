@@ -8,6 +8,11 @@ description: |
 metadata:
   author: maton
   version: "1.0"
+  clawdbot:
+    emoji: 🧠
+    requires:
+      env:
+        - MATON_API_KEY
 ---
 
 # Square
@@ -775,9 +780,7 @@ data = response.json()
 }
 ```
 
-### Troubleshooting: Invalid API Key
-
-**When you receive a "Invalid API key" error, ALWAYS follow these steps before concluding there is an issue:**
+### Troubleshooting: API Key Issues
 
 1. Check that the `MATON_API_KEY` environment variable is set:
 
@@ -796,6 +799,13 @@ print(json.dumps(json.load(urllib.request.urlopen(req)), indent=2))
 EOF
 ```
 
+### Troubleshooting: Invalid App Name
+
+1. Ensure your URL path starts with `squareup`. For example:
+
+- Correct: `https://gateway.maton.ai/squareup/v2/locations`
+- Incorrect: `https://gateway.maton.ai/v2/locations`
+
 ### Troubleshooting: Insufficient Scopes
 
 If you receive a 403 error with `INSUFFICIENT_SCOPES`, the OAuth connection doesn't have the required permissions. Create a new connection and ensure you grant all necessary permissions during OAuth authorization.
@@ -811,3 +821,5 @@ If you receive a 403 error with `INSUFFICIENT_SCOPES`, the OAuth connection does
 - [Inventory API](https://developer.squareup.com/reference/square/inventory-api)
 - [Invoices API](https://developer.squareup.com/reference/square/invoices-api)
 - [Locations API](https://developer.squareup.com/reference/square/locations-api)
+- [Maton Community](https://discord.com/invite/dBfFAcefs2)
+- [Maton Support](mailto:support@maton.ai)

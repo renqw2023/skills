@@ -1,0 +1,11 @@
+{
+  "owner": "ivangdavila",
+  "slug": "mongodb",
+  "displayName": "MongoDB",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770690113581,
+    "commit": "https://github.com/openclaw/skills/commit/7d52098bf0160e29c5e1bc0e076777090d1fe2c8"
+  },
+  "history": []
+}

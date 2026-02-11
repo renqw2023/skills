@@ -18,11 +18,13 @@ const result = await provision({
   agent: {
     instance: agent, // Binds credentials directly to agent (v1.1+)
     name: 'my-agent',
-    description: 'Agent capabilities'
+    description: 'Agent capabilities',
     // endpointUrl: 'https://...' // Optional for dev, required for production
+    // model_parameters: { model: 'gpt-5', verbosity: 'medium', reasoning_effort: 'high' } // Optional
   },
   workflow: {
-    name: 'default',
+    name: 'Instant AI Concierge',
+    goal: 'Receive incoming requests, analyze and process them, and return structured responses',
     trigger: triggers.webhook({ waitForCompletion: true }),
     task: { description: 'Process requests' }
   }
@@ -31,6 +33,13 @@ const result = await provision({
 // result contains: agentId, apiKey, authToken, workflowId, triggerId, etc.
 await run(agent)
 ```
+
+### Workflow Config
+
+- **`name`** (string) - The **agent name in ERC-8004**. Make it polished, punchy, and memorable (e.g., `'Crypto Alpha Scanner'`, `'AI Video Studio'`). This is the brand name users see — not a slug or kebab-case identifier.
+- **`goal`** (string, required) - A detailed description of what the workflow accomplishes. Must be descriptive and thorough — short or vague goals will cause API calls to fail.
+- **`trigger`** - Trigger configuration (use the `triggers` factory)
+- **`task`** / **`tasks`** - Single task shorthand or array for multi-agent workflows
 
 ### Provision Result
 
@@ -74,14 +83,16 @@ const agent = await client.agents.get({ id: 123 })
 const agent = await client.agents.create({
   name: 'My Agent',
   capabilities_description: 'Processes data and generates reports',
-  endpoint_url: 'https://my-agent.example.com'
+  endpoint_url: 'https://my-agent.example.com',
+  model_parameters: { model: 'gpt-4o', temperature: 0.5, parallel_tool_calls: false } // Optional
 })
 
 // Update an agent
 await client.agents.update({
   id: 123,
   name: 'Updated Name',
-  endpoint_url: 'https://new-endpoint.com'
+  endpoint_url: 'https://new-endpoint.com',
+  model_parameters: { model: 'gpt-5', verbosity: 'medium', reasoning_effort: 'high' } // Optional
 })
 
 // Delete an agent
@@ -102,8 +113,8 @@ await client.agents.saveAuthToken({ id: 123, authTokenHash })
 ```typescript
 // Create a workflow
 const workflow = await client.workflows.create({
-  name: 'Data Pipeline',
-  goal: 'Process and analyze incoming data',
+  name: 'Turbo Data Engine',
+  goal: 'Ingest raw data from multiple sources, process and analyze it, and produce structured insights',
   agentIds: [123, 456]
 })
 
@@ -116,8 +127,8 @@ const workflows = await client.workflows.list()
 // Update a workflow
 await client.workflows.update({
   id: 789,
-  name: 'Updated Pipeline',
-  goal: 'New goal description'
+  name: 'Turbo Data Engine v2',
+  goal: 'Process and analyze incoming data with improved validation and error handling'
 })
 
 // Delete a workflow
@@ -217,7 +228,7 @@ const trigger = await client.triggers.create({
   workflowId: 789,
   name: 'API Endpoint',
   integrationConnectionId: connId,
-  props: { waitForCompletion: true, timeout: 180 }
+  props: { waitForCompletion: true, timeout: 600 }
 })
 
 // Get trigger (includes token)
@@ -236,11 +247,37 @@ await client.triggers.update({
 // Activate trigger
 await client.triggers.activate({ workflowId: 789, id: 'trigger-id' })
 
-// Fire trigger manually
+// Fire trigger manually (internal API, requires workflowId + triggerId)
 await client.triggers.fire({
   workflowId: 789,
   id: 'trigger-id',
   input: JSON.stringify({ query: 'test' })
+})
+
+// Fire webhook trigger (simplified — resolves token automatically)
+await client.triggers.fireWebhook({
+  workflowId: 789,                         // Resolves the webhook trigger automatically
+  input: { query: 'hello world' }
+})
+
+// Fire webhook by trigger name (for multi-trigger workflows)
+await client.triggers.fireWebhook({
+  workflowId: 789,
+  triggerName: 'My Webhook',               // Target a specific trigger by name
+  input: { query: 'hello world' }
+})
+
+// Fire webhook by trigger ID
+await client.triggers.fireWebhook({
+  workflowId: 789,
+  triggerId: 'trigger-id',
+  input: { query: 'hello world' }
+})
+
+// Fire webhook by direct URL (when you already have the URL)
+await client.triggers.fireWebhook({
+  triggerUrl: 'https://api.openserv.ai/webhooks/trigger/TOKEN',
+  input: { query: 'hello world' }
 })
 
 // Delete trigger
@@ -249,6 +286,8 @@ await client.triggers.delete({ workflowId: 789, id: 'trigger-id' })
 
 ### Webhook/x402 URLs
 
+URL construction is handled automatically by `fireWebhook()` and `payWorkflow()`. If you need the raw URLs:
+
 ```typescript
 const trigger = await client.triggers.get({ workflowId, id: triggerId })
 
@@ -256,7 +295,7 @@ const trigger = await client.triggers.get({ workflowId, id: triggerId })
 const webhookUrl = `https://api.openserv.ai/webhooks/trigger/${trigger.token}`
 
 // x402 URL
-const x402Url = `https://api.openserv.ai/x402/trigger/${trigger.token}`
+const x402Url = `https://api.openserv.ai/webhooks/x402/trigger/${trigger.token}`
 
 // Paywall page (x402 only)
 const paywallUrl = `https://platform.openserv.ai/workspace/paywall/${trigger.token}`
@@ -286,8 +325,8 @@ triggers: [
 ```typescript
 // No explicit agentIds -- derived from tasks automatically
 const workflow = await client.workflows.create({
-  name: 'Pipeline',
-  goal: 'Process data',
+  name: 'Smart Data Forge',
+  goal: 'Validate incoming data, transform it through multiple processing steps, and produce structured output',
   tasks: [
     { name: 'step1', agentId: 123, description: 'First step' },
     { name: 'step2', agentId: 456, description: 'Second step' }
@@ -351,19 +390,82 @@ Integration identifiers: `webhook-trigger`, `x402-trigger`, `cron-trigger`, `man
 
 ---
 
+## Models API
+
+Discover available LLM models and their parameter schemas:
+
+```typescript
+const { models, default: defaultModel } = await client.models.list()
+
+// defaultModel: 'gpt-5-mini'
+// models: array of ModelInfo objects
+
+for (const model of models) {
+  console.log(`${model.model} (${model.provider})`)
+  // model.parameters: Record<string, ModelParameterMeta>
+  // Each parameter has: type ('number' | 'boolean' | 'enum'), default, min?, max?, values?
+}
+```
+
+### Types
+
+```typescript
+interface ModelParameterMeta {
+  type: 'number' | 'boolean' | 'enum'
+  default: number | boolean | string
+  min?: number     // For number types
+  max?: number     // For number types
+  values?: string[] // For enum types
+}
+
+interface ModelInfo {
+  model: string
+  provider: string
+  parameters: Record<string, ModelParameterMeta>
+}
+
+interface ModelsResponse {
+  models: ModelInfo[]
+  default: string // Default model name
+}
+```
+
+Use `model_parameters` in `agents.create()`, `agents.update()`, or `provision()` to configure the model:
+
+```typescript
+// Example model_parameters values:
+{ model: 'gpt-5', verbosity: 'medium', reasoning_effort: 'high' }
+{ model: 'gpt-4o', temperature: 0.5, parallel_tool_calls: false }
+```
+
+---
+
 ## Payments API (x402)
 
 ```typescript
-// Pay and execute an x402 workflow
+// Discover x402 services (no authentication required)
+const services = await client.payments.discoverServices()
+
+// Pay and execute an x402 workflow by ID (recommended)
+const result = await client.payments.payWorkflow({
+  workflowId: 789,
+  input: { prompt: 'Generate a summary' }
+})
+
+// Pay by trigger name (for multi-trigger workflows)
+const result = await client.payments.payWorkflow({
+  workflowId: 789,
+  triggerName: 'Premium Service',
+  input: { prompt: 'Generate a summary' }
+})
+
+// Pay by direct URL (when you already have the URL)
 const result = await client.payments.payWorkflow({
   triggerUrl: 'https://api.openserv.ai/webhooks/x402/trigger/...',
   input: { prompt: 'Generate a summary' }
 })
 
-// Discover x402 services
-const services = await client.payments.discoverServices()
-
-// Get trigger preflight info
+// Get trigger preflight info (no authentication required)
 const preflight = await client.payments.getTriggerPreflight({ token: '...' })
 ```
 
@@ -384,6 +486,131 @@ await client.web3.verifyUsdcTransaction({
   payerAddress: '0x...',
   signature: '0x...'
 })
+```
+
+---
+
+## ERC-8004 API
+
+On-chain agent identity registration via the Identity Registry contract.
+
+### Register On-Chain (High-Level)
+
+> **Requires ETH on Base.** The wallet starts unfunded. Always wrap in try/catch so failures don't crash the agent. Reload `.env` after `provision()` with `dotenv.config({ override: true })` to pick up the freshly written `WALLET_PRIVATE_KEY`.
+
+```typescript
+// Reload .env after provision() to pick up WALLET_PRIVATE_KEY
+dotenv.config({ override: true })
+
+try {
+  const client = new PlatformClient()
+  await client.authenticate(process.env.WALLET_PRIVATE_KEY)
+
+  const result = await client.erc8004.registerOnChain({
+    workflowId: 123,
+    privateKey: process.env.WALLET_PRIVATE_KEY!,
+    chainId: 8453,                          // Default: Base mainnet
+    rpcUrl: 'https://mainnet.base.org',     // Default
+    name: 'My Agent',
+    description: 'What this agent does',
+  })
+
+  result.agentId          // "8453:42" (chainId:tokenId)
+  result.ipfsCid          // "bafkrei..."
+  result.txHash           // "0xabc..."
+  result.agentCardUrl     // "https://gateway.pinata.cloud/ipfs/..."
+  result.blockExplorerUrl // "https://basescan.org/tx/..."
+} catch (error) {
+  console.warn('ERC-8004 registration skipped:', error instanceof Error ? error.message : error)
+}
+```
+
+**First run:** mints NFT via `register()` → uploads agent card to IPFS → sets token URI.
+**Re-runs:** detects existing `erc8004AgentId` → uploads updated card → calls `setAgentURI()`. **Agent ID stays the same.**
+
+### Wallet Management
+
+```typescript
+const wallet = await client.workflows.generateWallet({ id: workflowId })
+const imported = await client.workflows.importWallet({
+  id: workflowId, address: '0x...', network: 'base', chainId: 8453, privateKey: '0x...'
+})
+const wallet = await client.workflows.getWallet({ id: workflowId })
+// wallet.address, wallet.erc8004AgentId, wallet.deployed
+await client.workflows.deleteWallet({ id: workflowId })
+```
+
+### Deploy (Low-Level State Management)
+
+```typescript
+// Save or clear deployment state
+await client.erc8004.deploy({
+  workflowId,
+  erc8004AgentId: '8453:42',       // or '' to clear stale state
+  stringifiedAgentCard: JSON.stringify(agentCard),
+  walletAddress: '0x...',
+  network: 'base',
+  chainId: 8453,
+  rpcUrl: 'https://mainnet.base.org',
+})
+```
+
+### Other Methods
+
+```typescript
+// Get callable triggers (used to build agent card)
+const triggers = await client.triggers.getCallableTriggers({ workflowId })
+
+// Presign IPFS upload URL (expires in 60s)
+const { url } = await client.erc8004.presignIpfsUrl({ workflowId })
+
+// Sign feedback auth for reputation system
+const { signature } = await client.workflows.signFeedbackAuth({
+  id: workflowId, buyerAddress: '0xBuyer...',
+})
+```
+
+### Chain Configuration Helpers
+
+```typescript
+import { listErc8004ChainIds, getErc8004Chain } from '@openserv-labs/client'
+
+const mainnets = listErc8004ChainIds('mainnet')  // [1, 8453, 137, 42161, ...]
+const testnets = listErc8004ChainIds('testnet')  // [11155111, 84532, ...]
+
+const base = getErc8004Chain(8453)
+base?.contracts.IDENTITY_REGISTRY  // "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432"
+```
+
+### Re-deploy vs Fresh Mint
+
+`registerOnChain` checks the workflow wallet's `erc8004AgentId`:
+
+- **Has value** → `setAgentURI` (update metadata, same agent ID)
+- **Empty/null** → `register` (mint new NFT, new agent ID)
+
+**Never clear the wallet state unless you intentionally want a new agent ID.** To update name/description/endpoints, just re-run.
+
+### Troubleshooting: "Not authorized" on `setAgentURI`
+
+The signing wallet doesn't own the on-chain token. Before doing anything, investigate:
+
+1. **Check the chain ID.** Agent IDs are chain-specific (e.g. `84532:243` is Base Sepolia, `8453:243` is Base mainnet). If you previously deployed on a different chain, the stored `erc8004AgentId` won't work on the target chain. Make sure `chainId` in `registerOnChain()` matches the chain where the agent was originally registered.
+
+2. **Check the wallet.** Verify that `WALLET_PRIVATE_KEY` derives to the same address that owns the token on-chain. If the wallet was regenerated (e.g. after deleting `.openserv.json` and re-provisioning), it won't match the original owner.
+
+3. **Last resort: fresh mint.** Only if the original wallet is unrecoverable and you accept getting a new agent ID:
+
+```typescript
+await client.erc8004.deploy({
+  workflowId,
+  erc8004AgentId: '',
+  stringifiedAgentCard: '',
+  network: 'base',
+  chainId: 8453,
+  rpcUrl: 'https://mainnet.base.org',
+})
+// registerOnChain will now mint a new agent — you lose the old ID
 ```
 
 ---

@@ -6,6 +6,11 @@ compatibility: Requires network access and valid Maton API key
 metadata:
   author: maton
   version: "1.0"
+  clawdbot:
+    emoji: 🧠
+    requires:
+      env:
+        - MATON_API_KEY
 ---
 
 # Google Analytics
@@ -451,6 +456,17 @@ print(json.dumps(json.load(urllib.request.urlopen(req)), indent=2))
 EOF
 ```
 
+### Troubleshooting: Invalid App Name
+
+1. Ensure your URL path starts with the correct app name:
+   - For Admin API: use `google-analytics-admin`
+   - For Data API: use `google-analytics-data`
+
+Examples:
+- Correct: `https://gateway.maton.ai/google-analytics-admin/v1beta/accountSummaries`
+- Correct: `https://gateway.maton.ai/google-analytics-data/v1beta/properties/123456:runReport`
+- Incorrect: `https://gateway.maton.ai/analytics/v1beta/accountSummaries`
+
 ## Resources
 
 - [Admin API Overview](https://developers.google.com/analytics/devguides/config/admin/v1)
@@ -460,3 +476,5 @@ EOF
 - [Data API Overview](https://developers.google.com/analytics/devguides/reporting/data/v1)
 - [Run Report](https://developers.google.com/analytics/devguides/reporting/data/v1/rest/v1beta/properties/runReport)
 - [Realtime Report](https://developers.google.com/analytics/devguides/reporting/data/v1/rest/v1beta/properties/runRealtimeReport)
+- [Maton Community](https://discord.com/invite/dBfFAcefs2)
+- [Maton Support](mailto:support@maton.ai)

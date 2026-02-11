@@ -2,7 +2,7 @@
 
 Zero-LLM one-shot reminders delivered via `openclaw message send`. The agent composes the reminder text **at creation time**; at fire time a background process sends it with no LLM invocation — zero tokens consumed on delivery.
 
-Uses `nohup sleep` under the hood, so it's lightweight, dependency-free (besides `jq`), and doesn't require external schedulers.
+Uses `nohup sleep` under the hood, so it's lightweight and doesn't require external schedulers.
 
 Recommended for short-horizon reminders (typically under 48 hours).
 
@@ -76,6 +76,42 @@ bash ./skills/quick-reminders/scripts/nohup-reminder.sh help
 | `--channel CH` | `add` | Delivery channel (default: `telegram`). E.g. `whatsapp`, `discord`, `signal`. Optional. |
 | `-z TZ` | `add` | IANA timezone for naive absolute times (default: system local). Optional. |
 | `--all` | `remove` | Cancel all active reminders. |
+
+---
+
+## Security & data access
+
+### What the skill needs and why
+
+| Data | Purpose | Source |
+|------|---------|--------|
+| **Delivery target** (e.g. Telegram chat ID) | Passed to `openclaw message send --target` so the reminder reaches the right chat. | Read from `TOOLS.md` (§ Reminders) at creation time; if missing, the agent falls back to `session_status` tool's `deliveryContext.to` and saves it to `TOOLS.md` for future use. |
+| **Delivery channel** (e.g. `telegram`) | Passed to `openclaw message send --channel` to route through the correct messaging channel. | Defaults to `telegram`; overridden via `--channel` flag when the user requests a different channel. |
+| **Reminder text** | The exact message delivered to the user at fire time. | Composed by the agent at creation time; stored in a temp file (`/tmp/oclaw-rem-<key>-<id>.msg`, mode 0600) until delivery, then deleted. |
+
+### What it reads and writes
+
+| Path | Access | Why |
+|------|--------|-----|
+| `TOOLS.md` | Read (always), write (once, if delivery target missing) | Reads the delivery target. Writes it once if discovered from session context — so it doesn't need to be looked up again. |
+| `./reminders.json` | Read/write | Tracks active reminders (ID, PID, text, fire time). Auto-pruned on every operation. |
+| `/tmp/oclaw-rem-<key>-<id>.msg` | Write (create), read (at fire), delete (after fire or cancel) | Holds reminder text as a plain file to avoid shell quoting issues in the background process. |
+
+### Credentials
+
+The skill itself declares **no API keys or tokens**. Message delivery is handled entirely by the `openclaw` CLI, which uses whatever authentication and channel credentials are already configured in your OpenClaw instance. The skill does not read, store, or transmit any credentials directly.
+
+### Background processes
+
+Each reminder spawns **one detached `nohup` process** that sleeps for the specified duration, then calls `openclaw message send` and self-removes from `reminders.json`. These processes:
+- Run under the same user as the OpenClaw gateway.
+- Are visible via standard process tools (`ps`, Activity Monitor).
+- Are killed and cleaned up when cancelled via `remove`.
+- Do **not** survive machine reboots.
+
+### Model invocation
+
+`disable-model-invocation` is **not set** — the agent can create reminders autonomously from natural conversation (e.g. "remind me in 20 min"). This is intentional for a personal assistant workflow. If you prefer explicit-only invocation, add `disable-model-invocation: true` to the SKILL.md frontmatter; the skill will then only respond to the `/quick-reminders` slash command.
 
 ---
 

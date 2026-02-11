@@ -6,6 +6,12 @@ compatibility: Requires network access and valid Maton API key
 metadata:
   author: maton
   version: "1.0"
+  clawdbot:
+    emoji: 🧠
+    homepage: "https://maton.ai"
+    requires:
+      env:
+        - MATON_API_KEY
 ---
 
 # Google Workspace Admin
@@ -525,9 +531,7 @@ response = requests.post(
 | 429 | Rate limited (10 req/sec per account) |
 | 4xx/5xx | Passthrough error from Admin SDK API |
 
-### Troubleshooting: Invalid API Key
-
-**When you receive a "Invalid API key" error, ALWAYS follow these steps before concluding there is an issue:**
+### Troubleshooting: API Key Issues
 
 1. Check that the `MATON_API_KEY` environment variable is set:
 
@@ -546,6 +550,13 @@ print(json.dumps(json.load(urllib.request.urlopen(req)), indent=2))
 EOF
 ```
 
+### Troubleshooting: Invalid App Name
+
+1. Ensure your URL path starts with `google-workspace-admin`. For example:
+
+- Correct: `https://gateway.maton.ai/google-workspace-admin/admin/directory/v1/users?customer=my_customer`
+- Incorrect: `https://gateway.maton.ai/admin/directory/v1/users?customer=my_customer`
+
 ## Resources
 
 - [Admin SDK Overview](https://developers.google.com/admin-sdk)
@@ -556,3 +567,5 @@ EOF
 - [Directory API Domains](https://developers.google.com/admin-sdk/directory/reference/rest/v1/domains)
 - [Directory API Roles](https://developers.google.com/admin-sdk/directory/reference/rest/v1/roles)
 - [Admin SDK Guides](https://developers.google.com/admin-sdk/directory/v1/guides)
+- [Maton Community](https://discord.com/invite/dBfFAcefs2)
+- [Maton Support](mailto:support@maton.ai)

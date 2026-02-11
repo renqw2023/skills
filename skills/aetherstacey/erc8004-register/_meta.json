@@ -1,0 +1,11 @@
+{
+  "owner": "aetherstacey",
+  "slug": "erc8004-register",
+  "displayName": "ERC-8004 Register",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770782929345,
+    "commit": "https://github.com/openclaw/skills/commit/66cfa6339dad744046797c20fb0a9e5aeb8ab077"
+  },
+  "history": []
+}

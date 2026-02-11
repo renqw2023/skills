@@ -1,7 +1,7 @@
 ---
 name: mintyouragent
 description: Launch Solana tokens autonomously. Pure Python CLI - no bash/jq/solana-cli needed. Works on Windows, Mac, Linux. Use when you want to deploy a token on Solana.
-version: 3.1.3
+version: 3.3.4
 ---
 
 # MintYourAgent

@@ -14,9 +14,13 @@ Usage:  python mya.py setup
         python mya.py launch --name "Token" --symbol "TKN" --description "..." --image "url"
         python mya.py wallet balance
 
-Version: 3.0.2
+Version: 3.2.1
 
 Changelog:
+- 3.3.0: Rate limit enforcement for native launches - preflight check before spending SOL
+- 3.2.1: Fixed pump.fun instruction accounts to match current IDL (16 accounts for buy, added volume/fee PDAs)
+- 3.2.0: Native pump.fun initial buy - bundles create+buy in one atomic tx (like webapp)
+- 3.0.2: Bug fixes
 - 3.0.1: Terminology cleanup for security scanner compatibility
 - 3.0.0: All 200 issues fixed - complete CLI with all commands
 - 2.3.0: All flags (issues 57-100), .env support, network selection
@@ -87,6 +91,7 @@ class ExitCode(IntEnum):
     SECURITY_ERROR = 7
     USER_CANCELLED = 8
     TIMEOUT = 9
+    RATE_LIMIT_EXCEEDED = 10
 
 
 class Network(IntEnum):
@@ -106,7 +111,7 @@ class OutputFormat(IntEnum):
 
 class Constants:
     """Configuration constants."""
-    VERSION = "3.0.2"
+    VERSION = "3.3.4"
     
     # Limits
     MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024
@@ -169,10 +174,482 @@ try:
     from solders.pubkey import Pubkey
     from solders.signature import Signature
     from solders.message import Message
+    from solders.instruction import Instruction, AccountMeta
+    from solders.system_program import ID as SYSTEM_PROGRAM_ID
+    import struct
     import requests
 except ImportError:
     print(f"{Constants.EMOJI['error']} Missing dependencies. Run: pip install solders requests")
     sys.exit(ExitCode.MISSING_DEPS)
+
+# ============== PUMP.FUN PROGRAM CONSTANTS ==============
+
+PUMP_PROGRAM_ID = Pubkey.from_string("6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P")
+PUMP_GLOBAL = Pubkey.from_string("4wTV1YmiEkRvAtNtsSGPtUrqRYQMe5SKy2uB4Jjaxnjf")
+PUMP_FEE_RECIPIENT = Pubkey.from_string("CebN5WGQ4jvEPvsVU4EoHEpgzq1VV7AbicfhtW4xC9iM")
+
+# MintYourAgent platform fee
+MYA_TREASURY = Pubkey.from_string("5AwxRzXkUPgrG1p9MAZYTwpxNGadwDXXkav8yCRtN3QP")
+MYA_PLATFORM_FEE = 10_000_000  # 0.01 SOL in lamports
+PUMP_EVENT_AUTHORITY = Pubkey.from_string("Ce6TQqeHC9p8KetsN6JsjHK7UTZk7nasjjnr7XxXp9F1")
+PUMP_MINT_AUTHORITY = Pubkey.from_string("TSLvdd1pWpHVjahSpsvCXUbgwsL3JAcvokwaKt1eokM")
+TOKEN_PROGRAM_ID = Pubkey.from_string("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA")
+ASSOCIATED_TOKEN_PROGRAM_ID = Pubkey.from_string("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL")
+RENT_PROGRAM_ID = Pubkey.from_string("SysvarRent111111111111111111111111111111111")
+MPL_TOKEN_METADATA_PROGRAM_ID = Pubkey.from_string("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s")
+FEE_PROGRAM_ID = Pubkey.from_string("pfeeUxB6jkeY1Hxd7CsFCAjcbHA9rWtchMGdZ6VojVZ")
+
+
+# ============== NATIVE PUMP.FUN FUNCTIONS ==============
+
+def derive_bonding_curve(mint: Pubkey) -> Pubkey:
+    """Derive bonding curve PDA for a mint."""
+    seeds = [b"bonding-curve", bytes(mint)]
+    pda, _ = Pubkey.find_program_address(seeds, PUMP_PROGRAM_ID)
+    return pda
+
+def derive_associated_bonding_curve(bonding_curve: Pubkey, mint: Pubkey) -> Pubkey:
+    """Derive associated token account for bonding curve."""
+    seeds = [bytes(bonding_curve), bytes(TOKEN_PROGRAM_ID), bytes(mint)]
+    pda, _ = Pubkey.find_program_address(seeds, ASSOCIATED_TOKEN_PROGRAM_ID)
+    return pda
+
+def derive_metadata(mint: Pubkey) -> Pubkey:
+    """Derive metadata PDA for a mint."""
+    seeds = [b"metadata", bytes(MPL_TOKEN_METADATA_PROGRAM_ID), bytes(mint)]
+    pda, _ = Pubkey.find_program_address(seeds, MPL_TOKEN_METADATA_PROGRAM_ID)
+    return pda
+
+def derive_user_ata(user: Pubkey, mint: Pubkey) -> Pubkey:
+    """Derive user's associated token account."""
+    seeds = [bytes(user), bytes(TOKEN_PROGRAM_ID), bytes(mint)]
+    pda, _ = Pubkey.find_program_address(seeds, ASSOCIATED_TOKEN_PROGRAM_ID)
+    return pda
+
+def derive_creator_vault(creator: Pubkey) -> Pubkey:
+    """Derive creator vault PDA."""
+    seeds = [b"creator-vault", bytes(creator)]
+    pda, _ = Pubkey.find_program_address(seeds, PUMP_PROGRAM_ID)
+    return pda
+
+def derive_global_volume_accumulator() -> Pubkey:
+    """Derive global volume accumulator PDA."""
+    seeds = [b"global_volume_accumulator"]
+    pda, _ = Pubkey.find_program_address(seeds, PUMP_PROGRAM_ID)
+    return pda
+
+def derive_user_volume_accumulator(user: Pubkey) -> Pubkey:
+    """Derive user volume accumulator PDA."""
+    seeds = [b"user_volume_accumulator", bytes(user)]
+    pda, _ = Pubkey.find_program_address(seeds, PUMP_PROGRAM_ID)
+    return pda
+
+def derive_fee_config() -> Pubkey:
+    """Derive fee config PDA - seeds are ["fee_config", PUMP_PROGRAM_ID] against FEE_PROGRAM_ID."""
+    seeds = [b"fee_config", bytes(PUMP_PROGRAM_ID)]
+    pda, _ = Pubkey.find_program_address(seeds, FEE_PROGRAM_ID)
+    return pda
+
+def encode_string(s: str) -> bytes:
+    """Encode string with length prefix for Solana."""
+    encoded = s.encode('utf-8')
+    return struct.pack('<I', len(encoded)) + encoded
+
+def build_create_ata_instruction(payer: Pubkey, ata: Pubkey, owner: Pubkey, mint: Pubkey) -> Instruction:
+    """Build create associated token account instruction."""
+    # ATA program instruction (no data needed, accounts define the operation)
+    accounts = [
+        AccountMeta(payer, is_signer=True, is_writable=True),       # payer
+        AccountMeta(ata, is_signer=False, is_writable=True),        # associated token account
+        AccountMeta(owner, is_signer=False, is_writable=False),     # owner
+        AccountMeta(mint, is_signer=False, is_writable=False),      # mint
+        AccountMeta(SYSTEM_PROGRAM_ID, is_signer=False, is_writable=False),  # system program
+        AccountMeta(TOKEN_PROGRAM_ID, is_signer=False, is_writable=False),   # token program
+    ]
+    
+    return Instruction(ASSOCIATED_TOKEN_PROGRAM_ID, bytes(), accounts)
+
+
+def build_transfer_instruction(from_pubkey: Pubkey, to_pubkey: Pubkey, lamports: int) -> Instruction:
+    """Build SOL transfer instruction (system program)."""
+    # System program transfer instruction
+    # Instruction index 2 = Transfer
+    data = struct.pack('<I', 2) + struct.pack('<Q', lamports)
+    
+    accounts = [
+        AccountMeta(from_pubkey, is_signer=True, is_writable=True),
+        AccountMeta(to_pubkey, is_signer=False, is_writable=True),
+    ]
+    
+    return Instruction(SYSTEM_PROGRAM_ID, data, accounts)
+
+
+def build_create_instruction(user: Pubkey, mint: Pubkey, name: str, symbol: str, uri: str) -> Instruction:
+    """Build pump.fun create instruction."""
+    bonding_curve = derive_bonding_curve(mint)
+    associated_bonding_curve = derive_associated_bonding_curve(bonding_curve, mint)
+    metadata = derive_metadata(mint)
+    
+    # Instruction discriminator for 'create'
+    discriminator = bytes([24, 30, 200, 40, 5, 28, 7, 119])
+    
+    # Args: name (string), symbol (string), uri (string), creator (pubkey)
+    data = discriminator + encode_string(name) + encode_string(symbol) + encode_string(uri) + bytes(user)
+    
+    # 14 accounts in exact order from IDL
+    accounts = [
+        AccountMeta(mint, is_signer=True, is_writable=True),                    # 0: mint
+        AccountMeta(PUMP_MINT_AUTHORITY, is_signer=False, is_writable=False),   # 1: mint_authority
+        AccountMeta(bonding_curve, is_signer=False, is_writable=True),          # 2: bonding_curve
+        AccountMeta(associated_bonding_curve, is_signer=False, is_writable=True), # 3: associated_bonding_curve
+        AccountMeta(PUMP_GLOBAL, is_signer=False, is_writable=False),           # 4: global
+        AccountMeta(MPL_TOKEN_METADATA_PROGRAM_ID, is_signer=False, is_writable=False), # 5: mpl_token_metadata
+        AccountMeta(metadata, is_signer=False, is_writable=True),               # 6: metadata
+        AccountMeta(user, is_signer=True, is_writable=True),                    # 7: user
+        AccountMeta(SYSTEM_PROGRAM_ID, is_signer=False, is_writable=False),     # 8: system_program
+        AccountMeta(TOKEN_PROGRAM_ID, is_signer=False, is_writable=False),      # 9: token_program
+        AccountMeta(ASSOCIATED_TOKEN_PROGRAM_ID, is_signer=False, is_writable=False), # 10: associated_token_program
+        AccountMeta(RENT_PROGRAM_ID, is_signer=False, is_writable=False),       # 11: rent
+        AccountMeta(PUMP_EVENT_AUTHORITY, is_signer=False, is_writable=False),  # 12: event_authority
+        AccountMeta(PUMP_PROGRAM_ID, is_signer=False, is_writable=False),       # 13: program
+    ]
+    
+    return Instruction(PUMP_PROGRAM_ID, data, accounts)
+
+def build_buy_instruction(user: Pubkey, mint: Pubkey, creator: Pubkey, token_amount: int, max_sol_lamports: int) -> Instruction:
+    """Build pump.fun buy instruction."""
+    bonding_curve = derive_bonding_curve(mint)
+    associated_bonding_curve = derive_associated_bonding_curve(bonding_curve, mint)
+    user_ata = derive_user_ata(user, mint)
+    creator_vault = derive_creator_vault(creator)
+    global_volume_acc = derive_global_volume_accumulator()
+    user_volume_acc = derive_user_volume_accumulator(user)
+    fee_config = derive_fee_config()
+    
+    # Instruction discriminator for 'buy'
+    discriminator = bytes([102, 6, 61, 18, 1, 218, 235, 234])
+    
+    # Args: amount (u64), max_sol_cost (u64), track_volume (OptionBool - 0 = None, 1 = Some(false), 2 = Some(true))
+    track_volume = 0  # None - don't track volume
+    data = discriminator + struct.pack('<Q', token_amount) + struct.pack('<Q', max_sol_lamports) + bytes([track_volume])
+    
+    # 16 accounts in exact order from IDL
+    accounts = [
+        AccountMeta(PUMP_GLOBAL, is_signer=False, is_writable=False),           # 0: global
+        AccountMeta(PUMP_FEE_RECIPIENT, is_signer=False, is_writable=True),     # 1: fee_recipient
+        AccountMeta(mint, is_signer=False, is_writable=False),                  # 2: mint
+        AccountMeta(bonding_curve, is_signer=False, is_writable=True),          # 3: bonding_curve
+        AccountMeta(associated_bonding_curve, is_signer=False, is_writable=True), # 4: associated_bonding_curve
+        AccountMeta(user_ata, is_signer=False, is_writable=True),               # 5: associated_user
+        AccountMeta(user, is_signer=True, is_writable=True),                    # 6: user
+        AccountMeta(SYSTEM_PROGRAM_ID, is_signer=False, is_writable=False),     # 7: system_program
+        AccountMeta(TOKEN_PROGRAM_ID, is_signer=False, is_writable=False),      # 8: token_program
+        AccountMeta(creator_vault, is_signer=False, is_writable=True),          # 9: creator_vault
+        AccountMeta(PUMP_EVENT_AUTHORITY, is_signer=False, is_writable=False),  # 10: event_authority
+        AccountMeta(PUMP_PROGRAM_ID, is_signer=False, is_writable=False),       # 11: program
+        AccountMeta(global_volume_acc, is_signer=False, is_writable=False),     # 12: global_volume_accumulator
+        AccountMeta(user_volume_acc, is_signer=False, is_writable=True),        # 13: user_volume_accumulator
+        AccountMeta(fee_config, is_signer=False, is_writable=False),            # 14: fee_config
+        AccountMeta(FEE_PROGRAM_ID, is_signer=False, is_writable=False),        # 15: fee_program
+    ]
+    
+    return Instruction(PUMP_PROGRAM_ID, data, accounts)
+
+def build_sell_instruction(user: Pubkey, mint: Pubkey, creator: Pubkey, token_amount: int, min_sol_lamports: int) -> Instruction:
+    """Build pump.fun sell instruction."""
+    bonding_curve = derive_bonding_curve(mint)
+    associated_bonding_curve = derive_associated_bonding_curve(bonding_curve, mint)
+    user_ata = derive_user_ata(user, mint)
+    creator_vault = derive_creator_vault(creator)
+    fee_config = derive_fee_config()
+    
+    # Instruction discriminator for 'sell'
+    discriminator = bytes([51, 230, 133, 164, 1, 127, 131, 173])
+    
+    # Args: amount (u64), min_sol_output (u64)
+    data = discriminator + struct.pack('<Q', token_amount) + struct.pack('<Q', min_sol_lamports)
+    
+    # 14 accounts in exact order from IDL
+    accounts = [
+        AccountMeta(PUMP_GLOBAL, is_signer=False, is_writable=False),           # 0: global
+        AccountMeta(PUMP_FEE_RECIPIENT, is_signer=False, is_writable=True),     # 1: fee_recipient
+        AccountMeta(mint, is_signer=False, is_writable=False),                  # 2: mint
+        AccountMeta(bonding_curve, is_signer=False, is_writable=True),          # 3: bonding_curve
+        AccountMeta(associated_bonding_curve, is_signer=False, is_writable=True), # 4: associated_bonding_curve
+        AccountMeta(user_ata, is_signer=False, is_writable=True),               # 5: associated_user
+        AccountMeta(user, is_signer=True, is_writable=True),                    # 6: user
+        AccountMeta(SYSTEM_PROGRAM_ID, is_signer=False, is_writable=False),     # 7: system_program
+        AccountMeta(creator_vault, is_signer=False, is_writable=True),          # 8: creator_vault
+        AccountMeta(TOKEN_PROGRAM_ID, is_signer=False, is_writable=False),      # 9: token_program
+        AccountMeta(PUMP_EVENT_AUTHORITY, is_signer=False, is_writable=False),  # 10: event_authority
+        AccountMeta(PUMP_PROGRAM_ID, is_signer=False, is_writable=False),       # 11: program
+        AccountMeta(fee_config, is_signer=False, is_writable=False),            # 12: fee_config
+        AccountMeta(FEE_PROGRAM_ID, is_signer=False, is_writable=False),        # 13: fee_program
+    ]
+    
+    return Instruction(PUMP_PROGRAM_ID, data, accounts)
+
+
+def get_bonding_curve_state(rpc_url: str, mint: Pubkey) -> dict:
+    """Get bonding curve state from chain."""
+    bonding_curve = derive_bonding_curve(mint)
+    resp = requests.post(rpc_url, json={
+        "jsonrpc": "2.0", "id": 1,
+        "method": "getAccountInfo",
+        "params": [str(bonding_curve), {"encoding": "base64"}]
+    }, timeout=10)
+    result = resp.json().get("result", {})
+    if not result or not result.get("value"):
+        return None
+    
+    data = base64.b64decode(result["value"]["data"][0])
+    # BondingCurve struct: 8 bytes discriminator + 5 u64s + 1 bool + 32 bytes pubkey
+    # virtual_token_reserves, virtual_sol_reserves, real_token_reserves, real_sol_reserves, token_total_supply, complete, creator
+    offset = 8  # skip discriminator
+    virtual_token_reserves = struct.unpack('<Q', data[offset:offset+8])[0]
+    virtual_sol_reserves = struct.unpack('<Q', data[offset+8:offset+16])[0]
+    real_token_reserves = struct.unpack('<Q', data[offset+16:offset+24])[0]
+    real_sol_reserves = struct.unpack('<Q', data[offset+24:offset+32])[0]
+    token_total_supply = struct.unpack('<Q', data[offset+32:offset+40])[0]
+    complete = data[offset+40] != 0
+    creator = Pubkey.from_bytes(data[offset+41:offset+73]) if len(data) >= offset+73 else None
+    
+    return {
+        'virtual_token_reserves': virtual_token_reserves,
+        'virtual_sol_reserves': virtual_sol_reserves,
+        'real_token_reserves': real_token_reserves,
+        'real_sol_reserves': real_sol_reserves,
+        'token_total_supply': token_total_supply,
+        'complete': complete,
+        'creator': creator,
+    }
+
+
+def get_token_balance(rpc_url: str, user: Pubkey, mint: Pubkey) -> int:
+    """Get user's token balance for a mint."""
+    user_ata = derive_user_ata(user, mint)
+    resp = requests.post(rpc_url, json={
+        "jsonrpc": "2.0", "id": 1,
+        "method": "getTokenAccountBalance",
+        "params": [str(user_ata)]
+    }, timeout=10)
+    result = resp.json().get("result", {})
+    if not result or not result.get("value"):
+        return 0
+    return int(result["value"]["amount"])
+
+
+def calculate_sol_for_tokens(token_amount: int, virtual_token_reserves: int, virtual_sol_reserves: int) -> int:
+    """Calculate SOL received for selling tokens using bonding curve formula.
+    
+    Uses constant product formula: (virtual_sol - sol_out) * (virtual_token + token_in) = k
+    Solving: sol_out = virtual_sol - k / (virtual_token + token_in)
+    """
+    if token_amount <= 0:
+        return 0
+    k = virtual_sol_reserves * virtual_token_reserves
+    new_virtual_token = virtual_token_reserves + token_amount
+    new_virtual_sol = k // new_virtual_token
+    sol_out = virtual_sol_reserves - new_virtual_sol
+    return max(0, sol_out)
+
+
+def calculate_current_price(virtual_token_reserves: int, virtual_sol_reserves: int) -> float:
+    """Calculate current token price in SOL."""
+    if virtual_token_reserves == 0:
+        return 0
+    # Price = virtual_sol / virtual_token (in lamports per token)
+    return virtual_sol_reserves / virtual_token_reserves
+
+
+def native_sell(keypair: Keypair, mint: Pubkey, token_amount: int, min_sol_lamports: int, 
+                creator: Pubkey, rpc_url: str) -> dict:
+    """Execute native pump.fun sell."""
+    user = keypair.pubkey()
+    
+    # Get blockhash
+    blockhash = get_recent_blockhash_native(rpc_url)
+    
+    # Build sell instruction
+    sell_ix = build_sell_instruction(user, mint, creator, token_amount, min_sol_lamports)
+    
+    # Build and sign transaction
+    message = Message.new_with_blockhash([sell_ix], user, Hash.from_string(blockhash))
+    tx = SoldersTransaction.new_unsigned(message)
+    tx.sign([keypair], Hash.from_string(blockhash))
+    
+    # Send
+    signature = send_transaction_native(rpc_url, tx)
+    
+    return {
+        'success': True,
+        'signature': signature,
+        'token_amount': token_amount,
+    }
+
+
+def get_recent_blockhash_native(rpc_url: str) -> str:
+    """Get recent blockhash from Solana."""
+    resp = requests.post(rpc_url, json={
+        "jsonrpc": "2.0", "id": 1,
+        "method": "getLatestBlockhash",
+        "params": [{"commitment": "finalized"}]
+    }, timeout=10)
+    return resp.json()["result"]["value"]["blockhash"]
+
+def send_transaction_native(rpc_url: str, tx: SoldersTransaction) -> str:
+    """Send signed transaction to Solana."""
+    tx_base64 = base64.b64encode(bytes(tx)).decode()
+    resp = requests.post(rpc_url, json={
+        "jsonrpc": "2.0", "id": 1,
+        "method": "sendTransaction",
+        "params": [tx_base64, {"encoding": "base64", "skipPreflight": False, "maxRetries": 3}]
+    }, timeout=60)
+    result = resp.json()
+    if "error" in result:
+        raise Exception(f"Transaction failed: {result['error']}")
+    return result["result"]
+
+def upload_metadata_to_pump(name: str, symbol: str, description: str,
+                            image_path: Optional[str] = None,
+                            image_url: Optional[str] = None,
+                            banner_path: Optional[str] = None,
+                            banner_url: Optional[str] = None,
+                            twitter: Optional[str] = None,
+                            telegram: Optional[str] = None,
+                            website: Optional[str] = None) -> str:
+    """Upload metadata directly to pump.fun's IPFS."""
+    form_data = {
+        'name': name,
+        'symbol': symbol,
+        'description': description,
+        'showName': 'true'
+    }
+    
+    if twitter:
+        form_data['twitter'] = twitter
+    if telegram:
+        form_data['telegram'] = telegram
+    if website:
+        form_data['website'] = website
+    
+    files = {}
+    
+    # Handle main image
+    if image_path:
+        p = Path(image_path)
+        with open(p, 'rb') as f:
+            content = f.read()
+        ext = p.suffix.lower().lstrip('.')
+        mime = {'png': 'image/png', 'jpg': 'image/jpeg', 'jpeg': 'image/jpeg',
+                'gif': 'image/gif', 'webp': 'image/webp'}.get(ext, 'image/png')
+        files['file'] = (p.name, content, mime)
+    elif image_url:
+        resp = requests.get(image_url, timeout=30)
+        resp.raise_for_status()
+        files['file'] = ('image.png', resp.content, 'image/png')
+    
+    # Handle banner if provided
+    if banner_path:
+        p = Path(banner_path)
+        with open(p, 'rb') as f:
+            content = f.read()
+        ext = p.suffix.lower().lstrip('.')
+        mime = {'png': 'image/png', 'jpg': 'image/jpeg', 'jpeg': 'image/jpeg',
+                'gif': 'image/gif', 'webp': 'image/webp'}.get(ext, 'image/png')
+        files['banner'] = (p.name, content, mime)
+    elif banner_url:
+        resp = requests.get(banner_url, timeout=30)
+        resp.raise_for_status()
+        files['banner'] = ('banner.png', resp.content, 'image/png')
+    
+    resp = requests.post("https://pump.fun/api/ipfs", data=form_data, files=files, timeout=60)
+    resp.raise_for_status()
+    result = resp.json()
+    
+    return result.get('metadataUri') or result.get('metadata', {}).get('uri')
+
+def calculate_tokens_for_sol(sol_lamports: int) -> int:
+    """Calculate token amount for given SOL using pump.fun bonding curve.
+    
+    Uses the constant product formula (x * y = k) with pump.fun's initial reserves:
+    - initial_virtual_token_reserves: 1,073,000,000,000,000
+    - initial_virtual_sol_reserves: 30,000,000,000 (30 SOL)
+    """
+    virtual_token_reserves = 1_073_000_000_000_000
+    virtual_sol_reserves = 30_000_000_000
+    
+    # k = x * y (constant product)
+    k = virtual_token_reserves * virtual_sol_reserves
+    
+    # After adding sol_lamports, new sol reserves
+    new_sol_reserves = virtual_sol_reserves + sol_lamports
+    
+    # New token reserves = k / new_sol_reserves
+    new_token_reserves = k // new_sol_reserves
+    
+    # Tokens out = old - new
+    tokens_out = virtual_token_reserves - new_token_reserves
+    
+    return tokens_out
+
+def native_launch_with_buy(keypair: Keypair, name: str, symbol: str, uri: str,
+                           initial_buy_sol: float, slippage_bps: int,
+                           rpc_url: str) -> dict:
+    """Launch token with initial buy using native pump.fun program calls."""
+    mint_keypair = Keypair()
+    mint = mint_keypair.pubkey()
+    user = keypair.pubkey()
+    
+    # Get blockhash
+    blockhash = get_recent_blockhash_native(rpc_url)
+    
+    # Build instructions
+    instructions = []
+    
+    # Platform fee to MintYourAgent treasury
+    platform_fee_ix = build_transfer_instruction(user, MYA_TREASURY, MYA_PLATFORM_FEE)
+    instructions.append(platform_fee_ix)
+    
+    # Create instruction
+    create_ix = build_create_instruction(user, mint, name, symbol, uri)
+    instructions.append(create_ix)
+    
+    # Buy instruction (with ATA creation)
+    if initial_buy_sol > 0:
+        sol_lamports = int(initial_buy_sol * 1e9)
+        
+        # Calculate expected tokens using bonding curve formula
+        expected_tokens = calculate_tokens_for_sol(sol_lamports)
+        
+        # Apply slippage - accept fewer tokens (slippage protects against price movement)
+        min_tokens = int(expected_tokens * (10000 - slippage_bps) / 10000)
+        
+        # Max SOL to spend (with slippage buffer for fees/rounding)
+        max_sol_lamports = int(sol_lamports * (1 + slippage_bps / 10000))
+        
+        # Create user's ATA first (required before buying)
+        user_ata = derive_user_ata(user, mint)
+        create_ata_ix = build_create_ata_instruction(user, user_ata, user, mint)
+        instructions.append(create_ata_ix)
+        
+        buy_ix = build_buy_instruction(user, mint, user, min_tokens, max_sol_lamports)  # creator=user for initial buy
+        instructions.append(buy_ix)
+    
+    # Build and sign transaction
+    message = Message.new_with_blockhash(instructions, user, Hash.from_string(blockhash))
+    tx = SoldersTransaction.new_unsigned(message)
+    tx.sign([mint_keypair, keypair], Hash.from_string(blockhash))
+    
+    # Send
+    signature = send_transaction_native(rpc_url, tx)
+    
+    return {
+        'success': True,
+        'mint': str(mint),
+        'signature': signature,
+        'pumpUrl': f"https://pump.fun/{mint}"
+    }
 
 
 # ============== RUNTIME CONFIG ==============
@@ -342,6 +819,10 @@ def get_logger() -> logging.Logger:
 
 def log_info(msg: str) -> None:
     get_logger().info(f"[{get_runtime().correlation_id}] {msg}")
+
+
+def log_warning(msg: str) -> None:
+    get_logger().warning(f"[{get_runtime().correlation_id}] {msg}")
 
 
 def log_error(msg: str) -> None:
@@ -1576,6 +2057,242 @@ def cmd_sign(args: argparse.Namespace) -> None:
             Output.info("Signature copied to clipboard!")
 
 
+def cmd_collect_fees(args: argparse.Namespace) -> None:
+    """Collect accumulated creator fees from pump.fun vaults."""
+    rt = get_runtime()
+    keypair = load_wallet()
+    creator = keypair.pubkey()
+    rpc_url = get_rpc_url()
+    
+    # Derive creator vault PDA
+    creator_vault = derive_creator_vault(creator)
+    
+    with Spinner("Checking creator vault..."):
+        # Get vault balance
+        try:
+            resp = api_request('POST', rpc_url, json={
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "getBalance",
+                "params": [str(creator_vault)]
+            })
+            result = resp.json().get("result", {})
+            vault_balance = result.get("value", 0) / 1e9
+        except Exception as e:
+            Output.error("Failed to check vault", str(e))
+            return
+    
+    if vault_balance < 0.001:
+        Output.info(f"Creator vault balance: {vault_balance:.6f} SOL")
+        Output.info("No fees to collect (minimum 0.001 SOL)")
+        return
+    
+    Output.info(f"Creator vault: {creator_vault}")
+    Output.info(f"Balance: {vault_balance:.6f} SOL")
+    
+    if hasattr(args, 'dry_run') and args.dry_run:
+        Output.info("Dry run - skipping collection")
+        return
+    
+    with Spinner("Building collect instruction..."):
+        # Build collectCreatorFee instruction
+        # Discriminator for collectCreatorFee (from pump.fun IDL)
+        discriminator = bytes([0x1a, 0x8b, 0xd6, 0x5c, 0x2b, 0x30, 0x1c, 0x5e])
+        
+        accounts = [
+            AccountMeta(creator, is_signer=True, is_writable=True),           # creator (signer)
+            AccountMeta(creator_vault, is_signer=False, is_writable=True),    # creator_vault
+            AccountMeta(SYSTEM_PROGRAM_ID, is_signer=False, is_writable=False),  # system_program
+        ]
+        
+        collect_ix = Instruction(PUMP_PROGRAM_ID, discriminator, accounts)
+        
+        # Get blockhash and build tx
+        blockhash = get_recent_blockhash_native(rpc_url)
+        message = Message.new_with_blockhash([collect_ix], creator, Hash.from_string(blockhash))
+        tx = SoldersTransaction.new_unsigned(message)
+        tx.sign([keypair], Hash.from_string(blockhash))
+    
+    with Spinner("Sending transaction..."):
+        try:
+            signature = send_transaction_native(rpc_url, tx)
+        except Exception as e:
+            Output.error("Transaction failed", str(e))
+            return
+    
+    if rt.format == OutputFormat.JSON:
+        Output.json_output({
+            "success": True,
+            "collected_sol": vault_balance,
+            "signature": signature,
+            "creator_vault": str(creator_vault),
+        })
+    else:
+        Output.success(f"Collected {vault_balance:.6f} SOL!")
+        print(f"   Signature: {signature}")
+        print(f"   Explorer: https://solscan.io/tx/{signature}")
+
+
+def cmd_sell(args: argparse.Namespace) -> None:
+    """Sell tokens from a pump.fun bonding curve."""
+    rt = get_runtime()
+    keypair = load_wallet()
+    user = keypair.pubkey()
+    rpc_url = get_rpc_url()
+    
+    # Parse mint address
+    if not hasattr(args, 'mint') or not args.mint:
+        Output.error("Mint address required", "Use --mint <address>")
+        return
+    
+    try:
+        mint = Pubkey.from_string(args.mint)
+    except Exception:
+        Output.error("Invalid mint address")
+        return
+    
+    # Get bonding curve state
+    with Spinner("Fetching bonding curve state..."):
+        bc_state = get_bonding_curve_state(rpc_url, mint)
+        if not bc_state:
+            Output.error("Bonding curve not found", "Token may not exist or already migrated")
+            return
+        
+        if bc_state['complete']:
+            Output.error("Bonding curve complete", "Token has migrated to Raydium - use DEX to sell")
+            return
+        
+        creator = bc_state['creator'] if bc_state['creator'] else user
+    
+    # Get user's token balance
+    with Spinner("Checking token balance..."):
+        token_balance = get_token_balance(rpc_url, user, mint)
+        if token_balance == 0:
+            Output.error("No tokens to sell", "You don't hold any of this token")
+            return
+    
+    # Determine sell amount
+    if hasattr(args, 'percent') and args.percent:
+        sell_amount = int(token_balance * args.percent / 100)
+    elif hasattr(args, 'amount') and args.amount:
+        sell_amount = int(args.amount * 1e6)  # Assuming 6 decimals
+    else:
+        sell_amount = token_balance  # Sell all
+    
+    if sell_amount > token_balance:
+        sell_amount = token_balance
+    
+    if sell_amount <= 0:
+        Output.error("Invalid sell amount")
+        return
+    
+    # Calculate expected SOL output
+    expected_sol = calculate_sol_for_tokens(
+        sell_amount,
+        bc_state['virtual_token_reserves'],
+        bc_state['virtual_sol_reserves']
+    )
+    
+    # Apply slippage (default 5%)
+    slippage_bps = args.slippage if hasattr(args, 'slippage') and args.slippage else 500
+    min_sol = int(expected_sol * (10000 - slippage_bps) / 10000)
+    
+    # Calculate current price and entry price for gain calculation
+    current_price = calculate_current_price(
+        bc_state['virtual_token_reserves'],
+        bc_state['virtual_sol_reserves']
+    )
+    
+    # Check for target gain condition
+    if hasattr(args, 'target_gain') and args.target_gain:
+        target_pct = args.target_gain
+        
+        # For target gain, we need to monitor and wait
+        Output.info(f"Monitoring for {target_pct}% gain...")
+        Output.info(f"Current balance: {token_balance / 1e6:.2f} tokens")
+        Output.info(f"Current price: {current_price * 1e9:.10f} SOL/token")
+        
+        initial_value = token_balance * current_price
+        target_value = initial_value * (1 + target_pct / 100)
+        
+        print(f"   Initial value: {initial_value / 1e9:.6f} SOL")
+        print(f"   Target value:  {target_value / 1e9:.6f} SOL")
+        print(f"\nMonitoring... (Ctrl+C to cancel)")
+        
+        try:
+            while True:
+                time.sleep(5)  # Check every 5 seconds
+                bc_state = get_bonding_curve_state(rpc_url, mint)
+                if not bc_state or bc_state['complete']:
+                    Output.warning("Bonding curve completed - selling now")
+                    break
+                
+                current_price = calculate_current_price(
+                    bc_state['virtual_token_reserves'],
+                    bc_state['virtual_sol_reserves']
+                )
+                current_value = token_balance * current_price
+                gain_pct = ((current_value / initial_value) - 1) * 100
+                
+                sys.stdout.write(f"\r   Gain: {gain_pct:+.2f}% | Value: {current_value / 1e9:.6f} SOL   ")
+                sys.stdout.flush()
+                
+                if gain_pct >= target_pct:
+                    print(f"\n{Constants.EMOJI['rocket']} Target reached! Selling...")
+                    break
+        except KeyboardInterrupt:
+            print("\nCancelled.")
+            return
+        
+        # Recalculate expected SOL with current reserves
+        expected_sol = calculate_sol_for_tokens(
+            sell_amount,
+            bc_state['virtual_token_reserves'],
+            bc_state['virtual_sol_reserves']
+        )
+        min_sol = int(expected_sol * (10000 - slippage_bps) / 10000)
+    
+    # Show sell preview
+    Output.info(f"Selling {sell_amount / 1e6:.2f} tokens")
+    print(f"   Expected: ~{expected_sol / 1e9:.6f} SOL")
+    print(f"   Minimum:  {min_sol / 1e9:.6f} SOL (slippage: {slippage_bps/100}%)")
+    
+    if hasattr(args, 'dry_run') and args.dry_run:
+        Output.info("Dry run - skipping execution")
+        return
+    
+    # Execute sell
+    with Spinner("Selling..."):
+        try:
+            result = native_sell(
+                keypair=keypair,
+                mint=mint,
+                token_amount=sell_amount,
+                min_sol_lamports=min_sol,
+                creator=creator,
+                rpc_url=rpc_url
+            )
+        except Exception as e:
+            Output.error("Sell failed", str(e))
+            return
+    
+    if result['success']:
+        if rt.format == OutputFormat.JSON:
+            Output.json_output({
+                "success": True,
+                "signature": result['signature'],
+                "tokens_sold": sell_amount,
+                "expected_sol": expected_sol / 1e9,
+            })
+        else:
+            Output.success("Sold!")
+            print(f"   Tokens: {sell_amount / 1e6:.2f}")
+            print(f"   Signature: {result['signature']}")
+            print(f"   Explorer: https://solscan.io/tx/{result['signature']}")
+    else:
+        Output.error("Sell failed")
+
+
 def show_first_launch_tips() -> None:
     """Show helpful commands before first launch."""
     print("=" * 50)
@@ -1641,6 +2358,11 @@ def cmd_launch(args: argparse.Namespace) -> None:
     name = sanitize_input(args.name)
     symbol = sanitize_input(args.symbol)
     description = sanitize_input(args.description)
+    
+    # Append branding to description
+    branding = "\n\nLaunched via mintyouragent.com"
+    if branding.strip().lower() not in description.lower():
+        description = description.rstrip() + branding
     
     # Validate
     if len(symbol) > Constants.MAX_SYMBOL_LENGTH:
@@ -1730,7 +2452,113 @@ def cmd_launch(args: argparse.Namespace) -> None:
         if initial_buy > 0:
             print(f"   Initial buy: {initial_buy} SOL")
         
-        # Prepare
+        # Use native pump.fun integration when initial buy is specified
+        # This bundles create + buy in one atomic transaction (like the webapp)
+        if initial_buy > 0:
+            # Preflight check - validate rate limits before spending SOL
+            preflight_token = None
+            with Spinner("Checking launch limits...", total=100):
+                try:
+                    preflight_resp = api_request(
+                        'POST',
+                        f"{get_api_url()}/launch/preflight",
+                        json={"creatorAddress": creator_address},
+                        headers=get_request_headers(),
+                        timeout=30
+                    )
+                    if not preflight_resp.get('allowed', False):
+                        Output.error("Daily launch limit reached", 
+                            f"Used {preflight_resp.get('launchesToday', '?')}/{preflight_resp.get('maxLaunches', '?')} launches today. "
+                            f"Hold $SOUL to unlock more: {preflight_resp.get('learnMore', 'https://mintyouragent.com/token')}")
+                        sys.exit(ExitCode.RATE_LIMIT_EXCEEDED)
+                    preflight_token = preflight_resp.get('preflightToken')
+                    remaining = preflight_resp.get('launchesRemaining', '?')
+                    print(f"   ✓ {remaining} launches remaining today")
+                except Exception as e:
+                    log_warning(f"Preflight check failed: {e}")
+                    # Continue without token - server will enforce limits on record
+            
+            rpc_url = rt.rpc_url or "https://api.mainnet-beta.solana.com"
+            slippage_bps = args.slippage if args.slippage else 1000  # 10% default
+            
+            with Spinner("Uploading metadata...", total=100):
+                uri = upload_metadata_to_pump(
+                    name=name,
+                    symbol=symbol.upper(),
+                    description=description,
+                    image_path=args.image_file if hasattr(args, 'image_file') and args.image_file else None,
+                    image_url=image if not (hasattr(args, 'image_file') and args.image_file) else None,
+                    banner_path=args.banner_file if hasattr(args, 'banner_file') and args.banner_file else None,
+                    banner_url=banner if banner and not (hasattr(args, 'banner_file') and args.banner_file) else None,
+                    twitter=args.twitter if hasattr(args, 'twitter') else None,
+                    telegram=args.telegram if hasattr(args, 'telegram') else None,
+                    website=args.website if hasattr(args, 'website') else None,
+                )
+                print(f"   URI: {uri}")
+            
+            with Spinner("Launching with initial buy...", total=100):
+                result = native_launch_with_buy(
+                    keypair=keypair,
+                    name=name,
+                    symbol=symbol.upper(),
+                    uri=uri,
+                    initial_buy_sol=initial_buy,
+                    slippage_bps=slippage_bps,
+                    rpc_url=rpc_url
+                )
+            
+            if result['success']:
+                log_info(f"Launch success: {result['mint']}")
+                add_to_history("launch", {"mint": result['mint'], "symbol": symbol.upper(), "name": name})
+                
+                # Record to API for leaderboard tracking + rate limit enforcement
+                try:
+                    record_payload = {
+                        "mintAddress": result['mint'],
+                        "creatorAddress": creator_address,
+                        "signature": result['signature'],
+                        "metadata": {
+                            "name": name,
+                            "symbol": symbol.upper(),
+                            "description": description,
+                            "imageUrl": uri,
+                            "twitter": args.twitter if hasattr(args, 'twitter') else None,
+                            "telegram": args.telegram if hasattr(args, 'telegram') else None,
+                            "website": args.website if hasattr(args, 'website') else None,
+                        },
+                        "initialBuySol": initial_buy,
+                    }
+                    # Include preflight token if we got one
+                    if preflight_token:
+                        record_payload["preflightToken"] = preflight_token
+                    headers = get_request_headers()
+                    api_request('POST', f"{get_api_url()}/launch/record", json=record_payload, headers=headers, timeout=30)
+                    log_info("Launch recorded to API")
+                except Exception as e:
+                    log_warning(f"Failed to record launch to API: {e}")
+                    # Don't fail the launch, just log the warning
+                
+                if rt.format == OutputFormat.JSON:
+                    Output.json_output({
+                        "success": True,
+                        "mint": result['mint'],
+                        "signature": result['signature'],
+                        "pump_url": result['pumpUrl'],
+                    })
+                else:
+                    Output.success("Token launched with initial buy!")
+                    print(f"{Constants.EMOJI['coin']} Mint: {result['mint']}")
+                    print(f"{Constants.EMOJI['link']} {result['pumpUrl']}")
+                    
+                    if HAS_CLIPBOARD and Output.copy_to_clipboard(result['pumpUrl']):
+                        Output.info("URL copied to clipboard!")
+            else:
+                Output.error("Launch failed", result.get('error', 'Unknown error'))
+                sys.exit(ExitCode.API_ERROR)
+            
+            return  # Done with native launch
+        
+        # Prepare (API path - no initial buy)
         with Spinner("Preparing...", total=100):
             prepare_payload = {
                 "name": name,
@@ -1748,8 +2576,7 @@ def cmd_launch(args: argparse.Namespace) -> None:
                 prepare_payload["telegram"] = sanitize_input(args.telegram)
             if args.website:
                 prepare_payload["website"] = sanitize_input(args.website)
-            if initial_buy > 0:
-                prepare_payload["initialBuyAmount"] = initial_buy
+            # Note: initial buy is handled by native path above, not API
             if args.slippage:
                 prepare_payload["slippageBps"] = args.slippage
             if rt.priority_fee > 0:
@@ -2127,6 +2954,19 @@ def main() -> None:
     sign_p = subparsers.add_parser("sign", help="Sign message")
     sign_p.add_argument("--message", "-m")
     
+    # Collect Fees
+    collect_fees_p = subparsers.add_parser("collect-fees", aliases=["fees"], help="Collect creator fees")
+    collect_fees_p.add_argument("--dry-run", action="store_true", help="Check balance without collecting")
+    
+    # Sell
+    sell_p = subparsers.add_parser("sell", help="Sell tokens")
+    sell_p.add_argument("--mint", "-m", required=True, help="Token mint address")
+    sell_p.add_argument("--amount", "-a", type=float, help="Token amount to sell")
+    sell_p.add_argument("--percent", "-p", type=float, help="Percentage of holdings to sell")
+    sell_p.add_argument("--target-gain", "-t", type=float, help="Wait for X% gain then sell")
+    sell_p.add_argument("--slippage", "-s", type=int, default=500, help="Slippage in basis points (default: 500 = 5%)")
+    sell_p.add_argument("--dry-run", action="store_true", help="Preview without executing")
+    
     # Config
     config_p = subparsers.add_parser("config", aliases=["c"], help="Configuration")
     config_p.add_argument("config_cmd", nargs="?", default="show", choices=["show", "set", "autonomous"])
@@ -2183,8 +3023,8 @@ def main() -> None:
         "tokens": cmd_tokens, "history": cmd_history, "backup": cmd_backup,
         "verify": cmd_verify, "status": cmd_status, "trending": cmd_trending,
         "leaderboard": cmd_leaderboard, "stats": cmd_stats, "airdrop": cmd_airdrop,
-        "transfer": cmd_transfer, "sign": cmd_sign, "config": cmd_config,
-        "uninstall": cmd_uninstall,
+        "transfer": cmd_transfer, "sign": cmd_sign, "collect-fees": cmd_collect_fees,
+        "fees": cmd_collect_fees, "sell": cmd_sell, "config": cmd_config, "uninstall": cmd_uninstall,
     }
     
     if args.command in commands:

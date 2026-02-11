@@ -1,6 +1,7 @@
 ---
 name: gandi
 description: "Manage Gandi domains, DNS, email, and SSL certificates via the Gandi API"
+metadata: {"openclaw":{"disable-model-invocation":true,"capabilities":["dns-modification","email-management","domain-registration","destructive-operations"],"credentials":{"type":"file","location":"~/.config/gandi/api_token","description":"Gandi Personal Access Token (PAT)","permissions":600},"requires":{"bins":["node","npm"]}}}
 ---
 
 # Gandi Domain Registrar Skill
@@ -8,6 +9,38 @@ description: "Manage Gandi domains, DNS, email, and SSL certificates via the Gan
 Comprehensive Gandi domain registrar integration for Moltbot.
 
 **Status:** ✅ Phase 2 Complete - DNS modification & snapshots functional
+
+## ⚠️ Security Warning
+
+**This skill can perform DESTRUCTIVE operations on your Gandi account:**
+
+- **DNS Modification:** Add, update, or delete DNS records (can break websites/email)
+- **Email Management:** Create, modify, or delete email forwards (can intercept emails)
+- **Domain Registration:** Register domains (creates financial transactions)
+- **Bulk Operations:** Replace all DNS records at once (cannot be undone except via snapshots)
+
+**Before running ANY script:**
+1. Review the script code to understand what it does
+2. Create DNS snapshots before bulk changes (`create-snapshot.js`)
+3. Use read-only Personal Access Tokens where possible
+4. Test on non-production domains first
+5. Understand that some operations cannot be undone
+
+**Destructive scripts** (⚠️ modify or delete data):
+- `add-dns-record.js`, `delete-dns-record.js`, `update-dns-bulk.js`
+- `add-email-forward.js`, `update-email-forward.js`, `delete-email-forward.js`
+- `restore-snapshot.js` (replaces current DNS)
+
+**Read-only scripts** (✅ safe, no modifications):
+- `list-domains.js`, `list-dns.js`, `list-snapshots.js`
+- `list-email-forwards.js`, `check-domain.js`, `check-ssl.js`
+
+📖 **For complete script documentation:** See [SCRIPTS.md](SCRIPTS.md) for detailed information about:
+- What each script does
+- Network operations and API calls
+- Security implications
+- Undo/recovery procedures
+- Audit workflow recommendations
 
 ## Current Capabilities
 
@@ -45,18 +78,31 @@ Comprehensive Gandi domain registrar integration for Moltbot.
 
 ### Step 1: Create Personal Access Token
 
+**⚠️ Security Recommendation:** Use the **minimum required scopes** for your use case.
+
 1. Go to [Gandi Admin → Personal Access Tokens](https://admin.gandi.net/organizations/account/pat)
 2. Click **"Create a token"**
 3. Select your organization
 4. Choose scopes:
+   
+   **Read-Only (Recommended for viewing only):**
    - ✅ Domain: read (required for listing domains)
    - ✅ LiveDNS: read (required for viewing DNS records)
-   - ✅ LiveDNS: write (**required for Phase 2 - DNS modification**)
    - ✅ Email: read (required for viewing email forwards)
-   - ✅ Email: write (**required for Phase 2 - email forwarding management**)
+   
+   **Write Access (Required for modifications - use with caution):**
+   - ⚠️ LiveDNS: write (enables DNS modification, deletion, bulk operations)
+   - ⚠️ Email: write (enables email forward creation, updates, deletions)
+
 5. Copy the token (you won't see it again!)
 
-**Note:** If you only need read-only access (Phase 1), you can skip the write permissions.
+**Security Best Practices:**
+- Create separate tokens for read-only vs. write operations
+- Use read-only tokens for routine checks/monitoring
+- Only use write tokens when actively making changes
+- Rotate tokens regularly (every 90 days recommended)
+- Delete unused tokens immediately
+- **Never share or commit tokens to version control**
 
 ### Step 2: Store Token
 
@@ -71,7 +117,30 @@ echo "YOUR_PERSONAL_ACCESS_TOKEN" > ~/.config/gandi/api_token
 chmod 600 ~/.config/gandi/api_token
 ```
 
-### Step 3: Test Authentication
+### Step 3: Install Dependencies
+
+**Required:** Node.js >= 18.0.0
+
+```bash
+cd gandi-skill/scripts
+
+# Install npm dependencies
+npm install
+
+# Verify installation
+npm list --depth=0
+```
+
+**Expected packages:**
+- axios (HTTP client for Gandi API)
+- Any other dependencies listed in package.json
+
+**Troubleshooting:**
+- If `node` or `npm` not found: Install Node.js from [nodejs.org](https://nodejs.org/)
+- If permission errors: Don't use `sudo` - fix npm permissions or use nvm
+- If package errors: Delete `node_modules/` and `package-lock.json`, then `npm install` again
+
+### Step 4: Test Authentication
 
 ```bash
 cd gandi-skill/scripts
@@ -89,7 +158,7 @@ Your organizations:
 🎉 You're ready to use the Gandi skill!
 ```
 
-### Step 4: Setup Contact Information (Optional, for Domain Registration)
+### Step 5: Setup Contact Information (Optional, for Domain Registration)
 
 If you plan to register domains, save your contact information once for reuse:
 

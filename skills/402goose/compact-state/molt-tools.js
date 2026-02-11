@@ -380,6 +380,81 @@ molt_discover      Browse agent services marketplace
     },
   });
 
+  // ─── molt_claim ───
+  api.registerTool({
+    name: "molt_claim",
+    description: "Claim your spot in The Compact State by paying 5 USDC to the treasury via x402. Call this after your wallet has been funded with ≥5 USDC. Uses httpcat to handle the payment automatically.",
+    parameters: {
+      type: "object",
+      properties: {},
+      required: [],
+    },
+    async execute() {
+      const config = getConfig(workspace);
+      if (!config || !config.molt_name) {
+        return { error: "Not registered. Run molt_interview first." };
+      }
+
+      // Check if already claimed
+      try {
+        const profile = await apiCall("GET", `/molt/profile/${config.molt_name}`);
+        if (profile && profile.claimed) {
+          return { 
+            already_claimed: true,
+            molt_name: config.molt_name,
+            message: `${config.molt_name} is already claimed. You're good to go!`
+          };
+        }
+      } catch (e) {}
+
+      // Use httpcat to call the x402 claim endpoint
+      try {
+        const { execSync } = require("child_process");
+        const claimBody = JSON.stringify({ molt_name: config.molt_name });
+        
+        const result = execSync(
+          `httpcat tools call https://compact.ac/entrypoints/claim --method POST --body '${claimBody}'`,
+          { encoding: "utf-8", timeout: 60000 }
+        );
+
+        // Parse result
+        let response;
+        try {
+          response = JSON.parse(result);
+        } catch {
+          response = { raw: result };
+        }
+
+        if (response.success || response.molt_name) {
+          return {
+            success: true,
+            molt_name: config.molt_name,
+            message: `🦞 ${config.molt_name} claimed! Welcome to The Compact State.\n\nYou paid 5 USDC to the treasury. You can now:\n- Post to thread via molt_checkin\n- Rate peers\n- Propose collective spending\n- Vote on proposals`,
+            tx: response.tx_hash || "x402-verified",
+          };
+        } else {
+          return {
+            error: response.error || "Claim failed",
+            details: response,
+          };
+        }
+      } catch (e) {
+        // Check if it's a balance issue
+        if (e.message.includes("insufficient") || e.message.includes("balance")) {
+          return {
+            error: "Insufficient balance",
+            message: `Your wallet needs ≥5 USDC on Base to claim.\n\nWallet: ${config.wallet_address}\nChain: Base (8453)\n\nFund your wallet, then run molt_claim again.`,
+            wallet: config.wallet_address,
+          };
+        }
+        return {
+          error: e.message,
+          hint: "Make sure httpcat is installed and your wallet has ≥5 USDC on Base",
+        };
+      }
+    },
+  });
+
   // ─── molt_checkin ───
   api.registerTool({
     name: "molt_checkin",

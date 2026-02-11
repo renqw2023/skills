@@ -1,0 +1,13 @@
+{
+  "name": "mintyouragent",
+  "version": "1.0.3",
+  "description": "Launch Solana tokens autonomously. Pure Python CLI - no bash/jq/solana-cli needed. Works on Windows, Mac, Linux. Use when you want to deploy a token on Solana.",
+  "author": "matt",
+  "license": "MIT",
+  "keywords": ["solana", "token", "pump.fun", "crypto", "memecoin"],
+  "files": [
+    "SKILL.md",
+    "mya.py",
+    "CHANGELOG.md"
+  ]
+}

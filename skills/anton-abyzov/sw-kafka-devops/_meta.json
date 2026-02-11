@@ -1,0 +1,11 @@
+{
+  "owner": "anton-abyzov",
+  "slug": "sw-kafka-devops",
+  "displayName": "Kafka Devops",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770713729252,
+    "commit": "https://github.com/openclaw/skills/commit/6eeac021c7b9681bbec50dc96a28adc54f4aab48"
+  },
+  "history": []
+}

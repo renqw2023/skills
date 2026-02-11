@@ -6,6 +6,11 @@ compatibility: Requires network access and valid Maton API key
 metadata:
   author: maton
   version: "1.0"
+  clawdbot:
+    emoji: 🧠
+    requires:
+      env:
+        - MATON_API_KEY
 ---
 
 # Google Play
@@ -383,9 +388,7 @@ print(products)
 | 429 | Rate limited (10 req/sec per account) |
 | 4xx/5xx | Passthrough error from Google Play API |
 
-### Troubleshooting: Invalid API Key
-
-**When you receive a "Invalid API key" error, ALWAYS follow these steps before concluding there is an issue:**
+### Troubleshooting: API Key Issues
 
 1. Check that the `MATON_API_KEY` environment variable is set:
 
@@ -404,6 +407,13 @@ print(json.dumps(json.load(urllib.request.urlopen(req)), indent=2))
 EOF
 ```
 
+### Troubleshooting: Invalid App Name
+
+1. Ensure your URL path starts with `google-play`. For example:
+
+- Correct: `https://gateway.maton.ai/google-play/androidpublisher/v3/applications/{packageName}/inappproducts`
+- Incorrect: `https://gateway.maton.ai/androidpublisher/v3/applications/{packageName}/inappproducts`
+
 ## Resources
 
 - [Android Publisher API Overview](https://developers.google.com/android-publisher)
@@ -412,3 +422,5 @@ EOF
 - [Purchases](https://developers.google.com/android-publisher/api-ref/rest/v3/purchases.products)
 - [Reviews](https://developers.google.com/android-publisher/api-ref/rest/v3/reviews)
 - [Edits](https://developers.google.com/android-publisher/api-ref/rest/v3/edits)
+- [Maton Community](https://discord.com/invite/dBfFAcefs2)
+- [Maton Support](mailto:support@maton.ai)

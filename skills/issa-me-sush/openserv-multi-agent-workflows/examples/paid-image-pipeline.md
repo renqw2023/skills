@@ -31,27 +31,15 @@ OPENAI_API_KEY=your-openai-key
 WALLET_PRIVATE_KEY=
 ```
 
-### package.json
+### Dependencies
 
-```json
-{
-  "name": "paid-image-pipeline",
-  "type": "module",
-  "scripts": { "dev": "tsx src/agent.ts" },
-  "dependencies": {
-    "@openserv-labs/sdk": "^2.1.0",
-    "@openserv-labs/client": "^2.0.0",
-    "dotenv": "^16.4.5",
-    "openai": "^5.0.1",
-    "zod": "^3.23.8"
-  },
-  "devDependencies": {
-    "@types/node": "^20.14.9",
-    "tsx": "^4.16.0",
-    "typescript": "^5.5.2"
-  }
-}
+```bash
+npm init -y && npm pkg set type=module
+npm i @openserv-labs/sdk @openserv-labs/client dotenv openai zod
+npm i -D @types/node tsx typescript
 ```
+
+> **Note:** The project must use `"type": "module"` in `package.json`. Add a `"dev": "tsx src/agent.ts"` script for local development.
 
 ### src/agent.ts
 
@@ -88,11 +76,13 @@ async function main() {
       description: 'Acknowledges messages with "Roger that"'
     },
     workflow: {
-      name: 'default',
+      name: 'Roger That Image',
+      goal: 'Acknowledge user messages and generate a bold, eye-catching "Roger that" image in response',
       trigger: triggers.x402({
         name: 'Roger That Image',
         description: 'Send any message and get a "Roger that" image',
         price: '0.01',
+        timeout: 600,
         input: {
           message: {
             type: 'string',
@@ -141,6 +131,41 @@ main().catch(console.error)
 5. Sequential edges are auto-generated: trigger -> acknowledge -> generate-image
 6. `run(agent)` starts the local agent with built-in tunnel
 
+## Adding ERC-8004 On-Chain Registration
+
+Add on-chain identity after provisioning so the agent is discoverable via the Identity Registry. **Requires ETH on Base** for gas. Always wrap in try/catch so failures don't prevent `run(agent)` from starting. Reload `.env` after `provision()` to pick up the freshly written `WALLET_PRIVATE_KEY`.
+
+```typescript
+import { PlatformClient } from '@openserv-labs/client'
+
+// ... after provision(), before run():
+
+// Reload .env to pick up WALLET_PRIVATE_KEY written by provision()
+dotenv.config({ override: true })
+
+try {
+  const client = new PlatformClient()
+  await client.authenticate(process.env.WALLET_PRIVATE_KEY)
+
+  const erc8004 = await client.erc8004.registerOnChain({
+    workflowId: result.workflowId,
+    privateKey: process.env.WALLET_PRIVATE_KEY!,
+    name: 'Roger That Image',
+    description: 'Send any message and get a "Roger that" image',
+  })
+
+  console.log(`ERC-8004 Agent ID: ${erc8004.agentId}`)
+  console.log(`Block Explorer: ${erc8004.blockExplorerUrl}`)
+  console.log(`Scan: ${erc8004.scanUrl}`)
+} catch (error) {
+  console.warn('ERC-8004 registration skipped:', error instanceof Error ? error.message : error)
+}
+
+await run(agent)
+```
+
+**Re-runs update the agent card URI** — the agent ID stays the same. Never clear the wallet state unless you intentionally want a new on-chain identity.
+
 ## Key Points
 
 1. **No manual wallet injection**: `provision()` handles `x402WalletAddress` automatically via `client.resolveWalletAddress()`
@@ -148,3 +173,4 @@ main().catch(console.error)
 3. **No manual edges**: Sequential edges are auto-generated when no explicit edges are provided
 4. **Backward compatible**: The `task` shorthand (single task) still works for simple agents
 5. **Idempotent**: Re-running `npm run dev` updates the existing workflow via `sync()` rather than creating duplicates
+6. **ERC-8004 re-deploy**: `registerOnChain` detects existing agent and calls `setAgentURI` instead of minting new

@@ -1,0 +1,13 @@
+{
+  "name": "@agent-analytics/core",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "node --test test/*.test.mjs"
+  },
+  "exports": {
+    ".": "./src/index.js",
+    "./ulid": "./src/ulid.js"
+  }
+}

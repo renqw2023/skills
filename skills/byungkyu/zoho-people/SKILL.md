@@ -8,6 +8,11 @@ description: |
 metadata:
   author: maton
   version: "1.0"
+  clawdbot:
+    emoji: 🧠
+    requires:
+      env:
+        - MATON_API_KEY
 ---
 
 # Zoho People
@@ -572,9 +577,7 @@ data = response.json()
 | 7042 | Invalid search value |
 | 7218 | Invalid OAuth scope |
 
-### Troubleshooting: Invalid API Key
-
-**When you receive a "Invalid API key" error, ALWAYS follow these steps before concluding there is an issue:**
+### Troubleshooting: API Key Issues
 
 1. Check that the `MATON_API_KEY` environment variable is set:
 
@@ -593,6 +596,13 @@ print(json.dumps(json.load(urllib.request.urlopen(req)), indent=2))
 EOF
 ```
 
+### Troubleshooting: Invalid App Name
+
+1. Ensure your URL path starts with `zoho-people`. For example:
+
+- Correct: `https://gateway.maton.ai/zoho-people/people/api/forms`
+- Incorrect: `https://gateway.maton.ai/people/api/forms`
+
 ## Resources
 
 - [Zoho People API Overview](https://www.zoho.com/people/api/overview.html)
@@ -602,3 +612,5 @@ EOF
 - [Update Record API](https://www.zoho.com/people/api/update-records.html)
 - [Attendance API](https://www.zoho.com/people/api/attendance-entries.html)
 - [Leave API](https://www.zoho.com/people/api/add-leave.html)
+- [Maton Community](https://discord.com/invite/dBfFAcefs2)
+- [Maton Support](mailto:support@maton.ai)

@@ -1,0 +1,11 @@
+{
+  "owner": "rendis",
+  "slug": "opcode",
+  "displayName": "OPCODE",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770754343185,
+    "commit": "https://github.com/openclaw/skills/commit/32aee7c0ff478514955d9f40434c8d3cf89733a4"
+  },
+  "history": []
+}

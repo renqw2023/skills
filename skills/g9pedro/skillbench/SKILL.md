@@ -65,10 +65,50 @@ skillbench score github                 # Single skill
 skillbench compare github@1.0.0 github@1.1.0
 ```
 
-### Export
+### Export & Dashboard
 ```bash
 skillbench export --format markdown
 skillbench export --format json
+skillbench dashboard                    # Generate HTML dashboard
+skillbench dashboard --open             # Generate and open in browser
+```
+
+### Automated Testing
+```bash
+skillbench test tasktime@1.1.0          # Run smoke test
+skillbench test tasktime@1.1.0 --suite full  # Run named suite
+skillbench test tasktime@1.1.0 --dry-run     # Test without recording
+```
+
+### Sync
+```bash
+skillbench sync --clawhub               # Import installed skills
+skillbench sync --vault                 # Sync to ClawVault
+skillbench sync --all                   # Everything
+```
+
+### Health & Monitoring
+```bash
+skillbench health                       # Overall health report with alerts
+skillbench watch --once                 # Run all test suites once
+skillbench watch --interval 300         # Continuous monitoring every 5 min
+```
+
+### Analysis & Improvement
+```bash
+skillbench improve                      # Get suggestions for weakest skill
+skillbench improve github               # Improvement plan for specific skill
+skillbench trend tasktime --days 30     # Performance trend over time
+skillbench leaderboard                  # Compare agents (multi-agent setups)
+skillbench schedule --interval 60       # Generate cron config for auto-testing
+```
+
+### Baselines & Regression Detection
+```bash
+skillbench baseline tasktime --set      # Set baseline from current performance
+skillbench baseline --list              # List all baselines
+skillbench baseline --check             # Check all baselines (CI-friendly, exits 1 if failing)
+skillbench baseline tasktime --remove   # Remove a baseline
 ```
 
 ## Grading System

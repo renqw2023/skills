@@ -1,0 +1,11 @@
+{
+  "owner": "anton-abyzov",
+  "slug": "sw-device-testing",
+  "displayName": "Device Testing",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770713816624,
+    "commit": "https://github.com/openclaw/skills/commit/c0fed3cc7a0f0c9864f22852a40464c8f0fc65e9"
+  },
+  "history": []
+}

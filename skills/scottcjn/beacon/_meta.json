@@ -1,0 +1,11 @@
+{
+  "owner": "scottcjn",
+  "slug": "beacon",
+  "displayName": "Beacon",
+  "latest": {
+    "version": "0.1.1",
+    "publishedAt": 1770740430286,
+    "commit": "https://github.com/openclaw/skills/commit/1ce51b7e1be0cea6e0decdf930ebb265910d4bd3"
+  },
+  "history": []
+}

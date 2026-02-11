@@ -8,6 +8,11 @@ compatibility: Requires network access and valid Maton API key
 metadata:
   author: maton
   version: "1.0"
+  clawdbot:
+    emoji: 🧠
+    requires:
+      env:
+        - MATON_API_KEY
 ---
 
 # Google Contacts
@@ -459,9 +464,7 @@ data = response.json()
 | 429 | Rate limited |
 | 4xx/5xx | Passthrough error from Google People API |
 
-### Troubleshooting: Invalid API Key
-
-**When you receive a "Invalid API key" error, ALWAYS follow these steps before concluding there is an issue:**
+### Troubleshooting: API Key Issues
 
 1. Check that the `MATON_API_KEY` environment variable is set:
 
@@ -480,9 +483,18 @@ print(json.dumps(json.load(urllib.request.urlopen(req)), indent=2))
 EOF
 ```
 
+### Troubleshooting: Invalid App Name
+
+1. Ensure your URL path starts with `google-contacts`. For example:
+
+- Correct: `https://gateway.maton.ai/google-contacts/v1/people/me/connections`
+- Incorrect: `https://gateway.maton.ai/v1/people/me/connections`
+
 ## Resources
 
 - [Google People API Overview](https://developers.google.com/people/api/rest)
 - [People Resource](https://developers.google.com/people/api/rest/v1/people)
 - [Contact Groups Resource](https://developers.google.com/people/api/rest/v1/contactGroups)
 - [Person Fields Reference](https://developers.google.com/people/api/rest/v1/people#Person)
+- [Maton Community](https://discord.com/invite/dBfFAcefs2)
+- [Maton Support](mailto:support@maton.ai)

@@ -3,11 +3,16 @@
   "slug": "airtable",
   "displayName": "Airtable",
   "latest": {
-    "version": "1.0.4",
-    "publishedAt": 1770344332992,
-    "commit": "https://github.com/openclaw/skills/commit/f3eebff31fb8ab767c10ba5539ecc3f6f0bc400c"
+    "version": "1.0.6",
+    "publishedAt": 1770755718073,
+    "commit": "https://github.com/openclaw/skills/commit/9d4578c09b5480b6e027e8ad39e967fed29f6a55"
   },
   "history": [
+    {
+      "version": "1.0.4",
+      "publishedAt": 1770344332992,
+      "commit": "https://github.com/openclaw/skills/commit/f3eebff31fb8ab767c10ba5539ecc3f6f0bc400c"
+    },
     {
       "version": "1.0.3",
       "publishedAt": 1770255313284,

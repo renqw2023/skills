@@ -1,0 +1,11 @@
+{
+  "owner": "cinience",
+  "slug": "alicloud-security-id-verification-cloudauth",
+  "displayName": "Alicloud Security Id Verification Cloudauth",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1770768588082,
+    "commit": "https://github.com/openclaw/skills/commit/4787f812050cc5b95397e0fb1b5ec9f2dcdcb794"
+  },
+  "history": []
+}

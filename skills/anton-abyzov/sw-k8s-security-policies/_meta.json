@@ -1,0 +1,11 @@
+{
+  "owner": "anton-abyzov",
+  "slug": "sw-k8s-security-policies",
+  "displayName": "K8s Security Policies",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770713756934,
+    "commit": "https://github.com/openclaw/skills/commit/32168e4cd7376f36442ff96f99d0b8cc23549b4e"
+  },
+  "history": []
+}

@@ -1,0 +1,11 @@
+{
+  "owner": "anton-abyzov",
+  "slug": "sw-docusaurus",
+  "displayName": "Docusaurus",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770713607989,
+    "commit": "https://github.com/openclaw/skills/commit/889057913c4341404008e04569a2aa137ca59722"
+  },
+  "history": []
+}

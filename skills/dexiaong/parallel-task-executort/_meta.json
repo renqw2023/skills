@@ -1,0 +1,11 @@
+{
+  "owner": "dexiaong",
+  "slug": "parallel-task-executort",
+  "displayName": "多任务并行执行管理器",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770717394664,
+    "commit": "https://github.com/openclaw/skills/commit/6813fafefef569e6f4526deb817f2de0d0172a6a"
+  },
+  "history": []
+}

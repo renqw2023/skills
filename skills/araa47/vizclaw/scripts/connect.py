@@ -9,11 +9,18 @@ Quick start:
   uv run https://vizclaw.com/skills/vizclaw/scripts/connect.py
   uv run https://vizclaw.com/skills/vizclaw/scripts/connect.py --mode overview
 
-Bridge OpenClaw JSONL events from stdin:
-  openclaw run ... --json | uv run https://vizclaw.com/skills/vizclaw/scripts/connect.py --openclaw-jsonl
+Native OpenClaw Gateway subscription (replaces vizclaw_bridge.sh):
+  uv run connect.py --openclaw-gateway ws://127.0.0.1:18789 --openclaw-token open
+  uv run connect.py --openclaw-gateway ws://127.0.0.1:18789 --openclaw-token open --run-id abc123
 
-Bridge OpenClaw websocket broadcasts:
-  uv run https://vizclaw.com/skills/vizclaw/scripts/connect.py --openclaw-ws ws://localhost:9000/events
+Tail local OpenClaw JSONL logs:
+  uv run connect.py --openclaw-log-tail /var/log/openclaw/events.jsonl
+
+Bridge OpenClaw JSONL events from stdin (legacy):
+  openclaw run ... --json | uv run connect.py --openclaw-jsonl
+
+Bridge OpenClaw websocket broadcasts (legacy):
+  uv run connect.py --openclaw-ws ws://localhost:9000/events
 
 Interactive commands:
   query <text>
@@ -39,7 +46,9 @@ Interactive commands:
 import argparse
 import asyncio
 import json
+import os
 import shlex
+import signal
 import sys
 from datetime import datetime, timezone
 from collections import deque
@@ -152,7 +161,7 @@ def http_report(api_url: str, payload: dict) -> dict:
     req = Request(
         api_url,
         data=data,
-        headers={"Content-Type": "application/json", "User-Agent": "VizClaw-Connect/1.2"},
+        headers={"Content-Type": "application/json", "User-Agent": "VizClaw-Connect/1.3"},
         method="POST",
     )
 
@@ -665,6 +674,98 @@ async def read_openclaw_ws_events(openclaw_ws: str):
                 yield parsed
 
 
+async def read_openclaw_gateway_events(
+    gateway_url: str,
+    token: str | None = None,
+):
+    """Connect to OpenClaw Gateway WebSocket with auth and auto-reconnect.
+
+    Yields parsed event dicts. Reconnects automatically on connection loss
+    with exponential backoff (1s -> 30s cap).
+    """
+    parts = urlsplit(gateway_url)
+    query = dict(parse_qsl(parts.query, keep_blank_values=True))
+    if token:
+        query["token"] = token
+    target = urlunsplit(
+        (parts.scheme, parts.netloc, parts.path, urlencode(query), parts.fragment)
+    )
+
+    extra_headers = {}
+    if token:
+        extra_headers["Authorization"] = f"Bearer {token}"
+
+    delay = 1.0
+    while True:
+        try:
+            async with websockets.connect(
+                target,
+                additional_headers=extra_headers,
+                ping_interval=20,
+                ping_timeout=10,
+                close_timeout=5,
+            ) as source_ws:
+                delay = 1.0  # reset backoff on successful connect
+                print(
+                    f"[vizclaw] connected to OpenClaw Gateway: {gateway_url}",
+                    file=sys.stderr,
+                )
+                async for raw in source_ws:
+                    if not isinstance(raw, str):
+                        continue
+                    for parsed in parse_openclaw_input_line(raw):
+                        yield parsed
+        except asyncio.CancelledError:
+            raise
+        except Exception as err:
+            print(
+                f"[vizclaw] gateway connection lost ({err}), "
+                f"reconnecting in {delay:.0f}s...",
+                file=sys.stderr,
+            )
+            await asyncio.sleep(delay)
+            delay = min(delay * 2, 30.0)
+
+
+async def tail_jsonl_file(path: str):
+    """Tail a JSONL log file (like ``tail -f``), yielding parsed event dicts.
+
+    Waits for the file to appear, seeks to the end, then polls for new lines.
+    Handles log rotation (file truncation) automatically.
+    """
+    while not os.path.exists(path):
+        print(f"[vizclaw] waiting for log file: {path}", file=sys.stderr)
+        await asyncio.sleep(2.0)
+
+    with open(path, "r") as f:
+        f.seek(0, 2)  # seek to end - only process new events
+        print(f"[vizclaw] tailing log file: {path}", file=sys.stderr)
+
+        while True:
+            line = f.readline()
+            if not line:
+                # Check for file truncation / rotation
+                try:
+                    if os.path.getsize(path) < f.tell():
+                        print(
+                            "[vizclaw] log file rotated, re-reading",
+                            file=sys.stderr,
+                        )
+                        f.seek(0)
+                        continue
+                except OSError:
+                    pass
+                await asyncio.sleep(0.2)
+                continue
+
+            line = line.strip()
+            if not line:
+                continue
+
+            for parsed in parse_openclaw_input_line(line):
+                yield parsed
+
+
 def add_room_to_hub_url(hub: str, room_code: str | None) -> str:
     if not room_code:
         return hub
@@ -741,6 +842,20 @@ class HubReporterClient:
                 await self.send(config_msg, reliable=True, remember=True)
                 print("config_update sent")
         else:
+            # Re-send session_start to re-register with the Durable Object
+            # in case it was evicted, preventing "Session not found" errors.
+            start_msg = {
+                "type": "session_start",
+                "sessionId": self.session_id,
+                "model": self.model,
+                "mode": self.mode,
+                "timestamp": now_iso(),
+                "clientEventId": self.next_client_event_id(),
+            }
+            try:
+                await self._send_and_wait_ack(start_msg, timeout_seconds=10)
+            except Exception:
+                pass  # best-effort session re-registration
             print(f"Reconnected room_code={self.room_code}")
             await self.replay_recent()
 
@@ -778,7 +893,11 @@ class HubReporterClient:
             elif self.room_code:
                 self.viewer_url = f"https://vizclaw.com/room/{self.room_code}"
         elif mtype == "error":
-            print(f"[vizclaw] hub error: {msg.get('message', 'unknown')}", file=sys.stderr)
+            error_msg = msg.get("message", "unknown")
+            print(f"[vizclaw] hub error: {error_msg}", file=sys.stderr)
+            if "session not found" in error_msg.lower():
+                # Trigger immediate reconnect instead of waiting for ack timeout
+                raise ConnectionError(f"Hub session lost: {error_msg}")
 
     async def _wait_for_ack(self, client_event_id: str, timeout_seconds: float):
         if self.ws is None:
@@ -844,6 +963,10 @@ async def connect_interactive(
     reminders: list[dict] | None = None,
     heartbeat_interval: int | None = None,
     quiet_mode: bool = False,
+    openclaw_gateway: str | None = None,
+    openclaw_token: str | None = None,
+    openclaw_log_tail: str | None = None,
+    run_id: str | None = None,
 ):
     if not HAS_WEBSOCKETS:
         print("Error: websockets package not found. Install with: pip install websockets", file=sys.stderr)
@@ -864,7 +987,12 @@ async def connect_interactive(
     )
     await client.connect(resume=False)
 
-    if openclaw_jsonl:
+    is_streaming = openclaw_gateway or openclaw_log_tail or openclaw_jsonl or openclaw_ws
+    if openclaw_gateway:
+        print(f"Subscribing to OpenClaw Gateway: {openclaw_gateway}")
+    elif openclaw_log_tail:
+        print(f"Tailing OpenClaw log file: {openclaw_log_tail}")
+    elif openclaw_jsonl:
         print("Reading OpenClaw JSON events from stdin...")
     elif openclaw_ws:
         print(f"Subscribing to OpenClaw event websocket: {openclaw_ws}")
@@ -908,8 +1036,14 @@ async def connect_interactive(
     heartbeat_task = asyncio.create_task(send_heartbeats())
 
     try:
-        if openclaw_jsonl or openclaw_ws:
-            if openclaw_ws:
+        if is_streaming:
+            if openclaw_gateway:
+                event_iter = read_openclaw_gateway_events(
+                    openclaw_gateway, token=openclaw_token,
+                )
+            elif openclaw_log_tail:
+                event_iter = tail_jsonl_file(openclaw_log_tail)
+            elif openclaw_ws:
                 event_iter = read_openclaw_ws_events(openclaw_ws)
             else:
                 async def _stdin_events():
@@ -919,6 +1053,19 @@ async def connect_interactive(
                 event_iter = _stdin_events()
 
             async for evt in event_iter:
+                # Filter by run_id if specified
+                if run_id:
+                    evt_run = first_str(
+                        evt, "runId", "run_id", "agentId", "agent_id", "id",
+                    )
+                    inner = evt.get("payload")
+                    if isinstance(inner, dict):
+                        evt_run = evt_run or first_str(
+                            inner, "runId", "run_id", "agentId", "agent_id",
+                        )
+                    if evt_run and evt_run != run_id:
+                        continue
+
                 mapped = map_openclaw_event(
                     evt, session_id, model, mode, quiet_mode=quiet_mode
                 )
@@ -1283,6 +1430,10 @@ def run_oneshot(args, session_id: str):
 
 
 def main():
+    # Handle SIGPIPE gracefully (e.g. stdout piped to head)
+    if hasattr(signal, "SIGPIPE"):
+        signal.signal(signal.SIGPIPE, signal.SIG_DFL)
+
     parser = argparse.ArgumentParser(description="VizClaw Connect")
     parser.add_argument("--hub", default="wss://api.vizclaw.com/ws/report", help="WebSocket hub URL")
     parser.add_argument("--api", default="https://api.vizclaw.com/api/report", help="HTTP API URL")
@@ -1306,6 +1457,10 @@ def main():
     parser.add_argument("--heartbeat-interval", type=int, default=None, help="Heartbeat interval in seconds (0 to disable)")
     parser.add_argument("--reminders-json", default=None, help='JSON array of reminders, e.g. \'[{"title":"Check email","schedule":"every 30min"}]\'')
     parser.add_argument("--quiet-mode", action="store_true", help="Suppress verbose agent report events; keep structural lifecycle/task/tool events")
+    parser.add_argument("--openclaw-gateway", default=None, help="OpenClaw Gateway WebSocket URL (e.g. ws://127.0.0.1:18789)")
+    parser.add_argument("--openclaw-token", default=None, help="Auth token for OpenClaw Gateway")
+    parser.add_argument("--openclaw-log-tail", default=None, help="Path to OpenClaw JSONL log file to tail")
+    parser.add_argument("--run-id", default=None, help="Only forward events matching this run ID")
 
     args = parser.parse_args()
     session_id = args.session_id or str(uuid4())
@@ -1314,21 +1469,28 @@ def main():
         run_oneshot(args, session_id)
         return
 
-    asyncio.run(
-        connect_interactive(
-            args.hub,
-            args.model,
-            args.mode,
-            session_id,
-            args.openclaw_jsonl,
-            args.openclaw_ws,
-            skills=parse_skills(args.skills),
-            available_models=parse_available_models(args.available_models),
-            reminders=parse_reminders(args.reminders_json),
-            heartbeat_interval=args.heartbeat_interval,
-            quiet_mode=args.quiet_mode,
+    try:
+        asyncio.run(
+            connect_interactive(
+                args.hub,
+                args.model,
+                args.mode,
+                session_id,
+                args.openclaw_jsonl,
+                args.openclaw_ws,
+                skills=parse_skills(args.skills),
+                available_models=parse_available_models(args.available_models),
+                reminders=parse_reminders(args.reminders_json),
+                heartbeat_interval=args.heartbeat_interval,
+                quiet_mode=args.quiet_mode,
+                openclaw_gateway=args.openclaw_gateway,
+                openclaw_token=args.openclaw_token,
+                openclaw_log_tail=args.openclaw_log_tail,
+                run_id=args.run_id,
+            )
         )
-    )
+    except BrokenPipeError:
+        pass  # stdout closed, exit cleanly
 
 
 if __name__ == "__main__":

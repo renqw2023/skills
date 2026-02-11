@@ -1,0 +1,11 @@
+{
+  "owner": "anton-abyzov",
+  "slug": "sw-plugin-validator",
+  "displayName": "Plugin Validator",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770714012276,
+    "commit": "https://github.com/openclaw/skills/commit/222c33760401a9369f35662a148b676585b816be"
+  },
+  "history": []
+}

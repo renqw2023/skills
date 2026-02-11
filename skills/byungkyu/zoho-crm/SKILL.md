@@ -8,6 +8,11 @@ description: |
 metadata:
   author: maton
   version: "1.0"
+  clawdbot:
+    emoji: 🧠
+    requires:
+      env:
+        - MATON_API_KEY
 ---
 
 # Zoho CRM
@@ -635,9 +640,7 @@ data = response.json()
 | `DUPLICATE_DATA` | Record violates unique field constraint |
 | `RECORD_NOT_FOUND` | The specified record ID does not exist |
 
-### Troubleshooting: Invalid API Key
-
-**When you receive a "Invalid API key" error, ALWAYS follow these steps before concluding there is an issue:**
+### Troubleshooting: API Key Issues
 
 1. Check that the `MATON_API_KEY` environment variable is set:
 
@@ -656,6 +659,13 @@ print(json.dumps(json.load(urllib.request.urlopen(req)), indent=2))
 EOF
 ```
 
+### Troubleshooting: Invalid App Name
+
+1. Ensure your URL path starts with `zoho-crm`. For example:
+
+- Correct: `https://gateway.maton.ai/zoho-crm/crm/v8/Leads`
+- Incorrect: `https://gateway.maton.ai/crm/v8/Leads`
+
 ## Resources
 
 - [Zoho CRM API v8 Documentation](https://www.zoho.com/crm/developer/docs/api/v8/)
@@ -664,3 +674,5 @@ EOF
 - [Update Records API](https://www.zoho.com/crm/developer/docs/api/v8/update-records.html)
 - [Delete Records API](https://www.zoho.com/crm/developer/docs/api/v8/delete-records.html)
 - [Search Records API](https://www.zoho.com/crm/developer/docs/api/v8/search-records.html)
+- [Maton Community](https://discord.com/invite/dBfFAcefs2)
+- [Maton Support](mailto:support@maton.ai)

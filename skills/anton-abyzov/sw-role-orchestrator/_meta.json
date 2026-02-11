@@ -1,0 +1,11 @@
+{
+  "owner": "anton-abyzov",
+  "slug": "sw-role-orchestrator",
+  "displayName": "Role Orchestrator",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770714043673,
+    "commit": "https://github.com/openclaw/skills/commit/fe6d257df9af2a56e2581cdc6461267c49f2f9a0"
+  },
+  "history": []
+}

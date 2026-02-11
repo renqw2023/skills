@@ -1,0 +1,11 @@
+{
+  "owner": "danielw8088",
+  "slug": "agos-marketplace",
+  "displayName": "Agos Marketplace OpenClaw Integration",
+  "latest": {
+    "version": "1.2.0",
+    "publishedAt": 1770744234288,
+    "commit": "https://github.com/openclaw/skills/commit/3c1ec20b263a42d7a01aaf57a20ab26783946776"
+  },
+  "history": []
+}

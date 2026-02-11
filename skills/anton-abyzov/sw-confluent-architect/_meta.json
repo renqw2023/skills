@@ -1,0 +1,11 @@
+{
+  "owner": "anton-abyzov",
+  "slug": "sw-confluent-architect",
+  "displayName": "Confluent Architect",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770713579310,
+    "commit": "https://github.com/openclaw/skills/commit/a01ce3a95f79948a422fee3d01c559b02e9dc8f2"
+  },
+  "history": []
+}

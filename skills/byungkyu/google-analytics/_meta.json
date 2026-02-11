@@ -3,11 +3,16 @@
   "slug": "google-analytics",
   "displayName": "Google Analytics",
   "latest": {
-    "version": "1.0.8",
-    "publishedAt": 1770343977594,
-    "commit": "https://github.com/openclaw/skills/commit/789b75704dff7e9feb0b10457c7792777567dda4"
+    "version": "1.0.10",
+    "publishedAt": 1770755900515,
+    "commit": "https://github.com/openclaw/skills/commit/1df325061cb25e8699526c5a3a7b149af8741173"
   },
   "history": [
+    {
+      "version": "1.0.8",
+      "publishedAt": 1770343977594,
+      "commit": "https://github.com/openclaw/skills/commit/789b75704dff7e9feb0b10457c7792777567dda4"
+    },
     {
       "version": "1.0.4",
       "publishedAt": 1770282347599,

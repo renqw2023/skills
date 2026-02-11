@@ -1,0 +1,11 @@
+{
+  "owner": "anton-abyzov",
+  "slug": "sw-jira-multi-project-mapper",
+  "displayName": "Jira Multi Project Mapper",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770713703009,
+    "commit": "https://github.com/openclaw/skills/commit/d637bc6d3728fc62f0ba0d85c980cb4d7375c0f7"
+  },
+  "history": []
+}

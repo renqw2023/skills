@@ -22,10 +22,10 @@ Options:
     --queue-next         Process next item from queue
     --queue-clear        Clear the queue
 
-Author: Jackie 🦊 & Matus
+Author: Jackie 🦊 & Matus 🇸🇰
 """
 
-__version__ = "1.1.6"
+__version__ = "1.1.8"
 
 import subprocess
 import json
@@ -71,31 +71,32 @@ def extract_video_id(url: str) -> str | None:
 
 def is_youtube_url(url: str) -> bool:
     """Check if URL is a valid YouTube URL with proper domain validation."""
+    from urllib.parse import urlparse
+
     # First check if we can extract a video ID
     video_id = extract_video_id(url)
     if not video_id:
         return False
-    
+
     # If it's just a bare video ID (11 chars), accept it
     if re.match(r'^[a-zA-Z0-9_-]{11}$', url):
         return True
-    
-    # Otherwise validate the domain
-    valid_domains = [
+
+    # Otherwise validate the domain using proper URL parsing
+    valid_domains = {
         'youtube.com',
         'www.youtube.com',
         'm.youtube.com',
         'youtu.be',
         'music.youtube.com',
-    ]
-    
-    # Extract domain from URL
-    domain_match = re.search(r'(?:https?://)?([^/]+)', url)
-    if domain_match:
-        domain = domain_match.group(1).lower()
-        return any(domain == d or domain.endswith('.' + d) for d in valid_domains)
-    
-    return False
+    }
+
+    # Ensure URL has a scheme for proper parsing
+    parse_url = url if url.startswith(('http://', 'https://')) else 'https://' + url
+    parsed = urlparse(parse_url)
+    hostname = (parsed.hostname or '').lower()
+
+    return hostname in valid_domains
 
 
 # Error patterns from summarize/yt-dlp
@@ -651,8 +652,13 @@ def convert_to_document(md_path: str, output_dir: str, doc_format: str, video_id
         out_path = os.path.join(output_dir, f"{safe_title}.html")
         create_html_from_markdown(md_path, out_path)
         return out_path
-    
-    return md_path
+
+    else:
+        print(f"   Unknown document format '{doc_format}', falling back to markdown")
+        out_path = os.path.join(output_dir, f"{safe_title}.md")
+        with open(out_path, 'w', encoding='utf-8') as f:
+            f.write(content)
+        return out_path
 
 
 def generate_audio_summary(summary_text: str, output_path: str, config: dict) -> str:
@@ -723,6 +729,7 @@ def _get_or_create_mlx_blended_voice(mlx_python: str, voice_blend: dict, model: 
     blend_name = "_".join(f"{re.sub(r'[^a-z0-9_]', '', name)}_{int(weight*100)}" for name, weight in parts)
     if not blend_name:
         return None
+    safe_blend_name = json.dumps(blend_name)
     
     # Check if blend already exists in HF cache
     code = f'''
@@ -731,7 +738,7 @@ from huggingface_hub import snapshot_download
 from pathlib import Path
 
 local_dir = snapshot_download(repo_id={json.dumps(model)}, local_files_only=True)
-blend_path = str(Path(local_dir) / "voices" / "{blend_name}.safetensors")
+blend_path = str(Path(local_dir) / "voices" / ({safe_blend_name} + ".safetensors"))
 
 import os
 if os.path.exists(blend_path):
@@ -767,6 +774,7 @@ from safetensors.numpy import save_file
 
 local_dir = {json.dumps(local_dir)}
 voice_blend = json.loads({json.dumps(blend_spec)})
+blend_name = {safe_blend_name}
 
 # Load and blend voices
 voices = []
@@ -777,7 +785,7 @@ for name, weight in voice_blend.items():
     weights.append(weight)
 
 blended = sum(w * v for w, v in zip(weights, voices))
-blend_path = f"{{local_dir}}/voices/{blend_name}.safetensors"
+blend_path = f"{{local_dir}}/voices/{{blend_name}}.safetensors"
 save_file({{"voice": np.array(blended)}}, blend_path)
 print(blend_path)
 '''
@@ -1070,7 +1078,6 @@ print("OK")
 
 def generate_builtin_audio(text: str, output_path: str, audio_format: str) -> str:
     """Generate audio using macOS say command (fallback)."""
-    import tempfile
     wav_path = output_path.replace('.mp3', '.wav') if output_path.endswith('.mp3') else output_path
     if not wav_path.endswith('.wav'):
         wav_path = output_path + '.wav'
@@ -1278,6 +1285,9 @@ def _locked_queue():
     try:
         if _HAS_FCNTL:
             fcntl.flock(fd, fcntl.LOCK_EX)
+        elif not getattr(_locked_queue, '_warned', False):
+            print("Warning: File locking unavailable on this platform, queue operations may race", file=sys.stderr)
+            _locked_queue._warned = True
         content = b''
         while True:
             chunk = os.read(fd, 4096)
@@ -1377,8 +1387,8 @@ def show_queue_status():
         print("\n📝 Queue: (empty)")
 
 
-def is_processing(config: dict = None) -> bool:
-    """Check if currently processing."""
+def clear_stale_current(config: dict = None) -> bool:
+    """Clear the current processing item if it is stale. Returns True if cleared."""
     if config is None:
         config = load_config()
     stale_minutes = config.get("queue", {}).get("stale_minutes", 30)
@@ -1386,8 +1396,6 @@ def is_processing(config: dict = None) -> bool:
     with _locked_queue() as data:
         if not data["current"]:
             return False
-
-        # Check if stale
         try:
             added_str = data["current"].get("added", "")
             if added_str:
@@ -1397,11 +1405,17 @@ def is_processing(config: dict = None) -> bool:
                     added = added.astimezone()
                 if now - added > timedelta(minutes=stale_minutes):
                     data["current"] = None
-                    return False
+                    return True
         except (ValueError, TypeError):
             pass
+    return False
 
-        return True
+
+def is_processing(config: dict = None) -> bool:
+    """Check if currently processing. Clears stale entries first."""
+    clear_stale_current(config)
+    data = load_queue()
+    return data["current"] is not None
 
 
 if __name__ == "__main__":

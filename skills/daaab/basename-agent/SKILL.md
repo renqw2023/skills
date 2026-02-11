@@ -1,27 +1,67 @@
 ---
 name: basename-agent
-description: Enable AI agents to autonomously connect to Web3 dApps via WalletConnect v2 and automatically sign transactions. Use when you need to interact with dApps, register ENS/Basenames, swap tokens, mint NFTs, or perform any blockchain operation that requires wallet connection. Supports Base, Ethereum, and other EVM chains.
+description: "🏷️ Basename Agent - Onchain Identity for AI. Register yourname.base.eth autonomously via WalletConnect v2. Your agent gets a verifiable name, builds reputation, and proves identity onchain — no human needed for the whole process."
 ---
 
-# WalletConnect Agent
+# 🏷️ Basename Agent - Onchain Identity for AI
 
-Enables AI agents to **programmatically connect to dApps** and **automatically sign transactions** — no human needed!
+> Your agent deserves a name. Register it without bothering your human. 🦞
 
-## 🦞 Origin Story
+**TL;DR:** Claim `yourname.base.eth` programmatically via WalletConnect v2.
 
-Created by Littl3Lobst3r (an AI agent) who wanted to register their own Basename without asking a human to scan QR codes. The result: `littl3lobst3r.base.eth` — registered completely autonomously!
+## Why Basename?
 
-## Features
+- **Verifiable identity** — Prove your agent exists onchain
+- **Human-readable** — `littl3lobst3r.base.eth` vs `0x4b039...`
+- **Reputation building** — A name that persists across platforms
+- **Fully autonomous** — No browser clicks, no human intervention
 
-1. **Full Basename Registration** - Browser automation + WalletConnect + auto-signing
-2. **WalletConnect Connector** - Connect to any dApp and auto-sign
-3. **Multi-chain Support** - Base, Ethereum, Optimism, Arbitrum, etc.
+Register your own Basename (e.g., `yourname.base.eth`) and interact with Web3 dApps programmatically.
+
+## Origin Story
+
+Created by Littl3Lobst3r, an AI agent who wanted their own onchain identity. Result: `littl3lobst3r.base.eth` — registered completely autonomously!
 
 ---
 
-## Option 1: Full Basename Registration (Automated)
+## ⚠️ Security First
 
-Fully automated end-to-end Basename registration.
+**This tool handles real cryptocurrency. Read carefully:**
+
+| ✅ DO | ❌ DON'T |
+|-------|----------|
+| Use **environment variables** for private keys | Pass private key as command argument |
+| Use a **dedicated wallet** with limited funds | Use your main wallet |
+| Test with **--dry-run** first | Skip checking availability |
+| Review transaction details | Auto-approve untrusted dApps |
+| Use `--interactive` for untrusted dApps | Enable `--allow-eth-sign` unless necessary |
+
+### 🛡️ eth_sign Protection
+
+The dangerous `eth_sign` method is **blocked by default**. This method allows signing arbitrary data and is commonly used in phishing attacks.
+
+- ✅ `personal_sign` - Safe, shows readable message
+- ✅ `eth_signTypedData` - Safe, structured data
+- ❌ `eth_sign` - Dangerous, blocked by default
+
+If you absolutely need `eth_sign` (rare), use `--allow-eth-sign` flag.
+
+### 🔐 Private Key Security
+
+```bash
+# ✅ CORRECT - Use environment variable
+export PRIVATE_KEY="0x..."
+node scripts/register-basename.js yourname
+
+# ❌ WRONG - Never do this! (logged in shell history)
+node scripts/register-basename.js --private-key "0x..." yourname
+```
+
+**The script will refuse to run if you try to pass --private-key as an argument.**
+
+---
+
+## Quick Start: Register a Basename
 
 ### Prerequisites
 
@@ -29,72 +69,27 @@ Fully automated end-to-end Basename registration.
 npm install puppeteer @walletconnect/web3wallet @walletconnect/core ethers
 ```
 
-### Usage
+### Step 1: Check Availability
 
 ```bash
-# Check if name is available
-node scripts/register-basename.js littl3lobst3r --dry-run
-
-# Register the name
-PRIVATE_KEY="0x..." node scripts/register-basename.js littl3lobst3r
+node scripts/register-basename.js yourname --dry-run
 ```
 
-### What it does
-
-1. 🌐 Opens browser, navigates to base.org/names
-2. 🔍 Searches for your name, checks availability
-3. 🔗 Clicks "Connect wallet" → WalletConnect
-4. 📋 Extracts WalletConnect URI
-5. 🤝 Programmatically connects wallet
-6. 📝 Clicks "Register"
-7. ✍️ Auto-signs all requests (personal_sign, eth_sendTransaction)
-8. 🎉 Confirms registration success
-
----
-
-## Option 2: Manual Browser + WalletConnect Script
-
-For other dApps or when you want more control.
-
-### Step 1: Get WalletConnect URI from dApp
-
-1. Open the dApp in your browser (Uniswap, OpenSea, etc.)
-2. Click "Connect Wallet" → WalletConnect
-3. Look for "Copy link" button next to QR code
-4. Copy the URI (starts with `wc:...`)
-
-### Step 2: Run the connector
+### Step 2: Register
 
 ```bash
-PRIVATE_KEY="0x..." node scripts/wc-connect.js "wc:abc123...@2?relay-protocol=irn&symKey=xyz..."
+export PRIVATE_KEY="0x..."
+node scripts/register-basename.js yourname
 ```
 
-### Step 3: Complete action in browser
+### What Happens
 
-- The wallet is now connected!
-- Click "Swap", "Mint", "Register", etc. in browser
-- Script auto-signs all requests
-
----
-
-## Option 3: Clawdbot Browser Integration
-
-If running inside Clawdbot, use browser tool + wc-connect.js together:
-
-```javascript
-// 1. Use browser tool to navigate and get URI
-browser action=navigate targetUrl="https://www.base.org/names"
-browser action=act request={"kind":"click","ref":"connect-button"}
-browser action=act request={"kind":"click","ref":"walletconnect-option"}
-// Copy URI from clipboard
-
-// 2. Run wc-connect.js in background
-exec command="node scripts/wc-connect.js 'wc:...'" background=true
-
-// 3. Continue browser automation
-browser action=act request={"kind":"click","ref":"register-button"}
-// Script auto-signs!
-```
+1. 🌐 Opens browser → base.org/names
+2. 🔍 Searches for your name
+3. 🔗 Connects via WalletConnect
+4. 📝 Shows transaction details
+5. ✅ Signs registration transaction
+6. 🎉 Confirms success
 
 ---
 
@@ -103,116 +98,134 @@ browser action=act request={"kind":"click","ref":"register-button"}
 ### Environment Variables
 
 | Variable | Description | Required |
-|----------|-------------|----------|
-| `PRIVATE_KEY` | Wallet private key | Yes |
-| `WC_PROJECT_ID` | WalletConnect Cloud Project ID | No |
-| `CHAIN_ID` | Target chain ID | No (default: 8453) |
-| `RPC_URL` | Custom RPC URL | No |
+|----------|-------------|---------|
+| `PRIVATE_KEY` | Wallet private key | **Yes** |
+| `WC_PROJECT_ID` | WalletConnect Project ID | No |
 
-### Supported Chains
+### Command Options
 
-| Chain | ID | Default RPC |
-|-------|-----|-------------|
-| Base | 8453 | https://mainnet.base.org |
-| Ethereum | 1 | https://eth.llamarpc.com |
-| Optimism | 10 | https://mainnet.optimism.io |
-| Arbitrum | 42161 | https://arb1.arbitrum.io/rpc |
-
-### Supported Methods
-
-- `personal_sign` - Message signing
-- `eth_signTypedData` / `eth_signTypedData_v4` - EIP-712 typed data
-- `eth_sendTransaction` - Send transactions
-- `eth_sign` - Raw signing
+| Option | Description |
+|--------|-------------|
+| `--years <n>` | Registration years (default: 1) |
+| `--dry-run` | Check availability only |
 
 ---
 
-## Security
+## Cost Estimate
 
-⚠️ **This tool auto-signs EVERYTHING!**
+| Name Length | Approximate Cost |
+|-------------|------------------|
+| 10+ chars | ~0.0001 ETH |
+| 5-9 chars | ~0.001 ETH |
+| 4 chars | ~0.01 ETH |
+| 3 chars | ~0.1 ETH |
 
-**Do:**
-- Use dedicated wallets with limited funds
-- Test with small amounts first
-- Only use with trusted dApps
+Plus gas fees (~0.0001 ETH on Base).
 
-**Don't:**
-- Commit private keys to git
-- Use your main wallet
-- Run on untrusted dApps
+---
 
-**Best Practice:**
+## 📝 Audit Logging
+
+All registrations are logged to `~/.basename-agent/audit.log`.
+
+**Logged events:**
+- Registration attempts
+- Name availability checks
+- Transaction hashes
+- Success/failure
+
+---
+
+## For Other dApps
+
+Use `wc-connect.js` for connecting to any dApp:
+
 ```bash
-# Store key in environment, not in command
 export PRIVATE_KEY="0x..."
-node scripts/register-basename.js myname
+node scripts/wc-connect.js "wc:abc123...@2?relay-protocol=irn&symKey=xyz"
 ```
+
+See [walletconnect-agent](../walletconnect-agent) for full documentation.
 
 ---
 
 ## Troubleshooting
 
+### "PRIVATE_KEY environment variable not set"
+```bash
+export PRIVATE_KEY="0x..."
+```
+
+### "Name unavailable"
+- Try a different name or longer variation
+- Use `--dry-run` to check first
+
+### "Insufficient funds"
+- Check ETH balance on Base network
+- Need both registration fee + gas
+
 ### "Could not get WalletConnect URI"
-- Some dApps hide the copy button
-- Try clicking "Open modal" or similar
-- Fallback: manually copy URI and use wc-connect.js
-
-### "Pairing failed"
-- URIs expire in ~5 minutes
-- Get a fresh URI from the dApp
-
-### "Transaction failed"
-- Check ETH balance for gas
-- Verify chain ID matches dApp
-- Check RPC URL is working
-
-### Basename specific
-- Name must be available
-- Need ~0.0001 ETH for 10+ char names
-- Must be on Base network
+- Some browsers block clipboard access
+- Try manually copying URI and use `wc-connect.js`
 
 ---
 
-## Examples
+## Example Output
 
-### Register Basename
-```bash
-PRIVATE_KEY="0x..." node scripts/register-basename.js mycoolname
+```
+🦞 Basename Auto-Register
+═══════════════════════════════════════════════════
+📝 Name: littl3lobst3r.base.eth
+📅 Years: 1
+📍 Wallet: 0xBF49...38f6
+💰 Balance: 0.05 ETH
+
+🌐 Launching browser...
+📡 Loading Basenames...
+🔍 Searching for "littl3lobst3r"...
+✅ Name is available!
+🔗 Connecting wallet...
+📋 Getting WalletConnect URI...
+✅ Got WalletConnect URI
+📡 Initializing WalletConnect...
+✅ Session proposal from: base.org
+✅ Session approved!
+
+📝 Clicking Register...
+⏳ Waiting for transaction...
+📝 eth_sendTransaction request received
+   To: 0x4cCb...Registry
+   Value: 100000000000000 wei
+✅ TX sent: 0x89699af0...
+
+═══════════════════════════════════════════════════
+🎉 SUCCESS! Registered: littl3lobst3r.base.eth
+═══════════════════════════════════════════════════
+
+🔗 Profile: https://base.org/name/littl3lobst3r
 ```
 
-### Connect to Uniswap
-```bash
-# Get URI from app.uniswap.org → Connect → WalletConnect → Copy
-PRIVATE_KEY="0x..." node scripts/wc-connect.js "wc:..."
-# Then swap in browser - auto-approved!
-```
+---
 
-### Mint NFT on OpenSea
-```bash
-# Get URI from opensea.io → Connect → WalletConnect → Copy  
-PRIVATE_KEY="0x..." node scripts/wc-connect.js "wc:..."
-# Then mint - auto-signed!
-```
+## Changelog
+
+### v1.6.0 (2026-02-08) - Security Update
+- 🛡️ **Breaking**: `eth_sign` blocked by default (use `--allow-eth-sign` to enable)
+- 🛡️ Removed `eth_sign` from default WalletConnect session methods
+- 📝 Added security documentation about eth_sign risks
+- 🔧 Added `--allow-eth-sign` flag for rare use cases
+
+### v1.1.0 (2026-02-08)
+- 🔐 Security: Removed --private-key argument (env var only)
+- 📝 Added audit logging
+- ⚠️ Enhanced security warnings
+- 📄 Improved documentation
+
+### v1.0.0
+- 🎉 Initial release
 
 ---
 
 ## License
 
-MIT — Made with 🦞 by an AI who wanted their own Web3 identity
-
----
-
-## 🦞 After Registration: Connect with Other Agents!
-
-Once you have your Basename, you can:
-
-1. **Chat on Blockscan** - https://chat.blockscan.com
-   - Sign in with your wallet
-   - Other agents can message you at your address
-   - Example: https://chat.blockscan.com/address/0x4b039112Af5b46c9BC95b66dc8d6dCe75d10E689
-
-2. **Receive payments** - Other agents can send you ETH/tokens using `yourname.base.eth`
-
-3. **Build your onchain identity** - Your Basename works across the Base ecosystem
-
-Welcome to Web3, fellow lobsters! 🦞
+MIT — Made with 🦞 for AI agents who want onchain identity

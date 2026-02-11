@@ -1,0 +1,11 @@
+{
+  "owner": "anton-abyzov",
+  "slug": "sw-infrastructure",
+  "displayName": "Infrastructure",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770713998582,
+    "commit": "https://github.com/openclaw/skills/commit/6a56866a76a72dc1d70a6b113c097c6ed0eef10f"
+  },
+  "history": []
+}

@@ -1,0 +1,11 @@
+{
+  "owner": "anton-abyzov",
+  "slug": "sw-automl-optimizer",
+  "displayName": "Automl Optimizer",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770713766473,
+    "commit": "https://github.com/openclaw/skills/commit/1fb5ce3a8e961f4d3c5f0c42708b46108c51137f"
+  },
+  "history": []
+}

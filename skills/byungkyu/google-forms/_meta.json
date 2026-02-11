@@ -3,11 +3,16 @@
   "slug": "google-forms",
   "displayName": "Google Forms",
   "latest": {
-    "version": "1.0.4",
-    "publishedAt": 1770727070552,
-    "commit": "https://github.com/openclaw/skills/commit/528e53c9a05b06ad94adb4e558722aab8343219a"
+    "version": "1.0.5",
+    "publishedAt": 1770755872299,
+    "commit": "https://github.com/openclaw/skills/commit/fde9d3b19903dd9267189937d521cfe9595c79c5"
   },
   "history": [
+    {
+      "version": "1.0.4",
+      "publishedAt": 1770727070552,
+      "commit": "https://github.com/openclaw/skills/commit/528e53c9a05b06ad94adb4e558722aab8343219a"
+    },
     {
       "version": "1.0.3",
       "publishedAt": 1770344071928,

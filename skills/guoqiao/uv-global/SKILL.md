@@ -1,6 +1,6 @@
 ---
 name: uv-global
-description: Provision and use a global uv environment for ad hoc Python scripts.
+description: Provision and reuse a global uv environment for ad hoc Python scripts.
 metadata: {"openclaw":{"always":true,"emoji":"🦞","homepage":"https://github.com/guoqiao/skills/blob/main/uv-global/uv-global/SKILL.md","os":["darwin","linux"],"tags":["python","uv","global","venv"],"requires":{"anyBins":["brew","uv"]}}}
 ---
 
@@ -14,12 +14,12 @@ Use this skill when the user needs Python packages (data processing, scraping, e
 
 ## Requirements
 
-`uv` available. If missing, you need either `brew` (macOS) or `curl` to install it.
+`uv` available. If missing, you need either `brew` (macOS/Linux) or `curl` to install it.
 
 ## Installation
 
 ```bash
-bash ${baseDir}/uv-global.sh
+bash ${baseDir}/install.sh
 ```
 
 The script will:
@@ -27,8 +27,9 @@ The script will:
 - install `uv` via `brew` (macOS/Linux) or the official `curl` installer if `uv` is absent
 - create a global uv project at `~/.uv-global`
 - create a virtual environment with common packages in `~/.uv-global/.venv`
+- create a few useful shims in `~/.uv-global/.venv/bin`
 
-Optionally prepend the venv bin to your `PATH` so `python` defaults to the global env:
+[Optional]prepend the venv bin to your `PATH` so `python` defaults to the global env and shims are available:
 
 ```
 export PATH=~/.uv-global/.venv/bin:$PATH
@@ -53,3 +54,4 @@ Tips:
 - Keep scripts anywhere; the `--project ~/.uv-global` flag ensures they run with the global env.
 - Inspect installed packages with `uv --project ~/.uv-global pip list`.
 - If a task grows into a real project, switch to a project-local venv instead of this global one.
+

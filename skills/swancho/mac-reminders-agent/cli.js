@@ -47,6 +47,27 @@ function parseArgs(argv) {
   return args;
 }
 
+// Format due datetime for title suffix (e.g., "제목 - 2026.02.15 21:00")
+function formatDueForTitle(dueISO, locale) {
+  if (!dueISO) return '';
+  const d = new Date(dueISO);
+  if (Number.isNaN(d.getTime())) return '';
+
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mi = String(d.getMinutes()).padStart(2, '0');
+
+  // 수완님 환경: 한국어 우선
+  if (locale === 'ko') {
+    return `${yyyy}.${mm}.${dd} ${hh}:${mi}`;
+  }
+
+  // 기타 로케일: 무난한 ISO-like 포맷
+  return `${yyyy}-${mm}-${dd} ${hh}:${mi}`;
+}
+
 function runReminderBridge(subcmd, extraArgs = []) {
   return new Promise((resolve, reject) => {
     const bridgePath = path.join(__dirname, 'reminders', 'apple-bridge.js');
@@ -134,6 +155,14 @@ Supported locales: en (English), ko (한국어), ja (日本語), zh (中文)
           title = `${title} (${repeatLabel})`;
         } else if (repeatLabel) {
           title = `${title} (${repeatLabel})`;
+        }
+      }
+
+      // 모든 리마인더 제목에 "제목 - YYYY.MM.DD HH:MM" 형식의 날짜/시간을 붙인다
+      if (due) {
+        const dueLabel = formatDueForTitle(due, locale);
+        if (dueLabel) {
+          title = `${title} - ${dueLabel}`;
         }
       }
 

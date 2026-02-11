@@ -72,7 +72,24 @@ function analyzeRecentHistory(recentEvents) {
 
   var recentIntents = recent.map(function(e) { return e.intent || 'unknown'; });
 
-  return { suppressedSignals: suppressedSignals, recentIntents: recentIntents, consecutiveRepairCount: consecutiveRepairCount, signalFreq: signalFreq, geneFreq: geneFreq };
+  // Track recent innovation targets to prevent repeated work on the same skill/module
+  var recentInnovationTargets = {};
+  for (var ti = 0; ti < recent.length; ti++) {
+    var tevt = recent[ti];
+    if (tevt.intent === 'innovate' && tevt.mutation_id) {
+      var tgt = (tevt.mutation && tevt.mutation.target) || '';
+      if (!tgt) {
+        var sum = String(tevt.summary || tevt.capsule_summary || '');
+        var skillMatch = sum.match(/skills\/([a-zA-Z0-9_-]+)/);
+        if (skillMatch) tgt = 'skills/' + skillMatch[1];
+      }
+      if (tgt) {
+        recentInnovationTargets[tgt] = (recentInnovationTargets[tgt] || 0) + 1;
+      }
+    }
+  }
+
+  return { suppressedSignals: suppressedSignals, recentIntents: recentIntents, consecutiveRepairCount: consecutiveRepairCount, signalFreq: signalFreq, geneFreq: geneFreq, recentInnovationTargets: recentInnovationTargets };
 }
 
 function extractSignals({ recentSessionTranscript, todayLog, memorySnippet, userSnippet, recentEvents }) {
@@ -174,6 +191,23 @@ function extractSignals({ recentSessionTranscript, todayLog, memorySnippet, user
       signals.push('capability_gap');
     }
   }
+
+  // --- Tool Usage Analytics (auto-evolved) ---
+  // Detect high-frequency tool usage patterns that suggest automation opportunities
+  var toolUsage = {};
+  var toolMatches = corpus.match(/\[TOOL:\s*(\w+)\]/g) || [];
+  for (var ti = 0; ti < toolMatches.length; ti++) {
+    var toolName = toolMatches[ti].match(/\[TOOL:\s*(\w+)\]/)[1];
+    toolUsage[toolName] = (toolUsage[toolName] || 0) + 1;
+  }
+  Object.keys(toolUsage).forEach(function(tool) {
+    if (toolUsage[tool] >= 5) {
+      signals.push('high_tool_usage:' + tool);
+    }
+    if (tool === 'exec' && toolUsage[tool] >= 3) {
+      signals.push('repeated_tool_usage:exec');
+    }
+  });
 
   // --- Signal prioritization ---
   // Remove cosmetic signals when actionable signals exist

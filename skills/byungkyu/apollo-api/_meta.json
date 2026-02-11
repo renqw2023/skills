@@ -3,11 +3,16 @@
   "slug": "apollo-api",
   "displayName": "Apollo",
   "latest": {
-    "version": "1.0.3",
-    "publishedAt": 1770344303716,
-    "commit": "https://github.com/openclaw/skills/commit/ea79c56b1d5072d3aba4648710f715f9bc037e8e"
+    "version": "1.0.5",
+    "publishedAt": 1770755732634,
+    "commit": "https://github.com/openclaw/skills/commit/801c37101aace2b3c1aabb75b55330c6af1f034e"
   },
   "history": [
+    {
+      "version": "1.0.3",
+      "publishedAt": 1770344303716,
+      "commit": "https://github.com/openclaw/skills/commit/ea79c56b1d5072d3aba4648710f715f9bc037e8e"
+    },
     {
       "version": "1.0.2",
       "publishedAt": 1770255328315,

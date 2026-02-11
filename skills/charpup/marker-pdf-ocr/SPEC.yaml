@@ -1,0 +1,742 @@
+# SPEC.yaml - Marker PDF OCR Skill Specification
+# Generated for TDD+SDD Dual Pyramid Process
+
+spec_version: "1.0"
+module_name: "marker-pdf-ocr"
+description: "OpenClaw Skill for PDF to Markdown OCR conversion using Marker API with flexible deployment options (cloud, on-premise, or hybrid)"
+version: "1.0.0"
+author: "OpenClaw"
+date: "2026-02-08"
+
+# Project context
+context:
+  purpose: |
+    Provide a robust, scalable PDF OCR solution that converts PDF documents to Markdown
+    with high accuracy. This skill abstracts deployment complexity and offers multiple
+    deployment modes suitable for different resource constraints.
+    
+    Key goals:
+    - Support 8GB RAM environments without local LLM deployment
+    - Provide cloud API fallback for resource-constrained scenarios
+    - Implement proper error handling and recovery mechanisms
+    - Support both synchronous and asynchronous processing modes
+  
+  target_users: |
+    - OpenClaw users needing PDF to text conversion
+    - Users with limited local compute resources (8GB RAM)
+    - Users requiring high-accuracy OCR for scientific papers, books
+
+# Architecture - Local-First Multi-Modal Deployment
+architecture:
+  type: "multi-modal"
+  description: |
+    LOCAL-FIRST architecture: Prioritizes on-premise processing for privacy and cost control.
+    Cloud API serves as fallback when local resources are insufficient.
+    
+    Updated for 23GB Swap environment: Local mode now viable for most workloads.
+  
+  modes:
+    - name: "local_cpu"
+      description: "PRIMARY: Run marker-pdf locally without GPU (recommended with 23GB swap)"
+      pros: ["No data leaves premises", "One-time cost", "Privacy guaranteed"]
+      cons: ["Slower processing (3-5x vs GPU)", "No LLM enhancement"]
+      resources: { "ram_mb": 4096, "storage_gb": 5, "swap_gb": 8 }
+      priority: 1
+      
+    - name: "cloud_api"
+      description: "FALLBACK: Use Datalab.to hosted API when local fails"
+      pros: ["No local GPU needed", "Fast processing", "99.99% uptime"]
+      cons: ["API costs", "Data leaves premises"]
+      resources: { "ram_mb": 512, "storage_gb": 1 }
+      priority: 2
+      
+    - name: "local_docker"
+      description: "ALTERNATIVE: Dockerized marker-api (CPU-only)"
+      pros: ["Isolated environment", "Easy setup"]
+      cons: ["Higher memory overhead", "No GPU acceleration"]
+      resources: { "ram_mb": 6144, "storage_gb": 10, "swap_gb": 8 }
+      priority: 3
+      
+    - name: "hybrid"
+      description: "ADVANCED: Local OCR + Cloud LLM enhancement"
+      pros: ["Balance of privacy and accuracy", "Cost control"]
+      cons: ["Complex setup", "Partial data sharing"]
+      resources: { "ram_mb": 2048, "storage_gb": 2 }
+      priority: 4
+
+  layers:
+    - name: "Interface Layer"
+      role: "OpenClaw tool integration, request validation, mode selection"
+      
+    - name: "Orchestration Layer"
+      role: "Deployment mode management, failover logic, resource monitoring"
+      
+    - name: "Processing Layer"
+      role: "PDF conversion via Marker API/Direct library calls"
+      
+    - name: "Storage Layer"
+      role: "Temporary file handling, result caching, retry queue"
+
+# Resource Requirements Assessment
+resource_requirements:
+  cloud_api_mode:
+    description: "Minimal local resources, relies on Datalab.to API"
+    ram_mb: 512
+    storage_gb: 1
+    network: "Stable internet connection required"
+    api_cost: "~$0.001-0.01 per page (estimated)"
+    
+  local_cpu_mode:
+    description: "Marker-pdf without GPU acceleration"
+    ram_mb: 4096
+    storage_gb: 5
+    swap_gb: 8
+    cpu_cores: 4
+    limitations:
+      - "Processing time: ~2-5 seconds per page (vs ~0.6s with GPU)"
+      - "No LLM enhancement (--use_llm disabled)"
+      - "OCR engine limited to tesseract/surya (CPU)"
+      
+  local_docker_mode:
+    description: "Containerized marker-api (CPU-only)"
+    ram_mb: 6144
+    storage_gb: 10
+    swap_gb: 8
+    docker_version: ">=20.0"
+    limitations:
+      - "Container overhead: ~1-2GB additional RAM"
+      - "Slower than bare-metal CPU mode"
+      
+  gpu_mode:
+    description: "Full performance (NOT RECOMMENDED for 8GB host)"
+    vram_gb: 4
+    ram_mb: 8192
+    warning: "8GB host insufficient for GPU mode with LLM"
+
+# Interface definitions - CORE OF SDD
+interfaces:
+  - name: "MarkerOCRService"
+    type: "class"
+    description: "Main service for PDF OCR operations with deployment mode abstraction"
+    
+    methods:
+      - name: "convert_pdf"
+        signature: "(pdf_path: str, output_format: str = 'markdown', mode: str = 'auto') -> dict"
+        description: |
+          Convert a PDF file to the specified output format.
+          Auto-detects best deployment mode based on available resources.
+        
+        contract:
+          preconditions:
+            - "pdf_path exists and is readable"
+            - "pdf_path points to a valid PDF file"
+            - "output_format in ['markdown', 'json', 'html', 'chunks']"
+            - "mode in ['auto', 'cloud', 'local_cpu', 'local_docker']"
+          postconditions:
+            - "returns dict with 'success' boolean"
+            - "on success: 'content' contains converted text"
+            - "on success: 'metadata' contains processing info"
+            - "on failure: 'error' contains error message and 'retryable' boolean"
+        
+        test_cases:
+          - id: "TC-001"
+            name: "Valid PDF to markdown (cloud mode)"
+            input:
+              pdf_path: "/tmp/test.pdf"
+              output_format: "markdown"
+              mode: "cloud"
+            expected:
+              success: true
+              content_type: "str"
+              metadata:
+                mode_used: "cloud"
+                pages_processed: ">=1"
+          
+          - id: "TC-002"
+            name: "Valid PDF to JSON (local_cpu mode)"
+            input:
+              pdf_path: "/tmp/test.pdf"
+              output_format: "json"
+              mode: "local_cpu"
+            expected:
+              success: true
+              content_type: "dict"
+              metadata:
+                mode_used: "local_cpu"
+          
+          - id: "TC-003"
+            name: "Non-existent PDF file"
+            input:
+              pdf_path: "/nonexistent/file.pdf"
+              output_format: "markdown"
+              mode: "auto"
+            expected:
+              success: false
+              error: "File not found"
+              retryable: false
+          
+          - id: "TC-004"
+            name: "Invalid output format"
+            input:
+              pdf_path: "/tmp/test.pdf"
+              output_format: "xml"
+              mode: "auto"
+            expected:
+              exception: "ValueError"
+              message_contains: "Invalid output format"
+      
+      - name: "health_check"
+        signature: "(mode: str = 'auto') -> dict"
+        description: |
+          Check health of the specified deployment mode.
+          Returns resource availability and mode readiness.
+        
+        contract:
+          preconditions:
+            - "mode in ['auto', 'cloud', 'local_cpu', 'local_docker']"
+          postconditions:
+            - "returns dict with 'healthy' boolean"
+            - "includes 'available_modes' list"
+            - "includes 'recommended_mode' string"
+        
+        test_cases:
+          - id: "TC-005"
+            name: "Health check with 8GB RAM"
+            input:
+              mode: "auto"
+            expected:
+              healthy: true
+              available_modes: ["cloud", "local_cpu"]
+              recommended_mode: "cloud"
+              memory:
+                total_gb: 8
+                available_gb: ">=2"
+      
+      - name: "get_mode_info"
+        signature: "() -> dict"
+        description: "Get information about all deployment modes and their requirements"
+        
+        contract:
+          postconditions:
+            - "returns dict with all mode configurations"
+        
+        test_cases:
+          - id: "TC-006"
+            name: "Get mode information"
+            expected:
+              modes:
+                cloud:
+                  available: "bool"
+                  requirements:
+                    ram_mb: 512
+                local_cpu:
+                  available: "bool"
+                  requirements:
+                    ram_mb: 4096
+
+  - name: "CloudAPIClient"
+    type: "class"
+    description: "Client for Datalab.to hosted API"
+    
+    methods:
+      - name: "submit_pdf"
+        signature: "(pdf_path: str, options: dict = None) -> dict"
+        description: "Submit PDF to cloud API for processing"
+        
+        contract:
+          preconditions:
+            - "DATLAB_API_KEY environment variable is set"
+            - "pdf_path is valid and < 100MB"
+          postconditions:
+            - "returns job_id for status polling"
+            - "on failure: raises CloudAPIError with retryable flag"
+        
+        test_cases:
+          - id: "TC-007"
+            name: "Submit PDF to cloud API"
+            input:
+              pdf_path: "/tmp/test.pdf"
+              options: { "use_llm": false }
+            expected:
+              job_id: "str"
+              status: "pending"
+          
+          - id: "TC-008"
+            name: "API key missing"
+            input:
+              pdf_path: "/tmp/test.pdf"
+            setup:
+              env:
+                DATLAB_API_KEY: null
+            expected:
+              exception: "ConfigurationError"
+              message_contains: "API key not configured"
+      
+      - name: "get_result"
+        signature: "(job_id: str, timeout: int = 300) -> dict"
+        description: "Poll for job completion and retrieve result"
+        
+        contract:
+          preconditions:
+            - "job_id is valid"
+          postconditions:
+            - "returns result dict with 'content' on success"
+            - "raises TimeoutError if timeout exceeded"
+        
+        test_cases:
+          - id: "TC-009"
+            name: "Get completed job result"
+            input:
+              job_id: "test-job-123"
+              timeout: 60
+            expected:
+              status: "completed"
+              content: "str"
+
+  - name: "LocalProcessor"
+    type: "class"
+    description: "Local marker-pdf processing without cloud dependency"
+    
+    methods:
+      - name: "process_local"
+        signature: "(pdf_path: str, output_format: str, use_ocr: bool = True) -> dict"
+        description: |
+          Process PDF locally using marker-pdf library.
+          Automatically disables GPU and LLM for 8GB RAM systems.
+        
+        contract:
+          preconditions:
+            - "marker-pdf library is installed"
+            - "sufficient disk space available"
+          postconditions:
+            - "returns converted content"
+            - "cleans up temporary files"
+        
+        test_cases:
+          - id: "TC-010"
+            name: "Local CPU processing"
+            input:
+              pdf_path: "/tmp/test.pdf"
+              output_format: "markdown"
+              use_ocr: true
+            expected:
+              success: true
+              processing_time_ms: ">=1000"
+              mode: "local_cpu"
+
+# Failure Recovery Mechanisms
+failure_recovery:
+  retry_policy:
+    max_retries: 3
+    backoff_strategy: "exponential"
+    initial_delay_ms: 1000
+    max_delay_ms: 30000
+    
+  circuit_breaker:
+    enabled: true
+    failure_threshold: 5
+    recovery_timeout_ms: 60000
+    
+  failover_modes:
+    - from: "local_docker"
+      to: "local_cpu"
+      trigger: "Docker daemon not available OR memory > 6GB required"
+      
+    - from: "local_cpu"
+      to: "cloud"
+      trigger: "Local processing fails OR memory < 4GB available"
+      
+    - from: "cloud"
+      to: "local_cpu"
+      trigger: "API rate limit OR network error"
+      
+  error_classifications:
+    - type: "ResourceExhaustedError"
+      retryable: true
+      failover_to: "cloud"
+      
+    - type: "NetworkError"
+      retryable: true
+      max_retries: 5
+      
+    - type: "InvalidPDFFileError"
+      retryable: false
+      
+    - type: "APILimitError"
+      retryable: true
+      retry_after_header: true
+      failover_to: "local_cpu"
+
+# Behavior scenarios - BDD style
+scenarios:
+  - id: "E2E-001"
+    name: "Happy path - Cloud API conversion"
+    priority: high
+    
+    given:
+      - condition: "DATLAB_API_KEY is configured"
+      - condition: "System has stable internet connection"
+      - condition: "8GB RAM available"
+      
+    when:
+      - action: "User submits 10-page PDF"
+      - action: "System detects 8GB RAM, selects cloud mode"
+      - action: "API returns result within 30 seconds"
+      
+    then:
+      - expectation: "Markdown output contains extracted text"
+      - expectation: "Response time < 60 seconds"
+      - expectation: "No local memory pressure"
+      
+    quality_attributes:
+      - name: "response_time"
+        threshold: "< 60s for 10-page PDF"
+      - name: "accuracy"
+        threshold: "> 95% text extraction accuracy"
+
+  - id: "E2E-002"
+    name: "Failover - Cloud to Local CPU"
+    priority: high
+    
+    given:
+      - condition: "Cloud API returns rate limit error"
+      - condition: "Local marker-pdf is installed"
+      - condition: "4GB RAM available for local processing"
+      
+    when:
+      - action: "User submits PDF"
+      - action: "Cloud API fails with 429 error"
+      - action: "System waits for Retry-After header"
+      - action: "Retry fails, triggers failover"
+      
+    then:
+      - expectation: "System automatically switches to local_cpu mode"
+      - expectation: "Processing completes successfully"
+      - expectation: "User receives notification of mode change"
+      
+    quality_attributes:
+      - name: "availability"
+        threshold: "> 99% success rate with failover"
+      - name: "failover_time"
+        threshold: "< 5s mode switch"
+
+  - id: "E2E-003"
+    name: "Resource-constrained environment"
+    priority: medium
+    
+    given:
+      - condition: "System has 8GB RAM with 6GB in use"
+      - condition: "No cloud API key configured"
+      
+    when:
+      - action: "User attempts PDF conversion"
+      - action: "System detects insufficient memory"
+      
+    then:
+      - expectation: "System returns clear error message"
+      - expectation: "Error includes configuration guidance"
+      - expectation: "Suggests adding DATLAB_API_KEY or freeing memory"
+
+  - id: "E2E-004"
+    name: "Batch processing with mixed modes"
+    priority: medium
+    
+    given:
+      - condition: "User submits 5 PDFs of varying sizes"
+      - condition: "System configured for auto mode"
+      
+    when:
+      - action: "System processes each PDF"
+      - action: "Selects optimal mode per PDF based on size and current load"
+      
+    then:
+      - expectation: "Small PDFs processed locally"
+      - expectation: "Large PDFs sent to cloud API"
+      - expectation: "All results aggregated and returned"
+
+# Acceptance criteria
+acceptance_criteria:
+  functional:
+    - "All unit tests pass with > 80% coverage"
+    - "All integration tests pass"
+    - "E2E scenarios pass for cloud, local_cpu, and failover cases"
+    - "PDF files up to 50MB can be processed"
+    - "Output formats: markdown, json, html supported"
+    - "Graceful degradation when resources constrained"
+    
+  non_functional:
+    - "Cloud API mode: < 512MB RAM usage"
+    - "Local CPU mode: < 4GB RAM peak usage"
+    - "Response time p95 < 60s for 10-page PDF"
+    - "Failover time < 5s"
+    - "System remains responsive during processing"
+    
+  deployment_specific:
+    cloud:
+      - "API key validation on startup"
+      - "Network timeout handling"
+    local_cpu:
+      - "marker-pdf library availability check"
+      - "Disk space verification (min 2GB free)"
+    local_docker:
+      - "Docker daemon connectivity check"
+      - "Container image availability check"
+
+# Configuration
+config:
+  environment_variables:
+    required:
+      - name: "MARKER_DEPLOYMENT_MODE"
+        description: "Default deployment mode: auto, cloud, local_cpu, local_docker"
+        default: "auto"
+    
+    optional_cloud:
+      - name: "DATLAB_API_KEY"
+        description: "API key for Datalab.to hosted service"
+        required_when: "mode == 'cloud' or mode == 'auto'"
+        
+    optional_local:
+      - name: "MARKER_OCR_ENGINE"
+        description: "OCR engine: surya, ocrmypdf, tesseract"
+        default: "surya"
+      - name: "MARKER_OUTPUT_DIR"
+        description: "Directory for temporary output files"
+        default: "/tmp/marker_output"
+      - name: "MARKER_MAX_WORKERS"
+        description: "Maximum parallel workers for local processing"
+        default: "1"
+      - name: "MARKER_FORCE_CPU"
+        description: "Force CPU mode even if GPU available"
+        default: "true"
+        
+    optional_failover:
+      - name: "MARKER_FAILOVER_ENABLED"
+        description: "Enable automatic failover between modes"
+        default: "true"
+      - name: "MARKER_CIRCUIT_BREAKER_THRESHOLD"
+        description: "Failures before circuit breaker opens"
+        default: "5"
+      - name: "MARKER_MAX_RETRIES"
+        description: "Maximum retry attempts per operation"
+        default: "3"
+
+# Dependencies
+dependencies:
+  runtime:
+    - package: "requests"
+      version: ">=2.28.0"
+      purpose: "HTTP client for cloud API"
+    - package: "pydantic"
+      version: ">=2.0.0"
+      purpose: "Data validation and settings"
+    - package: "pypdf"
+      version: ">=3.0.0"
+      purpose: "PDF validation and metadata extraction"
+      
+  optional_local:
+    - package: "marker-pdf"
+      version: ">=1.0.0"
+      purpose: "Local PDF processing"
+    - package: "torch"
+      version: ">=2.0.0"
+      purpose: "PyTorch for model inference"
+      
+  development:
+    - package: "pytest"
+      version: ">=7.0.0"
+    - package: "pytest-asyncio"
+      version: ">=0.21.0"
+    - package: "pytest-cov"
+      version: ">=4.0.0"
+    - package: "responses"
+      version: ">=0.23.0"
+      purpose: "Mock HTTP responses for tests"
+    - package: "httpx"
+      version: ">=0.24.0"
+      purpose: "Async HTTP client for tests"
+
+# Testing strategy
+testing_strategy:
+  unit_tests:
+    focus: "Single functions/methods, contract validation"
+    coverage_target: 85
+    scope:
+      - "Input validation"
+      - "Mode selection logic"
+      - "Error classification"
+      - "Retry logic"
+    mocks:
+      - "Cloud API responses"
+      - "Local marker-pdf calls"
+      - "File system operations"
+      
+  integration_tests:
+    focus: "Module collaboration, real service interactions"
+    scope:
+      - "Full conversion pipeline"
+      - "Failover mechanism"
+      - "Configuration loading"
+    external_services:
+      - "Datalab.to API (sandbox mode)"
+      - "Docker daemon (if available)"
+      
+  acceptance_tests:
+    focus: "End-to-end workflows with real PDFs"
+    test_data:
+      - "Simple text PDF (1 page)"
+      - "Scientific paper PDF (10 pages)"
+      - "Scanned document PDF (OCR required)"
+      - "Large PDF (100+ pages)"
+    environments:
+      - "8GB RAM, no GPU"
+      - "16GB RAM, with GPU (optional)"
+      - "Cloud-only configuration"
+
+# Performance benchmarks
+performance_benchmarks:
+  cloud_api:
+    single_page: "< 3s"
+    ten_pages: "< 15s"
+    fifty_pages: "< 60s"
+    
+  local_cpu:
+    single_page: "< 5s"
+    ten_pages: "< 60s"
+    fifty_pages: "< 5min"
+    memory_peak: "< 4GB"
+    
+  failover:
+    detection_time: "< 2s"
+    mode_switch: "< 3s"
+    total_overhead: "< 5s"
+
+# Security considerations
+security:
+  data_handling:
+    cloud_mode: "PDF uploaded to Datalab.to API"
+    local_mode: "PDF processed on-premise, no external transmission"
+    hybrid_mode: "Text only sent to LLM, not full PDF"
+    
+  secrets_management:
+    - "API keys stored in environment variables"
+    - "No API keys in logs or error messages"
+    - "Temporary files cleaned up after processing"
+    
+  file_safety:
+    - "PDF validation before processing"
+    - "File size limits enforced (default 100MB)"
+    - "Sandboxed temporary directory for output"
+
+# CLI Interface - OpenClaw Tool Integration
+cli_interface:
+  description: |
+    CLI wrapper that exposes Marker PDF OCR functionality to OpenClaw agents.
+    All commands return structured output (JSON for programmatic use, human-readable for debug).
+  
+  commands:
+    - name: "convert"
+      description: "Convert PDF to Markdown"
+      usage: "marker-ocr convert <pdf_path> [options]"
+      args:
+        - name: "pdf_path"
+          type: "file_path"
+          required: true
+          description: "Path to input PDF file"
+          validation: "File exists, ends with .pdf, size < 100MB"
+        
+        - name: "--mode"
+          type: "choice"
+          choices: ["auto", "local", "cloud"]
+          default: "auto"
+          description: "Deployment mode"
+        
+        - name: "--format"
+          type: "choice"
+          choices: ["markdown", "json", "html"]
+          default: "markdown"
+          description: "Output format"
+        
+        - name: "--output"
+          type: "file_path"
+          required: false
+          description: "Output file path (default: stdout)"
+        
+        - name: "--timeout"
+          type: "integer"
+          default: 300
+          description: "Processing timeout in seconds"
+      
+      output:
+        success:
+          stdout: "Converted content (markdown/json/html)"
+          exit_code: 0
+        failure:
+          stderr: '{"error": "type", "message": "...", "suggestion": "..."}'
+          exit_code: 1
+      
+      examples:
+        - "marker-ocr convert paper.pdf"
+        - "marker-ocr convert paper.pdf --mode local --format json"
+        - "marker-ocr convert paper.pdf --mode cloud --output result.md"
+    
+    - name: "health-check"
+      description: "Check system health and available modes"
+      usage: "marker-ocr health-check [--verbose]"
+      args:
+        - name: "--verbose"
+          type: "flag"
+          description: "Show detailed diagnostics"
+      
+      output:
+        format: "json"
+        schema:
+          healthy: "boolean"
+          available_modes: "array[string]"
+          recommended_mode: "string"
+          local_ready: "boolean"
+          cloud_ready: "boolean"
+          memory_available_mb: "integer"
+          version: "string"
+      
+      examples:
+        - "marker-ocr health-check"
+        - "marker-ocr health-check --verbose"
+    
+    - name: "install-local"
+      description: "Install local dependencies (marker-pdf, torch)"
+      usage: "marker-ocr install-local [--yes]"
+      args:
+        - name: "--yes"
+          type: "flag"
+          description: "Skip confirmation prompts"
+      
+      output:
+        success:
+          stdout: "Installation completed successfully"
+          exit_code: 0
+        failure:
+          stderr: "Installation failed: ..."
+          exit_code: 1
+
+# OpenClaw Integration
+openclaw_integration:
+  skill_location: "~/.openclaw/workspace/skills/marker-pdf-ocr/"
+  entry_point: "tools/marker-ocr"
+  exec_tool: "python3 ~/.openclaw/workspace/skills/marker-pdf-ocr/tools/marker-ocr.py"
+  
+  metadata:
+    name: "marker-pdf-ocr"
+    description: "Convert PDF to Markdown using Marker OCR (local-first)"
+    user_invocable: true
+    requires_env: ["MARKER_API_KEY"]
+    suggested_env:
+      MARKER_DEPLOYMENT_MODE: "auto"
+      MARKER_MAX_MEMORY_MB: "4096"
+  
+  tool_registration:
+    - name: "marker-ocr-convert"
+      description: "Convert PDF to Markdown"
+      command: "convert"
+    - name: "marker-ocr-health"
+      description: "Check OCR system health"
+      command: "health-check"

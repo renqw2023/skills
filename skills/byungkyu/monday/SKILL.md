@@ -8,6 +8,11 @@ description: |
 metadata:
   author: maton
   version: "1.0"
+  clawdbot:
+    emoji: 🧠
+    requires:
+      env:
+        - MATON_API_KEY
 ---
 
 # Monday.com
@@ -502,9 +507,7 @@ GraphQL errors are returned in the `errors` array:
 }
 ```
 
-### Troubleshooting: Invalid API Key
-
-**When you receive a "Invalid API key" error, ALWAYS follow these steps before concluding there is an issue:**
+### Troubleshooting: API Key Issues
 
 1. Check that the `MATON_API_KEY` environment variable is set:
 
@@ -523,6 +526,13 @@ print(json.dumps(json.load(urllib.request.urlopen(req)), indent=2))
 EOF
 ```
 
+### Troubleshooting: Invalid App Name
+
+1. Ensure your URL path starts with `monday`. For example:
+
+- Correct: `https://gateway.maton.ai/monday/v2`
+- Incorrect: `https://gateway.maton.ai/v2`
+
 ## Resources
 
 - [Monday.com API Basics](https://developer.monday.com/api-reference/docs/basics)
@@ -531,3 +541,5 @@ EOF
 - [Items Reference](https://developer.monday.com/api-reference/reference/items)
 - [Columns Reference](https://developer.monday.com/api-reference/reference/columns)
 - [API Changelog](https://developer.monday.com/api-reference/changelog)
+- [Maton Community](https://discord.com/invite/dBfFAcefs2)
+- [Maton Support](mailto:support@maton.ai)

@@ -3,11 +3,16 @@
   "slug": "mission-control",
   "displayName": "Mission Control",
   "latest": {
-    "version": "2.2.1",
-    "publishedAt": 1770474638746,
-    "commit": "https://github.com/openclaw/skills/commit/da85906afd9ac2fcd6069faa62fd87eb4f0f5208"
+    "version": "2.2.2",
+    "publishedAt": 1770739336241,
+    "commit": "https://github.com/openclaw/skills/commit/531c24ac623e654289b588f54b85aa4cf6558fb1"
   },
   "history": [
+    {
+      "version": "2.2.1",
+      "publishedAt": 1770474638746,
+      "commit": "https://github.com/openclaw/skills/commit/da85906afd9ac2fcd6069faa62fd87eb4f0f5208"
+    },
     {
       "version": "2.0.0",
       "publishedAt": 1769995152297,

@@ -1,0 +1,11 @@
+{
+  "owner": "anton-abyzov",
+  "slug": "sw-preview",
+  "displayName": "Preview",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770713611244,
+    "commit": "https://github.com/openclaw/skills/commit/75f3315d336bcbab9576e304e79fae11d4ff09f5"
+  },
+  "history": []
+}

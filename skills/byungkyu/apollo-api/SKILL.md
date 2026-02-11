@@ -6,6 +6,11 @@ compatibility: Requires network access and valid Maton API key
 metadata:
   author: maton
   version: "1.0"
+  clawdbot:
+    emoji: 🧠
+    requires:
+      env:
+        - MATON_API_KEY
 ---
 
 # Apollo
@@ -361,9 +366,7 @@ response = requests.post(
 | 429 | Rate limited (10 req/sec per account) |
 | 4xx/5xx | Passthrough error from Apollo API |
 
-### Troubleshooting: Invalid API Key
-
-**When you receive a "Invalid API key" error, ALWAYS follow these steps before concluding there is an issue:**
+### Troubleshooting: API Key Issues
 
 1. Check that the `MATON_API_KEY` environment variable is set:
 
@@ -382,6 +385,13 @@ print(json.dumps(json.load(urllib.request.urlopen(req)), indent=2))
 EOF
 ```
 
+### Troubleshooting: Invalid App Name
+
+1. Ensure your URL path starts with `apollo`. For example:
+
+- Correct: `https://gateway.maton.ai/apollo/v1/mixed_people/api_search`
+- Incorrect: `https://gateway.maton.ai/v1/mixed_people/api_search`
+
 ## Resources
 
 - [Apollo API Overview](https://docs.apollo.io/reference/introduction)
@@ -391,3 +401,5 @@ EOF
 - [Enrich Organization](https://docs.apollo.io/reference/organization-enrichment.md)
 - [Create Contact](https://docs.apollo.io/reference/create-a-contact.md)
 - [LLM Reference](https://docs.apollo.io/llms.txt)
+- [Maton Community](https://discord.com/invite/dBfFAcefs2)
+- [Maton Support](mailto:support@maton.ai)

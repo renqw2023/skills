@@ -2,8 +2,18 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js Version](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen)](https://nodejs.org/)
+[![OpenClaw Plugin](https://img.shields.io/badge/OpenClaw-Plugin-blue)](https://docs.openclaw.ai)
 
-An OpenClaw skill for automated SonarQube code quality analysis with intelligent issue detection and suggested solutions.
+An **OpenClaw Plugin + CLI Skill** for automated SonarQube code quality analysis with intelligent issue detection and suggested solutions.
+
+## 🎯 Dual Mode
+
+This package works in **two modes**:
+
+| Mode | Use Case | Installation |
+|------|----------|--------------|
+| **OpenClaw Plugin** | AI agents, automation, cron jobs | Add to `openclaw.json` |
+| **CLI Tool** | Manual analysis, CI/CD scripts | `npm install -g` or `npx` |
 
 ## 🎯 Overview
 
@@ -16,17 +26,66 @@ This skill integrates with SonarQube self-hosted instances to:
 
 ## 🚀 Quick Start
 
-### Installation
+### Mode 1: OpenClaw Plugin (Recommended for AI Agents)
+
+Install as an OpenClaw plugin to use native tools (`sonar_get_issues`, `sonar_analyze_and_suggest`, `sonar_quality_gate`):
 
 ```bash
-# Clone the repository
-git clone https://github.com/FelipeOFF/sonarqube-analyzer.git
+# Clone to your OpenClaw workspace
+git clone https://github.com/FelipeOFF/sonarqube-analyzer.git \
+  ~/.openclaw/workspace/skills/sonarqube-analyzer
 
 # Install dependencies
-cd sonarqube-analyzer
+cd ~/.openclaw/workspace/skills/sonarqube-analyzer
 npm install
+```
 
-# Configure environment variables
+Add to your `~/.openclaw/openclaw.json`:
+
+```json
+{
+  "plugins": {
+    "load": {
+      "paths": [
+        "/home/YOUR_USER/.openclaw/workspace/skills/sonarqube-analyzer"
+      ]
+    },
+    "entries": {
+      "sonarqube-analyzer": {
+        "enabled": true,
+        "config": {
+          "sonarHostUrl": "http://127.0.0.1:9000",
+          "sonarToken": "your-token-here",
+          "defaultProject": "my-project"
+        }
+      }
+    }
+  }
+}
+```
+
+Then reload OpenClaw:
+```bash
+pkill -USR1 -f "openclaw gateway"
+```
+
+**Available Tools:**
+- `sonar_get_issues(projectKey, pullRequest?)` — Fetch issues from SonarQube
+- `sonar_analyze_and_suggest(projectKey, pullRequest?, autoFix?)` — Analyze with solutions
+- `sonar_quality_gate(projectKey, pullRequest?)` — Check Quality Gate status
+
+### Mode 2: CLI Tool (For Manual Use & CI/CD)
+
+```bash
+# Install globally
+npm install -g @felipeoff/sonarqube-analyzer
+
+# Or use with npx (no install)
+npx @felipeoff/sonarqube-analyzer --project=my-project
+```
+
+Configure environment variables:
+```bash
 export SONAR_HOST_URL=http://127.0.0.1:9000
 export SONAR_TOKEN=your-token-here
 ```
@@ -128,12 +187,12 @@ Options:
   --format=<type>     Output: json | markdown (default: json)
 ```
 
-## 🏗️ Architecture
+## 🔌 Architecture
 
 ```
 sonarqube-analyzer/
 ├── scripts/
-│   └── analyze.js          # Main analysis script
+│   └── analyze.js          # CLI entry point
 ├── src/
 │   ├── api.js              # SonarQube API client
 │   ├── rules.js            # Rule definitions & solutions
@@ -141,36 +200,13 @@ sonarqube-analyzer/
 │   └── reporter.js         # Report generators
 ├── tests/
 │   └── *.test.js           # Unit tests
+├── openclaw.plugin.json    # OpenClaw plugin manifest
 ├── SKILL.md                # OpenClaw skill documentation
 ├── README.md               # This file
-└── package.json
+└── package.json            # NPM manifest + OpenClaw config
 ```
 
-## 🔌 OpenClaw Integration
-
-To use this skill with OpenClaw:
-
-1. **Install the skill**:
-   ```bash
-   openclaw skills install https://github.com/FelipeOFF/sonarqube-analyzer
-   ```
-
-2. **Configure in `openclaw.json`**:
-   ```json
-   {
-     "skills": {
-       "sonarqube-analyzer": {
-         "sonarHostUrl": "http://127.0.0.1:9000",
-         "sonarToken": "your-token"
-       }
-     }
-   }
-   ```
-
-3. **Use via tools**:
-   - `sonar_get_issues` - Fetch issues
-   - `sonar_analyze_and_suggest` - Analyze with solutions
-   - `sonar_quality_gate` - Check Quality Gate
+**Dual-mode design:** The same codebase powers both the CLI tool and the OpenClaw plugin. The `openclaw.plugin.json` declares the tool schema, while `package.json` handles the CLI binary.
 
 ## 🧪 Testing
 

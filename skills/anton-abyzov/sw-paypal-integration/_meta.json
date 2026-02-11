@@ -1,0 +1,11 @@
+{
+  "owner": "anton-abyzov",
+  "slug": "sw-paypal-integration",
+  "displayName": "Paypal Integration",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770713851916,
+    "commit": "https://github.com/openclaw/skills/commit/00b66a197a69f96fb9fca3158eb2980b929b7f3d"
+  },
+  "history": []
+}

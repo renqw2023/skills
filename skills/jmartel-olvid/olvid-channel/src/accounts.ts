@@ -13,11 +13,6 @@ export type ResolvedOlvidAccount = {
   clientKeySource: OlvidClientKeySource;
   daemonUrlSource: OlvidDaemonUrlSource;
   config: OlvidAccountConfig;
-  oncharPrefixes?: string[];
-  requireMention?: boolean;
-  textChunkLimit?: number;
-  blockStreaming?: boolean;
-  blockStreamingCoalesce?: OlvidAccountConfig["blockStreamingCoalesce"];
 };
 
 function listConfiguredAccountIds(cfg: CoreConfig): string[] {
@@ -98,14 +93,5 @@ export function resolveOlvidAccount(params: {
     clientKeySource: clientKeySource,
     daemonUrlSource: daemonUrlSource,
     config: merged,
-    textChunkLimit: merged.textChunkLimit,
-    blockStreaming: merged.blockStreaming,
-    blockStreamingCoalesce: merged.blockStreamingCoalesce,
   };
-}
-
-export function listEnabledOlvidAccounts(cfg: CoreConfig): ResolvedOlvidAccount[] {
-  return listOlvidAccountIds(cfg)
-    .map((accountId) => resolveOlvidAccount({ cfg, accountId }))
-    .filter((account) => account.enabled);
 }

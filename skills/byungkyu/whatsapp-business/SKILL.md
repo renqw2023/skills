@@ -6,6 +6,11 @@ compatibility: Requires network access and valid Maton API key
 metadata:
   author: maton
   version: "1.0"
+  clawdbot:
+    emoji: 🧠
+    requires:
+      env:
+        - MATON_API_KEY
 ---
 
 # WhatsApp Business
@@ -591,9 +596,7 @@ Common error codes from WhatsApp:
 - `132000` - Template not found or not approved
 - `133010` - Phone number rate limit reached
 
-### Troubleshooting: Invalid API Key
-
-**When you receive a "Invalid API key" error, ALWAYS follow these steps before concluding there is an issue:**
+### Troubleshooting: API Key Issues
 
 1. Check that the `MATON_API_KEY` environment variable is set:
 
@@ -612,6 +615,13 @@ print(json.dumps(json.load(urllib.request.urlopen(req)), indent=2))
 EOF
 ```
 
+### Troubleshooting: Invalid App Name
+
+1. Ensure your URL path starts with `whatsapp-business`. For example:
+
+- Correct: `https://gateway.maton.ai/whatsapp-business/v21.0/PHONE_NUMBER_ID/messages`
+- Incorrect: `https://gateway.maton.ai/v21.0/PHONE_NUMBER_ID/messages`
+
 ## Resources
 
 - [WhatsApp Business API Overview](https://developers.facebook.com/docs/whatsapp/cloud-api/overview)
@@ -622,3 +632,5 @@ EOF
 - [Business Profiles](https://developers.facebook.com/docs/whatsapp/cloud-api/reference/business-profiles)
 - [Webhooks](https://developers.facebook.com/docs/whatsapp/cloud-api/webhooks)
 - [Error Codes](https://developers.facebook.com/docs/whatsapp/cloud-api/support/error-codes)
+- [Maton Community](https://discord.com/invite/dBfFAcefs2)
+- [Maton Support](mailto:support@maton.ai)

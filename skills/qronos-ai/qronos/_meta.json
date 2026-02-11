@@ -1,0 +1,11 @@
+{
+  "owner": "qronos-ai",
+  "slug": "qronos",
+  "displayName": "◉ Qronos",
+  "latest": {
+    "version": "1.0.5",
+    "publishedAt": 1770780412216,
+    "commit": "https://github.com/openclaw/skills/commit/f191a98ad01e40bd13797251edddcf25667c8b57"
+  },
+  "history": []
+}

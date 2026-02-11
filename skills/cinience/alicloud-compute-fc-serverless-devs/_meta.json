@@ -1,0 +1,11 @@
+{
+  "owner": "cinience",
+  "slug": "alicloud-compute-fc-serverless-devs",
+  "displayName": "Alicloud Compute Fc Serverless Devs",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770768282744,
+    "commit": "https://github.com/openclaw/skills/commit/8ffb481978935fc9db17d041ed998c033272681e"
+  },
+  "history": []
+}

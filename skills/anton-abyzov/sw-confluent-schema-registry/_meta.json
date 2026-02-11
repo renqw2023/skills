@@ -1,0 +1,11 @@
+{
+  "owner": "anton-abyzov",
+  "slug": "sw-confluent-schema-registry",
+  "displayName": "Confluent Schema Registry",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770713588818,
+    "commit": "https://github.com/openclaw/skills/commit/48e6d6e3342300ff80f2e7ba12f6678e975fd5e2"
+  },
+  "history": []
+}

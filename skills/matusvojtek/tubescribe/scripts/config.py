@@ -9,7 +9,14 @@ All settings in one place, with defaults and validation.
 
 import os
 import json
+import sys
 from pathlib import Path
+
+try:
+    import fcntl
+    _HAS_FCNTL = True
+except ImportError:
+    _HAS_FCNTL = False
 
 # Config location
 CONFIG_DIR = Path.home() / ".tubescribe"
@@ -80,6 +87,42 @@ DEFAULT_CONFIG = {
 }
 
 
+_CONFIG_VALIDATORS = {
+    "document.format": lambda v: v in ("docx", "html", "md"),
+    "audio.enabled": lambda v: isinstance(v, bool),
+    "audio.format": lambda v: v in ("mp3", "wav"),
+    "audio.tts_engine": lambda v: v in ("mlx", "kokoro", "builtin"),
+    "mlx_audio.speed": lambda v: isinstance(v, (int, float)) and 0.1 <= v <= 5.0,
+    "kokoro.speed": lambda v: isinstance(v, (int, float)) and 0.1 <= v <= 5.0,
+    "processing.subagent_timeout": lambda v: isinstance(v, (int, float)) and v > 0,
+    "comments.max_count": lambda v: isinstance(v, int) and v > 0,
+    "comments.timeout": lambda v: isinstance(v, (int, float)) and v > 0,
+    "queue.stale_minutes": lambda v: isinstance(v, (int, float)) and v > 0,
+}
+
+
+def _validate_config(config: dict, defaults: dict) -> dict:
+    """Validate config values, reverting invalid ones to defaults."""
+    for dotpath, validator in _CONFIG_VALIDATORS.items():
+        keys = dotpath.split('.')
+        # Navigate to value
+        value = config
+        default_value = defaults
+        try:
+            for k in keys:
+                value = value[k]
+                default_value = default_value[k]
+        except (KeyError, TypeError):
+            continue
+        if not validator(value):
+            # Revert to default
+            target = config
+            for k in keys[:-1]:
+                target = target[k]
+            target[keys[-1]] = deep_copy(default_value)
+    return config
+
+
 def get_config_dir() -> Path:
     """Get the config directory, creating if needed."""
     CONFIG_DIR.mkdir(parents=True, exist_ok=True)
@@ -87,9 +130,9 @@ def get_config_dir() -> Path:
 
 
 def load_config() -> dict:
-    """Load config from file, merging with defaults."""
+    """Load config from file, merging with defaults. Invalid values are reverted."""
     config = deep_copy(DEFAULT_CONFIG)
-    
+
     if CONFIG_FILE.exists():
         try:
             with open(CONFIG_FILE, 'r') as f:
@@ -97,24 +140,30 @@ def load_config() -> dict:
             config = deep_merge(config, user_config)
         except (json.JSONDecodeError, IOError):
             pass  # Use defaults if config is corrupted
-    
+
+    config = _validate_config(config, DEFAULT_CONFIG)
     return config
 
 
 def save_config(config: dict) -> None:
-    """Save config to file."""
+    """Save config to file with file locking to prevent concurrent write corruption."""
     get_config_dir()
-    with open(CONFIG_FILE, 'w') as f:
-        json.dump(config, f, indent=2)
+    fd = os.open(str(CONFIG_FILE), os.O_RDWR | os.O_CREAT | os.O_TRUNC, 0o644)
+    try:
+        if _HAS_FCNTL:
+            fcntl.flock(fd, fcntl.LOCK_EX)
+        os.write(fd, json.dumps(config, indent=2).encode('utf-8'))
+    finally:
+        os.close(fd)
 
 
-def get(key: str, default=None):
+def get_value(key: str, default=None):
     """
     Get a config value using dot notation.
-    
+
     Example:
-        get("output.folder")
-        get("audio.format")
+        get_value("output.folder")
+        get_value("audio.format")
     """
     config = load_config()
     keys = key.split('.')
@@ -186,8 +235,6 @@ def print_config() -> None:
 
 # CLI interface
 if __name__ == "__main__":
-    import sys
-    
     if len(sys.argv) == 1:
         print("TubeScribe Configuration")
         print("=" * 40)
@@ -196,7 +243,7 @@ if __name__ == "__main__":
         print_config()
     
     elif sys.argv[1] == "get" and len(sys.argv) == 3:
-        value = get(sys.argv[2])
+        value = get_value(sys.argv[2])
         print(value if value is not None else "(not set)")
     
     elif sys.argv[1] == "set" and len(sys.argv) == 4:

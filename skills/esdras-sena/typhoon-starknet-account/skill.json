@@ -4,5 +4,5 @@
   "description": "Create a Starknet account to your agent through Typhoon anonymous deployer and interact with Starknet contracts (read/write + preflight).",
   "author": "Esdras Santos",
   "license": "MIT",
-  "keywords": ["starknet", "typhoon", "wallet", "defi", "web3"]
+  "keywords": ["starknet", "typhoon", "wallet", "anonymous", "account"]
 }

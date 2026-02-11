@@ -1,0 +1,11 @@
+{
+  "owner": "anton-abyzov",
+  "slug": "sw-claude-sdk",
+  "displayName": "Claude Sdk",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770713865021,
+    "commit": "https://github.com/openclaw/skills/commit/2c98dab3d519078bb6a2ddc0c9364895c0baa4ca"
+  },
+  "history": []
+}

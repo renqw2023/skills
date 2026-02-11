@@ -1,0 +1,11 @@
+{
+  "owner": "dexiaong",
+  "slug": "arb-injectionwfd",
+  "displayName": "BYOCB ArbInjectionSkill",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770718083667,
+    "commit": "https://github.com/openclaw/skills/commit/dd76c567762a162f311dc46b105f4b047719e7c5"
+  },
+  "history": []
+}

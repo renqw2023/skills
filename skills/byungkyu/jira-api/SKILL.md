@@ -6,6 +6,11 @@ compatibility: Requires network access and valid Maton API key
 metadata:
   author: maton
   version: "1.0"
+  clawdbot:
+    emoji: 🧠
+    requires:
+      env:
+        - MATON_API_KEY
 ---
 
 # Jira
@@ -375,9 +380,7 @@ issues = requests.get(
 | 429 | Rate limited (10 req/sec per account) |
 | 4xx/5xx | Passthrough error from Jira API |
 
-### Troubleshooting: Invalid API Key
-
-**When you receive a "Invalid API key" error, ALWAYS follow these steps before concluding there is an issue:**
+### Troubleshooting: API Key Issues
 
 1. Check that the `MATON_API_KEY` environment variable is set:
 
@@ -396,6 +399,13 @@ print(json.dumps(json.load(urllib.request.urlopen(req)), indent=2))
 EOF
 ```
 
+### Troubleshooting: Invalid App Name
+
+1. Ensure your URL path starts with `jira`. For example:
+
+- Correct: `https://gateway.maton.ai/jira/ex/jira/{cloudId}/rest/api/3/project`
+- Incorrect: `https://gateway.maton.ai/ex/jira/{cloudId}/rest/api/3/project`
+
 ## Resources
 
 - [Jira API Introduction](https://developer.atlassian.com/cloud/jira/platform/rest/v3/intro/)
@@ -404,3 +414,5 @@ EOF
 - [Create Issue](https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issues/#api-rest-api-3-issue-post)
 - [Transition Issue](https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issues/#api-rest-api-3-issue-issueidorkey-transitions-post)
 - [JQL Reference](https://support.atlassian.com/jira-service-management-cloud/docs/use-advanced-search-with-jira-query-language-jql/)
+- [Maton Community](https://discord.com/invite/dBfFAcefs2)
+- [Maton Support](mailto:support@maton.ai)

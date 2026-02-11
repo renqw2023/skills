@@ -1,0 +1,11 @@
+{
+  "owner": "anton-abyzov",
+  "slug": "sw-nodejs-backend",
+  "displayName": "Nodejs Backend",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770713573206,
+    "commit": "https://github.com/openclaw/skills/commit/863a55ff73dcac4d7a34392a2e379c79fefca5ea"
+  },
+  "history": []
+}

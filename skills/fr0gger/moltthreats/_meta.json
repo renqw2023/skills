@@ -3,11 +3,16 @@
   "slug": "moltthreats",
   "displayName": "MoltThreats",
   "latest": {
-    "version": "0.6.0",
-    "publishedAt": 1770537834719,
-    "commit": "https://github.com/openclaw/skills/commit/3215851ac68e1fb8e2063cc012550be8c95c30ea"
+    "version": "0.6.1",
+    "publishedAt": 1770771196859,
+    "commit": "https://github.com/openclaw/skills/commit/430927826a1ae885b30f4fd9834ebfe1ad4a7dd5"
   },
   "history": [
+    {
+      "version": "0.6.0",
+      "publishedAt": 1770537834719,
+      "commit": "https://github.com/openclaw/skills/commit/3215851ac68e1fb8e2063cc012550be8c95c30ea"
+    },
     {
       "version": "0.4.2",
       "publishedAt": 1770196574478,

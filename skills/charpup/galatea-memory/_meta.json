@@ -1,0 +1,11 @@
+{
+  "owner": "charpup",
+  "slug": "galatea-memory",
+  "displayName": "Galatea Memory Manager",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770718654583,
+    "commit": "https://github.com/openclaw/skills/commit/3de42aa2458013c3bccbb6d42c7f61a63a8e0a0a"
+  },
+  "history": []
+}

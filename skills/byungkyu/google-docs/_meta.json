@@ -3,11 +3,16 @@
   "slug": "google-docs",
   "displayName": "Google Docs",
   "latest": {
-    "version": "1.0.3",
-    "publishedAt": 1770344154994,
-    "commit": "https://github.com/openclaw/skills/commit/81f779e8fabe9089b88dc04e344bb41e4748de3c"
+    "version": "1.0.5",
+    "publishedAt": 1770755801803,
+    "commit": "https://github.com/openclaw/skills/commit/5a7ef6378792d9514dbe94172187c6431e6d5c2b"
   },
   "history": [
+    {
+      "version": "1.0.3",
+      "publishedAt": 1770344154994,
+      "commit": "https://github.com/openclaw/skills/commit/81f779e8fabe9089b88dc04e344bb41e4748de3c"
+    },
     {
       "version": "1.0.2",
       "publishedAt": 1770255499512,

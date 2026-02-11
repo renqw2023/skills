@@ -1,16 +1,24 @@
 ---
 name: stripe
 description: |
-  Stripe API integration with managed OAuth. Manage customers, subscriptions, payments, invoices, and products. Use this skill when users want to interact with Stripe for billing and payments. For other third party apps, use the api-gateway skill (https://clawhub.ai/byungkyu/api-gateway).
-compatibility: Requires network access and valid Maton API key
+  Stripe API integration with managed OAuth. Manage customers, subscriptions, invoices, products, prices, and payments.
+  Use this skill when users want to process payments, manage billing, or handle subscriptions with Stripe.
+  For other third party apps, use the api-gateway skill (https://clawhub.ai/byungkyu/api-gateway).
+  Requires network access and valid Maton API key.
 metadata:
   author: maton
   version: "1.0"
+  clawdbot:
+    emoji: 🧠
+    homepage: "https://maton.ai"
+    requires:
+      env:
+        - MATON_API_KEY
 ---
 
 # Stripe
 
-Access the Stripe API with managed OAuth authentication. Manage customers, subscriptions, payments, invoices, and products.
+Access the Stripe API with managed OAuth authentication. Manage customers, subscriptions, invoices, products, prices, and process payments.
 
 ## Quick Start
 
@@ -30,7 +38,7 @@ EOF
 https://gateway.maton.ai/stripe/{native-api-path}
 ```
 
-Replace `{native-api-path}` with the actual Stripe API endpoint path. The gateway proxies requests to `api.stripe.com` and automatically injects your API credentials.
+Replace `{native-api-path}` with the actual Stripe API endpoint path. The gateway proxies requests to `api.stripe.com` and automatically injects your OAuth token.
 
 ## Authentication
 
@@ -54,7 +62,7 @@ export MATON_API_KEY="YOUR_API_KEY"
 
 ## Connection Management
 
-Manage your Stripe connections at `https://ctrl.maton.ai`.
+Manage your Stripe OAuth connections at `https://ctrl.maton.ai`.
 
 ### List Connections
 
@@ -95,10 +103,10 @@ EOF
 ```json
 {
   "connection": {
-    "connection_id": "21fd90f9-5935-43cd-b6c8-bde9d915ca80",
+    "connection_id": "c3c82a73-4c86-4c73-8ebd-1f325212fde6",
     "status": "ACTIVE",
-    "creation_time": "2025-12-08T07:20:53.488460Z",
-    "last_updated_time": "2026-01-31T20:03:32.593153Z",
+    "creation_time": "2026-02-01T06:04:02.431819Z",
+    "last_updated_time": "2026-02-10T22:40:01.061825Z",
     "url": "https://connect.maton.ai/?session_token=...",
     "app": "stripe",
     "metadata": {}
@@ -128,7 +136,7 @@ python <<'EOF'
 import urllib.request, os, json
 req = urllib.request.Request('https://gateway.maton.ai/stripe/v1/customers')
 req.add_header('Authorization', f'Bearer {os.environ["MATON_API_KEY"]}')
-req.add_header('Maton-Connection', '21fd90f9-5935-43cd-b6c8-bde9d915ca80')
+req.add_header('Maton-Connection', 'c3c82a73-4c86-4c73-8ebd-1f325212fde6')
 print(json.dumps(json.load(urllib.request.urlopen(req)), indent=2))
 EOF
 ```
@@ -137,87 +145,308 @@ If omitted, the gateway uses the default (oldest) active connection.
 
 ## API Reference
 
-### Customers
+All Stripe API endpoints follow this pattern:
 
-#### List Customers
+```
+/stripe/v1/{resource}
+```
+
+---
+
+## Balance
+
+### Get Balance
+
+```bash
+GET /stripe/v1/balance
+```
+
+**Response:**
+```json
+{
+  "object": "balance",
+  "available": [
+    {
+      "amount": 0,
+      "currency": "usd",
+      "source_types": {"card": 0}
+    }
+  ],
+  "pending": [
+    {
+      "amount": 5000,
+      "currency": "usd",
+      "source_types": {"card": 5000}
+    }
+  ]
+}
+```
+
+### List Balance Transactions
+
+```bash
+GET /stripe/v1/balance_transactions?limit=10
+```
+
+---
+
+## Customers
+
+### List Customers
 
 ```bash
 GET /stripe/v1/customers?limit=10
 ```
 
-#### Get Customer
+**Query Parameters:**
 
-```bash
-GET /stripe/v1/customers/{customerId}
+| Parameter | Description |
+|-----------|-------------|
+| `limit` | Number of results (1-100, default: 10) |
+| `starting_after` | Cursor for pagination |
+| `ending_before` | Cursor for reverse pagination |
+| `email` | Filter by email |
+| `created` | Filter by creation date |
+
+**Response:**
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "id": "cus_TxKtN8Irvzx9BQ",
+      "object": "customer",
+      "email": "customer@example.com",
+      "name": null,
+      "balance": 0,
+      "currency": "usd",
+      "created": 1770765579,
+      "metadata": {}
+    }
+  ],
+  "has_more": true,
+  "url": "/v1/customers"
+}
 ```
 
-#### Create Customer
+### Get Customer
+
+```bash
+GET /stripe/v1/customers/{customer_id}
+```
+
+### Create Customer
 
 ```bash
 POST /stripe/v1/customers
 Content-Type: application/x-www-form-urlencoded
 
-email=customer@example.com&name=John%20Doe&description=New%20customer
+email=customer@example.com&name=John%20Doe&metadata[user_id]=123
 ```
 
-#### Update Customer
+### Update Customer
 
 ```bash
-POST /stripe/v1/customers/{customerId}
+POST /stripe/v1/customers/{customer_id}
 Content-Type: application/x-www-form-urlencoded
 
-email=newemail@example.com
+name=Jane%20Doe&email=jane@example.com
 ```
 
-### Products
-
-#### List Products
+### Delete Customer
 
 ```bash
-GET /stripe/v1/products?limit=10&active=true
+DELETE /stripe/v1/customers/{customer_id}
 ```
 
-#### Create Product
+---
+
+## Products
+
+### List Products
+
+```bash
+GET /stripe/v1/products?limit=10
+```
+
+**Query Parameters:**
+
+| Parameter | Description |
+|-----------|-------------|
+| `active` | Filter by active status |
+| `type` | Filter by type: `good` or `service` |
+
+**Response:**
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "id": "prod_TthCLBwTIXuzEw",
+      "object": "product",
+      "active": true,
+      "name": "Premium Plan",
+      "description": "Premium subscription",
+      "type": "service",
+      "created": 1769926024,
+      "metadata": {}
+    }
+  ],
+  "has_more": true
+}
+```
+
+### Get Product
+
+```bash
+GET /stripe/v1/products/{product_id}
+```
+
+### Create Product
 
 ```bash
 POST /stripe/v1/products
 Content-Type: application/x-www-form-urlencoded
 
-name=Premium%20Plan&description=Monthly%20subscription
+name=Premium%20Plan&description=Premium%20subscription&type=service
 ```
 
-### Prices
-
-#### List Prices
+### Update Product
 
 ```bash
-GET /stripe/v1/prices?limit=10&active=true
+POST /stripe/v1/products/{product_id}
+Content-Type: application/x-www-form-urlencoded
+
+name=Updated%20Plan&active=true
 ```
 
-#### Create Price
+### Delete Product
+
+```bash
+DELETE /stripe/v1/products/{product_id}
+```
+
+---
+
+## Prices
+
+### List Prices
+
+```bash
+GET /stripe/v1/prices?limit=10
+```
+
+**Query Parameters:**
+
+| Parameter | Description |
+|-----------|-------------|
+| `active` | Filter by active status |
+| `product` | Filter by product ID |
+| `type` | Filter: `one_time` or `recurring` |
+| `currency` | Filter by currency |
+
+**Response:**
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "id": "price_1SvtoVDfFKJhF88gKJv2eSmO",
+      "object": "price",
+      "active": true,
+      "currency": "usd",
+      "product": "prod_TthCLBwTIXuzEw",
+      "unit_amount": 1999,
+      "recurring": {
+        "interval": "month",
+        "interval_count": 1
+      },
+      "type": "recurring"
+    }
+  ],
+  "has_more": true
+}
+```
+
+### Get Price
+
+```bash
+GET /stripe/v1/prices/{price_id}
+```
+
+### Create Price
 
 ```bash
 POST /stripe/v1/prices
 Content-Type: application/x-www-form-urlencoded
 
-unit_amount=1999&currency=usd&product=prod_XXX&recurring[interval]=month
+product=prod_XXX&unit_amount=1999&currency=usd&recurring[interval]=month
 ```
 
-### Subscriptions
-
-#### List Subscriptions
+### Update Price
 
 ```bash
-GET /stripe/v1/subscriptions?limit=10&status=active
+POST /stripe/v1/prices/{price_id}
+Content-Type: application/x-www-form-urlencoded
+
+active=false
 ```
 
-#### Get Subscription
+---
+
+## Subscriptions
+
+### List Subscriptions
 
 ```bash
-GET /stripe/v1/subscriptions/{subscriptionId}
+GET /stripe/v1/subscriptions?limit=10
 ```
 
-#### Create Subscription
+**Query Parameters:**
+
+| Parameter | Description |
+|-----------|-------------|
+| `customer` | Filter by customer ID |
+| `price` | Filter by price ID |
+| `status` | Filter: `active`, `canceled`, `past_due`, etc. |
+
+**Response:**
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "id": "sub_1SzQDXDfFKJhF88gf72x6tDh",
+      "object": "subscription",
+      "customer": "cus_TxKtN8Irvzx9BQ",
+      "status": "active",
+      "current_period_start": 1770765579,
+      "current_period_end": 1773184779,
+      "items": {
+        "data": [
+          {
+            "id": "si_TxKtFWxlUW50cR",
+            "price": {
+              "id": "price_1RGbXsDfFKJhF88gMIShAq9m",
+              "unit_amount": 0
+            },
+            "quantity": 1
+          }
+        ]
+      }
+    }
+  ],
+  "has_more": true
+}
+```
+
+### Get Subscription
+
+```bash
+GET /stripe/v1/subscriptions/{subscription_id}
+```
+
+### Create Subscription
 
 ```bash
 POST /stripe/v1/subscriptions
@@ -226,71 +455,332 @@ Content-Type: application/x-www-form-urlencoded
 customer=cus_XXX&items[0][price]=price_XXX
 ```
 
-#### Cancel Subscription
+### Update Subscription
 
 ```bash
-DELETE /stripe/v1/subscriptions/{subscriptionId}
+POST /stripe/v1/subscriptions/{subscription_id}
+Content-Type: application/x-www-form-urlencoded
+
+items[0][id]=si_XXX&items[0][price]=price_YYY
 ```
 
-### Invoices
-
-#### List Invoices
+### Cancel Subscription
 
 ```bash
-GET /stripe/v1/invoices?limit=10&customer=cus_XXX
+DELETE /stripe/v1/subscriptions/{subscription_id}
 ```
 
-#### Get Invoice
+---
+
+## Invoices
+
+### List Invoices
 
 ```bash
-GET /stripe/v1/invoices/{invoiceId}
+GET /stripe/v1/invoices?limit=10
 ```
 
-### Charges
+**Query Parameters:**
 
-#### List Charges
+| Parameter | Description |
+|-----------|-------------|
+| `customer` | Filter by customer ID |
+| `subscription` | Filter by subscription ID |
+| `status` | Filter: `draft`, `open`, `paid`, `void`, `uncollectible` |
+
+**Response:**
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "id": "in_1SzQDXDfFKJhF88g3nh4u2GS",
+      "object": "invoice",
+      "customer": "cus_TxKtN8Irvzx9BQ",
+      "amount_due": 0,
+      "amount_paid": 0,
+      "currency": "usd",
+      "status": "paid",
+      "subscription": "sub_1SzQDXDfFKJhF88gf72x6tDh",
+      "hosted_invoice_url": "https://invoice.stripe.com/...",
+      "invoice_pdf": "https://pay.stripe.com/invoice/.../pdf"
+    }
+  ],
+  "has_more": true
+}
+```
+
+### Get Invoice
+
+```bash
+GET /stripe/v1/invoices/{invoice_id}
+```
+
+### Create Invoice
+
+```bash
+POST /stripe/v1/invoices
+Content-Type: application/x-www-form-urlencoded
+
+customer=cus_XXX
+```
+
+### Finalize Invoice
+
+```bash
+POST /stripe/v1/invoices/{invoice_id}/finalize
+```
+
+### Pay Invoice
+
+```bash
+POST /stripe/v1/invoices/{invoice_id}/pay
+```
+
+### Void Invoice
+
+```bash
+POST /stripe/v1/invoices/{invoice_id}/void
+```
+
+---
+
+## Charges
+
+### List Charges
 
 ```bash
 GET /stripe/v1/charges?limit=10
 ```
 
-### Payment Intents
+**Query Parameters:**
 
-#### Create Payment Intent
+| Parameter | Description |
+|-----------|-------------|
+| `customer` | Filter by customer ID |
+| `payment_intent` | Filter by payment intent |
+
+**Response:**
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "id": "ch_3SyXBvDfFKJhF88g1MHtT45f",
+      "object": "charge",
+      "amount": 5000,
+      "currency": "usd",
+      "customer": "cus_TuZ7GIjeZQOQ2m",
+      "paid": true,
+      "status": "succeeded",
+      "payment_method_details": {
+        "card": {
+          "brand": "mastercard",
+          "last4": "0833"
+        },
+        "type": "card"
+      }
+    }
+  ],
+  "has_more": true
+}
+```
+
+### Get Charge
+
+```bash
+GET /stripe/v1/charges/{charge_id}
+```
+
+### Create Charge
+
+```bash
+POST /stripe/v1/charges
+Content-Type: application/x-www-form-urlencoded
+
+amount=2000&currency=usd&source=tok_XXX
+```
+
+---
+
+## Payment Intents
+
+### List Payment Intents
+
+```bash
+GET /stripe/v1/payment_intents?limit=10
+```
+
+**Response:**
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "id": "pi_3SyXBvDfFKJhF88g17PeHdpE",
+      "object": "payment_intent",
+      "amount": 5000,
+      "currency": "usd",
+      "customer": "cus_TuZ7GIjeZQOQ2m",
+      "status": "succeeded",
+      "payment_method": "pm_1SyXBpDfFKJhF88gmP3IjC8C"
+    }
+  ],
+  "has_more": true
+}
+```
+
+### Get Payment Intent
+
+```bash
+GET /stripe/v1/payment_intents/{payment_intent_id}
+```
+
+### Create Payment Intent
 
 ```bash
 POST /stripe/v1/payment_intents
 Content-Type: application/x-www-form-urlencoded
 
-amount=1999&currency=usd&customer=cus_XXX
+amount=2000&currency=usd&customer=cus_XXX&payment_method_types[]=card
 ```
 
-### Balance
-
-#### Get Balance
+### Confirm Payment Intent
 
 ```bash
-GET /stripe/v1/balance
+POST /stripe/v1/payment_intents/{payment_intent_id}/confirm
 ```
 
-### Events
-
-#### List Events
+### Cancel Payment Intent
 
 ```bash
-GET /stripe/v1/events?limit=10&type=customer.created
+POST /stripe/v1/payment_intents/{payment_intent_id}/cancel
 ```
+
+---
+
+## Payment Methods
+
+### List Payment Methods
+
+```bash
+GET /stripe/v1/payment_methods?customer=cus_XXX&type=card
+```
+
+### Get Payment Method
+
+```bash
+GET /stripe/v1/payment_methods/{payment_method_id}
+```
+
+### Attach Payment Method
+
+```bash
+POST /stripe/v1/payment_methods/{payment_method_id}/attach
+Content-Type: application/x-www-form-urlencoded
+
+customer=cus_XXX
+```
+
+### Detach Payment Method
+
+```bash
+POST /stripe/v1/payment_methods/{payment_method_id}/detach
+```
+
+---
+
+## Coupons
+
+### List Coupons
+
+```bash
+GET /stripe/v1/coupons?limit=10
+```
+
+### Get Coupon
+
+```bash
+GET /stripe/v1/coupons/{coupon_id}
+```
+
+### Create Coupon
+
+```bash
+POST /stripe/v1/coupons
+Content-Type: application/x-www-form-urlencoded
+
+percent_off=25&duration=once
+```
+
+### Delete Coupon
+
+```bash
+DELETE /stripe/v1/coupons/{coupon_id}
+```
+
+---
+
+## Refunds
+
+### List Refunds
+
+```bash
+GET /stripe/v1/refunds?limit=10
+```
+
+### Get Refund
+
+```bash
+GET /stripe/v1/refunds/{refund_id}
+```
+
+### Create Refund
+
+```bash
+POST /stripe/v1/refunds
+Content-Type: application/x-www-form-urlencoded
+
+charge=ch_XXX&amount=1000
+```
+
+---
+
+## Pagination
+
+Stripe uses cursor-based pagination with `starting_after` and `ending_before`:
+
+```bash
+GET /stripe/v1/customers?limit=10&starting_after=cus_XXX
+```
+
+**Response includes:**
+```json
+{
+  "object": "list",
+  "data": [...],
+  "has_more": true,
+  "url": "/v1/customers"
+}
+```
+
+Use the last item's ID as `starting_after` for the next page.
 
 ## Code Examples
 
 ### JavaScript
 
 ```javascript
-const response = await fetch('https://gateway.maton.ai/stripe/v1/customers?limit=10', {
-  headers: {
-    'Authorization': `Bearer ${process.env.MATON_API_KEY}`
+const response = await fetch(
+  'https://gateway.maton.ai/stripe/v1/customers?limit=10',
+  {
+    headers: {
+      'Authorization': `Bearer ${process.env.MATON_API_KEY}`
+    }
   }
-});
+);
+const data = await response.json();
+console.log(data.data);
 ```
 
 ### Python
@@ -304,31 +794,32 @@ response = requests.get(
     headers={'Authorization': f'Bearer {os.environ["MATON_API_KEY"]}'},
     params={'limit': 10}
 )
+data = response.json()
+for customer in data['data']:
+    print(f"{customer['id']}: {customer['email']}")
 ```
 
 ## Notes
 
-- Stripe API uses form-urlencoded data for POST requests
-- IDs are prefixed: `cus_` (customer), `sub_` (subscription), `prod_` (product), `price_` (price), `in_` (invoice), `pi_` (payment intent)
-- Amounts are in cents (1999 = $19.99)
-- Use `expand[]` parameter to include related objects
-- List endpoints support pagination with `starting_after` and `ending_before`
-- Delete returns `{id, deleted: true}` on success
-- IMPORTANT: When using curl commands, use `curl -g` when URLs contain brackets (`items[]`, `expand[]`) to disable glob parsing
-- IMPORTANT: When piping curl output to `jq` or other commands, environment variables like `$MATON_API_KEY` may not expand correctly in some shell environments. You may get "Invalid API key" errors when piping.
+- Stripe API uses `application/x-www-form-urlencoded` for POST requests (not JSON)
+- Amounts are in the smallest currency unit (e.g., cents for USD)
+- IDs start with prefixes: `cus_` (customers), `prod_` (products), `price_` (prices), `sub_` (subscriptions), `in_` (invoices), `ch_` (charges), `pi_` (payment intents)
+- Timestamps are Unix timestamps
+- IMPORTANT: When using curl commands, use `curl -g` when URLs contain brackets to disable glob parsing
+- IMPORTANT: When piping curl output to `jq` or other commands, environment variables like `$MATON_API_KEY` may not expand correctly in some shell environments
 
 ## Error Handling
 
 | Status | Meaning |
 |--------|---------|
-| 400 | Missing Stripe connection |
+| 400 | Bad request or invalid parameters |
 | 401 | Invalid or missing Maton API key |
-| 429 | Rate limited (10 req/sec per account) |
-| 4xx/5xx | Passthrough error from Stripe API |
+| 402 | Card declined or payment required |
+| 404 | Resource not found |
+| 429 | Rate limited |
+| 500 | Stripe internal error |
 
-### Troubleshooting: Invalid API Key
-
-**When you receive a "Invalid API key" error, ALWAYS follow these steps before concluding there is an issue:**
+### Troubleshooting: API Key Issues
 
 1. Check that the `MATON_API_KEY` environment variable is set:
 
@@ -347,13 +838,17 @@ print(json.dumps(json.load(urllib.request.urlopen(req)), indent=2))
 EOF
 ```
 
+### Troubleshooting: Invalid App Name
+
+1. Ensure your URL path starts with `stripe`. For example:
+
+- Correct: `https://gateway.maton.ai/stripe/v1/customers`
+- Incorrect: `https://gateway.maton.ai/v1/customers`
+
 ## Resources
 
-- [Stripe API Overview](https://docs.stripe.com/api)
-- [Customers](https://docs.stripe.com/api/customers)
-- [Products](https://docs.stripe.com/api/products)
-- [Prices](https://docs.stripe.com/api/prices)
-- [Subscriptions](https://docs.stripe.com/api/subscriptions)
-- [Invoices](https://docs.stripe.com/api/invoices)
-- [Payment Intents](https://docs.stripe.com/api/payment_intents)
-- [LLM Reference](https://docs.stripe.com/llms.txt)
+- [Stripe API Reference](https://docs.stripe.com/api)
+- [Stripe Dashboard](https://dashboard.stripe.com/)
+- [Stripe Testing](https://docs.stripe.com/testing)
+- [Maton Community](https://discord.com/invite/dBfFAcefs2)
+- [Maton Support](mailto:support@maton.ai)

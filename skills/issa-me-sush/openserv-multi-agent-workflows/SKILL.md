@@ -1,6 +1,6 @@
 ---
 name: openserv-multi-agent-workflows
-description: Create workflows with multiple AI agents working together on the OpenServ Platform. Covers agent discovery, multi-agent workspaces, task dependencies, and workflow orchestration using the Platform Client.
+description: Multi-agent workflow examples to work together on the OpenServ Platform. Covers agent discovery, multi-agent workspaces, task dependencies, and workflow orchestration using the Platform Client. Read reference.md for the full API reference. Read openserv-agent-sdk and openserv-client for building and running agents.
 ---
 
 # Multi-Agent Workflows on OpenServ
@@ -33,6 +33,15 @@ See `examples/` for complete runnable examples:
    - **Edges** (⚠️ CRITICAL - connects triggers and tasks together)
 
 **⚠️ CRITICAL:** Always define edges when creating workflows. Setting task `dependencies` is NOT enough - you must create workflow edges to actually connect triggers to tasks and tasks to each other.
+
+---
+
+## Workflow Name & Goal
+
+When creating workflows (via `workflows.create()` or `provision()`), two properties are critical:
+
+- **`name`** (string) - This becomes the **agent name in ERC-8004**. Make it polished, punchy, and memorable — this is the public-facing brand name users see. Think product launch, not variable name. Examples: `'Instant Blog Machine'`, `'AI Video Studio'`, `'Polymarket Intelligence'`.
+- **`goal`** (string, required) - A detailed description of what the workflow accomplishes. Must be descriptive and thorough — short or vague goals will cause API calls to fail. Write at least a full sentence explaining the end-to-end purpose of the workflow.
 
 ---
 

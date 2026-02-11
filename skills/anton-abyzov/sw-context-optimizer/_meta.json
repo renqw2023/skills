@@ -1,0 +1,11 @@
+{
+  "owner": "anton-abyzov",
+  "slug": "sw-context-optimizer",
+  "displayName": "Context Optimizer",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770713958097,
+    "commit": "https://github.com/openclaw/skills/commit/be006db65056946d21b980a483b999728cebbe09"
+  },
+  "history": []
+}

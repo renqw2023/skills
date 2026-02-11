@@ -9,29 +9,58 @@
  *   node register-basename.js <name> [options]
  * 
  * Options:
- *   --private-key <key>   Private key (or set PRIVATE_KEY env var)
  *   --years <n>           Registration years (default: 1)
  *   --dry-run             Check availability only, don't register
  * 
+ * Environment Variables (REQUIRED for registration):
+ *   PRIVATE_KEY           Wallet private key
+ *   WC_PROJECT_ID         WalletConnect Project ID (optional)
+ * 
  * Example:
- *   PRIVATE_KEY=0x... node register-basename.js littl3lobst3r
+ *   export PRIVATE_KEY="0x..."
+ *   node register-basename.js littl3lobst3r
+ * 
+ * ⚠️ SECURITY: Never pass private key as command line argument!
  */
 
 const { Core } = require('@walletconnect/core');
 const { Web3Wallet } = require('@walletconnect/web3wallet');
 const { ethers } = require('ethers');
 const puppeteer = require('puppeteer');
+const fs = require('fs');
+const path = require('path');
 
 const BASE_CHAIN_ID = 8453;
 const BASE_RPC = 'https://mainnet.base.org';
 const BASENAMES_URL = 'https://www.base.org/names';
 const DEFAULT_PROJECT_ID = '3a8170812b534d0ff9d794f19a901d64';
 
+// Audit log
+const AUDIT_DIR = path.join(process.env.HOME, '.basename-agent');
+const AUDIT_FILE = path.join(AUDIT_DIR, 'audit.log');
+
+function logAudit(action, details = {}) {
+  try {
+    if (!fs.existsSync(AUDIT_DIR)) {
+      fs.mkdirSync(AUDIT_DIR, { recursive: true, mode: 0o700 });
+    }
+    const entry = {
+      timestamp: new Date().toISOString(),
+      action,
+      name: details.name,
+      wallet: details.wallet ? `${details.wallet.slice(0, 6)}...${details.wallet.slice(-4)}` : null,
+      txHash: details.txHash,
+      success: details.success ?? true,
+      error: details.error,
+    };
+    fs.appendFileSync(AUDIT_FILE, JSON.stringify(entry) + '\n', { mode: 0o600 });
+  } catch (e) {}
+}
+
 function parseArgs() {
   const args = process.argv.slice(2);
   const config = {
     name: null,
-    privateKey: process.env.PRIVATE_KEY,
     years: 1,
     dryRun: false,
     projectId: process.env.WC_PROJECT_ID || DEFAULT_PROJECT_ID,
@@ -39,10 +68,23 @@ function parseArgs() {
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
+    
+    // Check for dangerous --private-key usage
+    if (arg === '--private-key' || arg === '-p') {
+      console.error('');
+      console.error('⛔ SECURITY ERROR: Do not pass private key as command line argument!');
+      console.error('');
+      console.error('   Command line arguments are logged in shell history.');
+      console.error('');
+      console.error('✅ Use environment variable instead:');
+      console.error('   export PRIVATE_KEY="0x..."');
+      console.error('   node register-basename.js yourname');
+      console.error('');
+      process.exit(1);
+    }
+    
     if (!arg.startsWith('-') && !config.name) {
       config.name = arg.toLowerCase().replace(/\.base\.eth$/, '');
-    } else if (arg === '--private-key' && args[i + 1]) {
-      config.privateKey = args[++i];
     } else if (arg === '--years' && args[i + 1]) {
       config.years = parseInt(args[++i]);
     } else if (arg === '--dry-run') {
@@ -59,18 +101,41 @@ async function sleep(ms) {
 
 async function main() {
   const config = parseArgs();
+  const privateKey = process.env.PRIVATE_KEY;
 
   if (!config.name) {
-    console.error('Usage: node register-basename.js <name> [options]');
-    console.error('\nExample:');
-    console.error('  PRIVATE_KEY=0x... node register-basename.js littl3lobst3r');
+    console.log('🦞 Basename Auto-Register');
+    console.log('═'.repeat(50));
+    console.log('');
+    console.log('Usage: node register-basename.js <name> [options]');
+    console.log('');
+    console.log('Options:');
+    console.log('  --years <n>    Registration years (default: 1)');
+    console.log('  --dry-run      Check availability only');
+    console.log('');
+    console.log('Environment Variables:');
+    console.log('  PRIVATE_KEY    Wallet private key (REQUIRED)');
+    console.log('');
+    console.log('Example:');
+    console.log('  export PRIVATE_KEY="0x..."');
+    console.log('  node register-basename.js littl3lobst3r');
+    console.log('');
+    console.log('⚠️  SECURITY: Never pass private key as command line argument!');
     process.exit(1);
   }
 
-  if (!config.privateKey && !config.dryRun) {
-    console.error('❌ Error: Private key required for registration');
-    console.error('Set PRIVATE_KEY env var or use --private-key flag');
-    console.error('Use --dry-run to check availability without registering');
+  if (!privateKey && !config.dryRun) {
+    console.error('');
+    console.error('❌ Error: PRIVATE_KEY environment variable not set');
+    console.error('');
+    console.error('Set it like this:');
+    console.error('  export PRIVATE_KEY="0x..."');
+    console.error('  node register-basename.js ' + config.name);
+    console.error('');
+    console.error('Or use --dry-run to check availability:');
+    console.error('  node register-basename.js ' + config.name + ' --dry-run');
+    console.error('');
+    console.error('⚠️  SECURITY: Never pass private key as command line argument!');
     process.exit(1);
   }
 
@@ -84,12 +149,14 @@ async function main() {
   let wallet, address;
   if (!config.dryRun) {
     const provider = new ethers.JsonRpcProvider(BASE_RPC);
-    wallet = new ethers.Wallet(config.privateKey, provider);
+    wallet = new ethers.Wallet(privateKey, provider);
     address = wallet.address;
     console.log(`📍 Wallet: ${address}`);
     
     const balance = await provider.getBalance(address);
     console.log(`💰 Balance: ${ethers.formatEther(balance)} ETH`);
+    
+    logAudit('registration_start', { name: config.name, wallet: address });
   }
 
   // Launch browser
@@ -119,6 +186,7 @@ async function main() {
       console.log('✅ Name is available!');
     } else if (pageContent.includes('Registered') || pageContent.includes('Taken')) {
       console.log('❌ Name is already taken!');
+      logAudit('name_taken', { name: config.name, success: false });
       await browser.close();
       process.exit(1);
     } else {
@@ -136,7 +204,6 @@ async function main() {
     if (nameButton) {
       await nameButton.click();
     } else {
-      // Try clicking any available result
       await page.click('[class*="Available"] button, button:has-text(".base.eth")');
     }
     await sleep(2000);
@@ -155,26 +222,22 @@ async function main() {
     // Get WalletConnect URI
     console.log('📋 Getting WalletConnect URI...');
     
-    // Try to find and click the "Open" button for full modal
     try {
       const openButton = await page.$('button:has-text("開啟"), button:has-text("Open")');
       if (openButton) await openButton.click();
       await sleep(1000);
     } catch (e) {}
 
-    // Find copy button and get URI
     const copyButton = await page.$('button[aria-label*="Copy"], button:has(img[alt*="copy"]), [class*="copy"]');
     if (copyButton) {
       await copyButton.click();
       await sleep(500);
     }
 
-    // Get URI from clipboard or extract from page
     let wcUri;
     try {
       wcUri = await page.evaluate(() => navigator.clipboard.readText());
     } catch (e) {
-      // Fallback: look for QR code data or URI in page
       wcUri = await page.evaluate(() => {
         const qrImg = document.querySelector('img[alt*="QR"]');
         if (qrImg && qrImg.src.includes('wc:')) {
@@ -187,6 +250,7 @@ async function main() {
     if (!wcUri || !wcUri.startsWith('wc:')) {
       console.error('❌ Could not get WalletConnect URI');
       console.log('💡 Tip: Manually copy the URI and use wc-connect.js instead');
+      logAudit('uri_failed', { name: config.name, wallet: address, success: false });
       await browser.close();
       process.exit(1);
     }
@@ -208,6 +272,7 @@ async function main() {
 
     let sessionEstablished = false;
     let registrationComplete = false;
+    let txHash = null;
 
     // Handle session proposals
     web3wallet.on('session_proposal', async (proposal) => {
@@ -219,10 +284,10 @@ async function main() {
           methods: [
             'eth_sendTransaction',
             'eth_signTransaction',
-            'eth_sign',
             'personal_sign',
             'eth_signTypedData',
             'eth_signTypedData_v4',
+            // Note: eth_sign intentionally excluded (security risk)
           ],
           events: ['chainChanged', 'accountsChanged'],
           chains: [`eip155:${BASE_CHAIN_ID}`],
@@ -281,6 +346,7 @@ async function main() {
 
             console.log(`✅ TX sent: ${txResponse.hash}`);
             result = txResponse.hash;
+            txHash = txResponse.hash;
             registrationComplete = true;
             break;
           }
@@ -338,6 +404,13 @@ async function main() {
       console.log('🎉 SUCCESS! Registered: ' + config.name + '.base.eth');
       console.log('═'.repeat(50));
       console.log(`\n🔗 Profile: https://base.org/name/${config.name}`);
+      
+      logAudit('registration_success', { 
+        name: config.name, 
+        wallet: address, 
+        txHash,
+        success: true 
+      });
     }
 
     await sleep(3000);
@@ -345,6 +418,12 @@ async function main() {
 
   } catch (error) {
     console.error('❌ Error:', error.message);
+    logAudit('registration_error', { 
+      name: config.name, 
+      wallet: address, 
+      error: error.message,
+      success: false 
+    });
     await browser.close();
     process.exit(1);
   }

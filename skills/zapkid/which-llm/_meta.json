@@ -1,0 +1,17 @@
+{
+  "owner": "zapkid",
+  "slug": "which-llm",
+  "displayName": "Which LLM? Deterministic model selection for agents",
+  "latest": {
+    "version": "1.0.4",
+    "publishedAt": 1770743108468,
+    "commit": "https://github.com/openclaw/skills/commit/5ec12e44b78ef3ed5d98d85a0e4a173ec6a27801"
+  },
+  "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1770737839326,
+      "commit": "https://github.com/openclaw/skills/commit/d1df99a1041a733788214323982bbe2428005744"
+    }
+  ]
+}

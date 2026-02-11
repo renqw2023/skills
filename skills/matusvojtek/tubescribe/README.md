@@ -14,12 +14,12 @@ Drop a YouTube link → get a beautiful transcript with speaker labels, key quot
 - 📋 **Queue Support** — Send multiple links, they get processed in order
 - 🚀 **Non-Blocking Workflow** — Conversation continues while video processes in background
 
-## 100% Free & Local
+## Free & No Paid APIs
 
-- No subscription required
-- No API keys needed
-- No data leaves your computer
-- No usage limits
+- **No subscriptions** — no API keys, no paid services
+- **No usage limits** — process as many videos as you want
+- **Local processing** — transcription, speaker detection, TTS all run on your machine
+- **Network access** — YouTube fetching (video metadata, captions, comments) requires internet
 
 ## Quick Start
 
@@ -41,7 +41,9 @@ No waiting, no freezing — just seamless async processing.
 python skills/tubescribe/scripts/setup.py
 ```
 
-Checks and installs: `summarize` CLI, `pandoc`, `ffmpeg`, TTS engine (mlx-audio on Apple Silicon, Kokoro PyTorch elsewhere)
+**What setup.py does:** Checks if recommended tools are present (`summarize`, `pandoc`, `ffmpeg`, TTS engine) and offers to install any missing ones. It only downloads from official sources (Homebrew, PyPI, GitHub releases). You can skip any install — the skill works without them using macOS built-in TTS and HTML fallback.
+
+**What setup.py does NOT do:** It does not upload data, contact unknown hosts, or modify system files outside `~/.openclaw/tools/` and `~/.tubescribe/`.
 
 ## Output Example
 
@@ -120,6 +122,22 @@ Clear messages for common issues:
 | Invalid URL | ❌ Not a valid YouTube URL |
 | Age-restricted | ❌ Age-restricted video — can't access without login |
 
+## Privacy & Network
+
+**What uses the network:**
+- `summarize` CLI / `yt-dlp` — fetches video captions, metadata, and comments from YouTube
+- `setup.py` — one-time download of tools (pandoc, ffmpeg, yt-dlp, TTS models) from official sources
+
+**What runs locally (no network):**
+- Speaker detection and transcript analysis (Claude sub-agent, same as your main agent)
+- TTS audio generation (MLX-Audio Kokoro, Apple `say`, or Kokoro PyTorch — all on-device)
+- Document generation (pandoc)
+- Audio conversion (ffmpeg)
+
+**No data is uploaded anywhere.** Video content is fetched *from* YouTube, processed on your machine, and saved locally. Nothing is sent back.
+
+**Config paths (`~/.tubescribe/config.json`)** point to local TTS installations on your machine (e.g., `~/.openclaw/tools/mlx-audio`). These are not remote services.
+
 ## Security
 
 ### Code Injection (Fixed in v1.1.0)
@@ -151,4 +169,4 @@ MIT
 
 ---
 
-Made with 🦊 by Jackie & Matus
+Made by Jackie 🦊 & Matus 🇸🇰

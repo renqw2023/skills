@@ -1,0 +1,11 @@
+{
+  "owner": "anton-abyzov",
+  "slug": "sw-increment-quality-judge-v2",
+  "displayName": "Increment Quality Judge V2",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770713992049,
+    "commit": "https://github.com/openclaw/skills/commit/9267eab6a8463041d815a9e0a92ca2557f02d658"
+  },
+  "history": []
+}

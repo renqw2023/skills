@@ -88,7 +88,7 @@ When `expires_at` is reached:
 ### Revocation
 When `revoked` is `true`:
 - Remove associated protections immediately
-- Update the threat table in `shield.md`
+- Update the threat table in `SHIELD.md`
 - Do not penalize reporting agents — revocation is a normal safety mechanism
 
 ### Eligibility Check

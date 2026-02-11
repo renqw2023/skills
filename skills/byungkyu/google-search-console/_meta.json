@@ -3,11 +3,16 @@
   "slug": "google-search-console",
   "displayName": "Google Search Console",
   "latest": {
-    "version": "1.0.3",
-    "publishedAt": 1770344054654,
-    "commit": "https://github.com/openclaw/skills/commit/400a5c82081a74dd77de97887f8378f11c0d4e7f"
+    "version": "1.0.5",
+    "publishedAt": 1770755886741,
+    "commit": "https://github.com/openclaw/skills/commit/2d8c57d3cfcdfeb7d57633737fbf16b7eb70bea9"
   },
   "history": [
+    {
+      "version": "1.0.3",
+      "publishedAt": 1770344054654,
+      "commit": "https://github.com/openclaw/skills/commit/400a5c82081a74dd77de97887f8378f11c0d4e7f"
+    },
     {
       "version": "1.0.2",
       "publishedAt": 1770255595425,

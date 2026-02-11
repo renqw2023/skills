@@ -1,0 +1,11 @@
+{
+  "owner": "dexiaong",
+  "slug": "omi-meh",
+  "displayName": "Omi.me Integration for OpenClaw",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770715946212,
+    "commit": "https://github.com/openclaw/skills/commit/048a85242626cb20aaae50165dd862eea7205794"
+  },
+  "history": []
+}

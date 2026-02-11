@@ -1,0 +1,11 @@
+{
+  "owner": "cinience",
+  "slug": "alicloud-ai-image-qwen-image",
+  "displayName": "Alicloud Ai Image Qwen Image",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770768212508,
+    "commit": "https://github.com/openclaw/skills/commit/d15ea99a3a49819bb268e888ef5378d069cdc7b6"
+  },
+  "history": []
+}

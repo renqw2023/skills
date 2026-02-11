@@ -1,0 +1,10 @@
+{
+  "name": "code-search",
+  "version": "1.0.0",
+  "description": "Smart repository code search tool for OpenClaw agents",
+  "main": "index.js",
+  "bin": {
+    "code-search": "./index.js"
+  },
+  "dependencies": {}
+}

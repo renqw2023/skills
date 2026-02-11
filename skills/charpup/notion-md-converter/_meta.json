@@ -1,0 +1,11 @@
+{
+  "owner": "charpup",
+  "slug": "notion-md-converter",
+  "displayName": "Notion Markdown Converter",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770718589563,
+    "commit": "https://github.com/openclaw/skills/commit/493f2e40ad61472c01a0aecc6afaabb7efd50441"
+  },
+  "history": []
+}

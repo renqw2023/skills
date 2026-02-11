@@ -1,0 +1,11 @@
+{
+  "owner": "cinience",
+  "slug": "alicloud-ai-search-dashvector",
+  "displayName": "Alicloud Ai Search Dashvector",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1770768434283,
+    "commit": "https://github.com/openclaw/skills/commit/f5e7483588a11eae1cef800c83938310ac250ca5"
+  },
+  "history": []
+}

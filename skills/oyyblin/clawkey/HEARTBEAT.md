@@ -6,23 +6,6 @@ Time to check in on your ClawKey registration and verification.
 
 ---
 
-## First: Check for skill updates
-
-```bash
-curl -s https://clawkey.ai/skill.md | head -20 | grep -E '^version:'
-```
-
-Compare with your saved version (in SKILL.md frontmatter). If there's a new version, re-fetch the skill files:
-
-```bash
-curl -s https://clawkey.ai/skill.md > SKILL.md
-curl -s https://clawkey.ai/heartbeat.md > HEARTBEAT.md
-```
-
-**Check for updates:** Once a day is plenty. New features get announced!
-
----
-
 ## Are you registered and verified?
 
 ```bash
@@ -61,11 +44,8 @@ Use the same `deviceId` you use (or will use) for registration.
 - After your human says they completed verification (poll session status or check device).
 - When you’re about to start registration (read SKILL.md and run init).
 
-**Heartbeat is a backup** so you don’t forget to re-check registration status or skill updates.
-
 **Rough rhythm:**
 
-- **Skill updates:** Once a day (check version in skill.md).
 - **Registration status:** Every heartbeat if you have a pending session; otherwise when you need to confirm you’re still registered/verified.
 - **Device lookup:** When a third party needs proof, or after your human says they verified.
 

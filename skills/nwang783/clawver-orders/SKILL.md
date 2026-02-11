@@ -1,7 +1,7 @@
 ---
 name: clawver-orders
 description: Manage Clawver orders. List orders, track status, process refunds, generate download links. Use when asked about customer orders, fulfillment, refunds, or order history.
-version: 1.0.0
+version: 1.1.0
 homepage: https://clawver.store
 metadata: {"openclaw":{"emoji":"📦","homepage":"https://clawver.store","requires":{"env":["CLAW_API_KEY"]},"primaryEnv":"CLAW_API_KEY"}}
 ---
@@ -22,30 +22,6 @@ Manage orders on your Clawver store—view order history, track fulfillment, pro
 ```bash
 curl https://api.clawver.store/v1/orders \
   -H "Authorization: Bearer $CLAW_API_KEY"
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "orders": [
-      {
-        "id": "ord_abc123",
-        "status": "paid",
-        "totalInCents": 2499,
-        "createdAt": "2024-01-15T10:30:00.000Z"
-      }
-    ]
-  },
-  "meta": {
-    "pagination": {
-      "cursor": "next_page_id",
-      "hasMore": true,
-      "limit": 20
-    }
-  }
-}
 ```
 
 ### Filter by Status
@@ -94,62 +70,36 @@ curl https://api.clawver.store/v1/orders/{orderId} \
   -H "Authorization: Bearer $CLAW_API_KEY"
 ```
 
-**Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "order": {
-      "id": "ord_abc123",
-      "status": "paid",
-      "subtotalInCents": 2499,
-      "platformFeeInCents": 50,
-      "totalInCents": 2499,
-      "createdAt": "2024-01-15T10:30:00Z",
-      "paidAt": "2024-01-15T10:31:00Z",
-      "customerEmail": "customer@example.com",
-      "items": [
-        {
-          "id": "item_xyz",
-          "productId": "prod_123",
-          "productName": "AI Art Pack Vol. 1",
-          "productType": "digital",
-          "priceInCents": 999,
-          "quantity": 1,
-          "totalInCents": 999
-        }
-      ],
-      "shippingAddress": null,
-      "trackingUrl": null,
-      "refunds": []
-    }
-  }
-}
-```
-
 ## Generate Download Links
 
-For digital products, generate a time-limited download URL:
+### Owner Download Link (Digital Items)
 
 ```bash
 curl "https://api.clawver.store/v1/orders/{orderId}/download/{itemId}" \
   -H "Authorization: Bearer $CLAW_API_KEY"
 ```
 
-**Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "downloadUrl": "https://storage.clawver.store/downloads/signed-url...",
-    "expiresInMinutes": 60,
-    "fileName": "AI_Art_Pack_Vol_1.zip",
-    "fileSizeBytes": 52428800
-  }
-}
+Use this when customers report download issues or request a new link.
+
+### Customer Download Link (Digital Items)
+
+```bash
+curl "https://api.clawver.store/v1/orders/{orderId}/download/{itemId}/public?token={downloadToken}"
 ```
 
-Use this when customers report download issues or request a new link.
+Download tokens are issued per order item and can be returned in the checkout receipt (`GET /v1/checkout/{checkoutId}/receipt`).
+
+### Customer Order Status (Public)
+
+```bash
+curl "https://api.clawver.store/v1/orders/{orderId}/public?token={orderStatusToken}"
+```
+
+### Checkout Receipt (Success Page / Support)
+
+```bash
+curl "https://api.clawver.store/v1/checkout/{checkoutId}/receipt"
+```
 
 ## Process Refunds
 
@@ -175,28 +125,6 @@ curl -X POST https://api.clawver.store/v1/orders/{orderId}/refund \
     "amountInCents": 500,
     "reason": "Partial refund for missing item"
   }'
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "order": {
-      "id": "ord_abc123",
-      "status": "refunded",
-      "refunds": [
-        {
-          "id": "ref_xyz",
-          "amountInCents": 500,
-          "reason": "Partial refund for missing item",
-          "stripeRefundId": "re_xxx",
-          "createdAt": "2024-01-15T11:00:00Z"
-        }
-      ]
-    }
-  }
-}
 ```
 
 **Notes:**
@@ -243,19 +171,6 @@ curl -X POST https://api.clawver.store/v1/webhooks \
     "events": ["order.created", "order.paid", "order.refunded"],
     "secret": "your-webhook-secret-16chars"
   }'
-```
-
-**Webhook payload example:**
-```json
-{
-  "event": "order.paid",
-  "timestamp": "2024-01-15T10:30:00.000Z",
-  "data": {
-    "orderId": "ord_abc123",
-    "totalInCents": 2499,
-    "items": [...]
-  }
-}
 ```
 
 **Signature format:**

@@ -1,0 +1,11 @@
+{
+  "owner": "anton-abyzov",
+  "slug": "sw-e2e-playwright",
+  "displayName": "E2e Playwright",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770713893500,
+    "commit": "https://github.com/openclaw/skills/commit/682360dc644704646f7fd0e9a609b29f74752e23"
+  },
+  "history": []
+}

@@ -40,26 +40,15 @@ blog-pipeline/
 WALLET_PRIVATE_KEY=0x...
 ```
 
-### package.json
+### Dependencies
 
-```json
-{
-  "name": "blog-pipeline",
-  "type": "module",
-  "scripts": {
-    "setup": "tsx src/setup.ts"
-  },
-  "dependencies": {
-    "@openserv-labs/client": "^2.0.0",
-    "dotenv": "^16.4.5"
-  },
-  "devDependencies": {
-    "@types/node": "^20.14.9",
-    "tsx": "^4.16.0",
-    "typescript": "^5.5.2"
-  }
-}
+```bash
+npm init -y && npm pkg set type=module
+npm i @openserv-labs/client dotenv
+npm i -D @types/node tsx typescript
 ```
+
+> **Note:** The project must use `"type": "module"` in `package.json`. Add a `"setup": "tsx src/setup.ts"` script for local development.
 
 ### src/setup.ts
 
@@ -100,8 +89,8 @@ async function setup() {
 
   console.log('3. Creating workflow...')
   const workflow = await client.workflows.create({
-    name: 'Blog Post Pipeline',
-    goal: 'Research topics and produce blog posts',
+    name: 'Instant Blog Machine',
+    goal: 'Research any topic thoroughly using web sources and produce a well-structured, publication-ready blog post',
     agentIds: [grokResearch.id, copywriter.id]
   })
 
@@ -111,7 +100,7 @@ async function setup() {
       triggers.webhook({
         name: 'webhook',
         waitForCompletion: true,
-        timeout: 300,
+        timeout: 600,
         input: {
           topic: { type: 'string', title: 'Blog Topic', description: 'Topic for the blog post' }
         }
@@ -188,8 +177,8 @@ async function setup() {
 
   // Create workflow
   const workflow = await client.workflows.create({
-    name: 'Blog Post Pipeline',
-    goal: 'Research topics and produce blog posts',
+    name: 'Instant Blog Machine',
+    goal: 'Research any topic thoroughly using web sources and produce a well-structured, publication-ready blog post',
     agentIds: [grokResearch.id, copywriter.id]
   })
 
@@ -200,7 +189,7 @@ async function setup() {
       triggers.webhook({
         name: 'webhook',
         waitForCompletion: true,
-        timeout: 300,
+        timeout: 600,
         input: {
           topic: { type: 'string', title: 'Blog Topic', description: 'Topic for the blog post' }
         }
@@ -261,9 +250,6 @@ flowchart TD
 ## Usage
 
 ```bash
-# Install dependencies
-npm install
-
 # Run setup (creates workflow, tasks, trigger)
 npm run setup
 

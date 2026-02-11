@@ -3,11 +3,16 @@
   "slug": "gmail",
   "displayName": "Gmail",
   "latest": {
-    "version": "1.0.4",
-    "publishedAt": 1770515030743,
-    "commit": "https://github.com/openclaw/skills/commit/5ee9b8ec42e72f3bd2b7cefd1bb851cb8918f782"
+    "version": "1.0.6",
+    "publishedAt": 1770755759017,
+    "commit": "https://github.com/openclaw/skills/commit/de7d2b2b4e689b69b40621b3b17f20c1096e9633"
   },
   "history": [
+    {
+      "version": "1.0.4",
+      "publishedAt": 1770515030743,
+      "commit": "https://github.com/openclaw/skills/commit/5ee9b8ec42e72f3bd2b7cefd1bb851cb8918f782"
+    },
     {
       "version": "1.0.3",
       "publishedAt": 1770344257779,

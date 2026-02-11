@@ -1,0 +1,11 @@
+{
+  "owner": "raullenchai",
+  "slug": "vnsh",
+  "displayName": "VNSH File Sharing",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770700661452,
+    "commit": "https://github.com/openclaw/skills/commit/f94328f67eca1e5f1f51a0ba8bd111447948d352"
+  },
+  "history": []
+}

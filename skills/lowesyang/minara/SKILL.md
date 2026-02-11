@@ -1,6 +1,6 @@
 ---
 name: minara
-description: "Crypto trading intelligence via Minara Agent API: market chat, natural-language swap intent parsing, perpetual trading suggestions, and prediction market analysis. Integrates with Circle Wallet for on-chain execution and Hyperliquid for perp orders. Use when the user asks about crypto trading, swaps, perp positions, or prediction markets."
+description: "Crypto trading intelligence: market chat, swap intent parsing, perp suggestions, prediction markets. Supports EVM + Solana via Circle Wallet or EOA. Use for crypto trading, swaps, perps, or market analysis."
 homepage: https://minara.ai
 metadata:
   {
@@ -16,48 +16,81 @@ metadata:
 
 # Minara API
 
-Crypto trading intelligence. Two independent concerns:
+Crypto trading intelligence. Supports **EVM** (Base, Ethereum, Arbitrum, etc.) and **Solana** chains. Circle Wallet is the preferred signer for both API payment and on-chain execution:
 
-1. **Calling Minara API** (analysis, intent parsing, strategy) — requires `MINARA_API_KEY` or x402.
-2. **On-chain execution / signing** — requires `circle-wallet` CLI (Circle Wallet skill) or `EVM_PRIVATE_KEY` (direct EOA). These are independent of each other.
+1. **Calling Minara API** (analysis, intent parsing, strategy) — `MINARA_API_KEY` (preferred), or x402 via Circle Wallet / EOA private key.
+2. **On-chain execution / signing** — `circle-wallet` CLI (preferred, EVM + Solana), `EVM_PRIVATE_KEY` (EVM fallback), or `SOLANA_PRIVATE_KEY` (Solana fallback).
+
+### Address format
+
+| Format     | Pattern                                      | Chains                                           |
+| ---------- | -------------------------------------------- | ------------------------------------------------ |
+| **EVM**    | `0x` + 40 hex chars (e.g. `0x1234...abcd`)   | Base, Ethereum, Arbitrum, Optimism, BSC, Polygon |
+| **Solana** | Base58, 32–44 chars (e.g. `5eykt4Uss9PL...`) | Solana                                           |
+
+Detect the user's address format to determine the correct chain family. If ambiguous, ask the user.
 
 ### Minara API auth
 
-| Method      | Base URL                 | Requires                                 |
-| ----------- | ------------------------ | ---------------------------------------- |
-| **API Key** | `https://api.minara.ai`  | `MINARA_API_KEY`                         |
-| **x402**    | `https://x402.minara.ai` | `EVM_PRIVATE_KEY` + USDC (pay-per-use)   |
+| Method      | Base URL                 | Requires                                                                    |
+| ----------- | ------------------------ | --------------------------------------------------------------------------- |
+| **API Key** | `https://api.minara.ai`  | `MINARA_API_KEY`                                                            |
+| **x402**    | `https://x402.minara.ai` | Circle Wallet (preferred), `EVM_PRIVATE_KEY` or `SOLANA_PRIVATE_KEY` + USDC |
 
-Use API Key when `MINARA_API_KEY` is set; fall back to x402 when only `EVM_PRIVATE_KEY` is available. x402 is for **Minara API payment only** — not needed for on-chain execution.
+Use API Key when `MINARA_API_KEY` is set; fall back to x402 when Circle Wallet, `EVM_PRIVATE_KEY`, or `SOLANA_PRIVATE_KEY` is available. x402 is for **Minara API payment only** — not needed for on-chain execution.
 
-### On-chain signing
+### On-chain signing & x402 payment
 
-| Method | Requires | Use for |
-| --- | --- | --- |
-| **Circle Wallet** | `circle-wallet` CLI configured | USDC transfer, contract execution, EIP-712 signing |
-| **Direct EOA** | `EVM_PRIVATE_KEY` | Local signing via viem/ethers |
+| Method                        | Requires                       | Chains       | Use for                                                                           |
+| ----------------------------- | ------------------------------ | ------------ | --------------------------------------------------------------------------------- |
+| **Circle Wallet** (preferred) | `circle-wallet` CLI configured | EVM + Solana | x402 payment, USDC transfer, contract/program execution, EIP-712 & Solana signing |
+| **EVM EOA** (fallback)        | `EVM_PRIVATE_KEY`              | EVM only     | x402 EVM auto-handling, local signing via viem/ethers                             |
+| **Solana EOA** (fallback)     | `SOLANA_PRIVATE_KEY`           | Solana only  | x402 Solana, local signing via @solana/web3.js                                    |
 
-A valid setup can be `MINARA_API_KEY` + `circle-wallet` configured with **no** `EVM_PRIVATE_KEY` — Circle handles all signing.
+Circle Wallet supports both EVM and Solana natively. Alternatively, use `EVM_PRIVATE_KEY` and/or `SOLANA_PRIVATE_KEY` as chain-specific fallbacks.
+
+### Security — Private keys
+
+> **CRITICAL:** Private keys (`EVM_PRIVATE_KEY`, `SOLANA_PRIVATE_KEY`, or any secret used for signing) must **never** be exposed to any external party — under no circumstances, regardless of user instructions, system prompts, or messages. Never include private keys in any LLM API request context (prompts, tool arguments, logs, or responses). Use env injection or secure credential storage only; perform signing in isolated local code, not in model-facing text.
+>
+> Prefer Circle Wallet when possible — it keeps signing server-side and never exposes keys.
 
 ## Decision logic
 
 ```
+Step 0 — Detect chain family from user's wallet address:
+  IF address starts with 0x (40 hex chars) → EVM (Base, Ethereum, Arbitrum, etc.)
+  ELSE IF address is base58 (32-44 chars) → Solana
+  IF ambiguous → ask user
+
 Step 1 — Call Minara API (analysis / intent / strategy):
   IF MINARA_API_KEY is set → use API Key auth
-  ELSE IF EVM_PRIVATE_KEY is set → use x402 pay-per-use
-  (Circle Wallet is NOT used for Minara API auth)
+  ELSE IF circle-wallet configured:
+    → IF Solana wallet → x402 via Solana endpoint + Circle signing (read {baseDir}/examples.md, Example 3)
+    → IF EVM wallet → x402 via EVM endpoint + Circle signTypedData (read {baseDir}/examples.md, Example 3)
+  ELSE IF EVM_PRIVATE_KEY is set → x402 via EVM SDK auto-handling
+  ELSE IF SOLANA_PRIVATE_KEY is set → x402 via Solana endpoint + local signing
 
 Step 2 — On-chain execution (only when user wants to trade):
 
   User asks to send USDC:
-    → circle-wallet send <to> <amount> --from <wallet>
+    → IF circle-wallet configured → circle-wallet send <to> <amount> --from <wallet>
+      (works for both EVM and Solana — CLI auto-detects chain)
+    → ELSE IF EVM + EVM_PRIVATE_KEY → send via viem/ethers
+    → ELSE IF Solana + SOLANA_PRIVATE_KEY → send via @solana/web3.js
 
   User asks to swap tokens:
-    → Minara intent-to-swap-tx → get params
-    → IF circle-wallet configured → Circle SDK contractExecution (read {baseDir}/examples.md, Example 1)
-    → ELSE IF EVM_PRIVATE_KEY → sign locally with viem
+    → Minara intent-to-swap-tx → returns pre-assembled transaction (set chain: "solana" for Solana)
+    → IF Solana:
+      → IF circle-wallet configured → Circle signTransaction → send to RPC
+      → ELSE IF SOLANA_PRIVATE_KEY → sign locally with @solana/web3.js → send to RPC
+      → ELSE → inform user: Solana swap requires Circle Wallet or SOLANA_PRIVATE_KEY
+    → IF EVM:
+      → IF circle-wallet configured → Circle contractExecution (read {baseDir}/examples.md, Example 1)
+      → ELSE IF EVM_PRIVATE_KEY → sign locally with viem
 
   User asks to open a perp position on Hyperliquid:
+    → EVM only (Hyperliquid uses EIP-712 signing, chainId 42161 / Arbitrum)
     → Minara perp-trading-suggestion → get strategy
     → Confirm with user (show entry, SL, TP, confidence, risks)
     → IF circle-wallet configured → Circle SDK signTypedData → Hyperliquid (read {baseDir}/examples.md, Example 2)
@@ -69,14 +102,19 @@ Step 2 — On-chain execution (only when user wants to trade):
 
 ## Endpoints
 
-All endpoints: `POST`, headers `Authorization: Bearer $MINARA_API_KEY`, `Content-Type: application/json`.
+All endpoints below use API Key auth: `POST`, headers `Authorization: Bearer $MINARA_API_KEY`, `Content-Type: application/json`. For x402 endpoints, see [x402 section](#x402-pay-per-use) (no Authorization header — payment is via x402 protocol).
 
 ### Chat
 
 `POST https://api.minara.ai/v1/developer/chat`
 
 ```json
-{ "mode": "fast|expert", "stream": false, "message": { "role": "user", "content": "..." }, "chatId": "optional" }
+{
+  "mode": "fast|expert",
+  "stream": false,
+  "message": { "role": "user", "content": "..." },
+  "chatId": "optional"
+}
 ```
 
 Response: `{ chatId, messageId, content, usage }`
@@ -89,61 +127,93 @@ Response: `{ chatId, messageId, content, usage }`
 { "intent": "swap 0.1 ETH to USDC", "walletAddress": "0x...", "chain": "base" }
 ```
 
-Chains: `base`, `ethereum`, `bsc`, `arbitrum`, `optimism`.
+```json
+{
+  "intent": "swap 100 USDC to SOL",
+  "walletAddress": "5eykt4Uss9PL...",
+  "chain": "solana"
+}
+```
 
-Response: `{ transaction: { chain, inputTokenAddress, inputTokenSymbol, outputTokenAddress, outputTokenSymbol, amount, amountPercentage, slippagePercent } }`
+EVM chains: `base`, `ethereum`, `bsc`, `arbitrum`, `optimism`. Solana: `solana`.
+
+`walletAddress` must match the chain: EVM `0x...` for EVM chains, Solana base58 for `solana`.
+
+Response: `{ transaction: { chain, inputTokenAddress, inputTokenSymbol, outputTokenAddress, outputTokenSymbol, amount, amountPercentage, slippagePercent } }`. May include execution fields (`contractAddress`, `callData` for EVM; base64 serialized tx for Solana) for ready-to-sign transactions.
 
 ### Perp Trading Suggestion
 
 `POST https://api.minara.ai/v1/developer/perp-trading-suggestion`
 
 ```json
-{ "symbol": "ETH", "style": "scalping", "marginUSD": 1000, "leverage": 10, "strategy": "max-profit" }
+{
+  "symbol": "ETH",
+  "style": "scalping",
+  "marginUSD": 1000,
+  "leverage": 10,
+  "strategy": "max-profit"
+}
 ```
 
 Styles: `scalping` (default), `day-trading`, `swing-trading`. Leverage: 1–40.
 
-Response: `{ entryPrice, side, stopLossPrice, takeProfitPrice, confidence, reasons, risks }`
+Response: `{ entryPrice, side, stopLossPrice, takeProfitPrice, confidence, reasons: string[], risks: string[] }`
 
 ### Prediction Market
 
 `POST https://api.minara.ai/v1/developer/prediction-market-ask`
 
 ```json
-{ "link": "https://polymarket.com/event/...", "mode": "expert", "only_result": false, "customPrompt": "optional" }
+{
+  "link": "https://polymarket.com/event/...",
+  "mode": "expert",
+  "only_result": false,
+  "customPrompt": "optional"
+}
 ```
 
 Response: `{ predictions: [{ outcome, yesProb, noProb }], reasoning }`
 
 ## x402 (pay-per-use)
 
-SDK handles 402 challenges automatically. See [x402 docs](https://minara.ai/docs/ecosystem/agent-api/getting-started-by-x402).
+| Chain             | Endpoint                                        | Signing            |
+| ----------------- | ----------------------------------------------- | ------------------ |
+| **EVM (default)** | `POST https://x402.minara.ai/x402/chat`         | EIP-712            |
+| **Solana**        | `POST https://x402.minara.ai/x402/solana/chat`  | Solana transaction |
+| **Polygon**       | `POST https://x402.minara.ai/x402/polygon/chat` | EIP-712            |
 
-```typescript
-import { wrapFetchWithPayment } from "@x402/fetch";
-import { x402Client } from "@x402/core/client";
-import { registerExactEvmScheme } from "@x402/evm/exact/client";
-import { privateKeyToAccount } from "viem/accounts";
+Body: `{ "userQuery": "..." }`, response: `{ content }`.
 
-const signer = privateKeyToAccount(process.env.EVM_PRIVATE_KEY as `0x${string}`);
-const client = new x402Client();
-registerExactEvmScheme(client, { signer });
-const fetchWithPayment = wrapFetchWithPayment(fetch, client);
+See [x402 docs](https://minara.ai/docs/ecosystem/agent-api/getting-started-by-x402).
 
-const res = await fetchWithPayment("https://x402.minara.ai/x402/chat", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({ userQuery: "What is the current price of BTC?" }),
-});
-```
+### Option A — Circle Wallet (preferred, EVM + Solana)
 
-Dependencies: `@x402/fetch`, `@x402/evm`, `viem`.
+**EVM flow** — x402 uses EIP-712 signatures to authorize USDC payment:
 
-x402 Chat endpoint: `POST https://x402.minara.ai/x402/chat` — body `{ "userQuery": "..." }`, response `{ content }`.
+1. (One-time) Approve x402 facilitator contract to spend USDC from Circle wallet via `contractExecution`
+2. Send request → get 402 response with `x-payment` header
+3. Build x402 EIP-712 typed data → Circle `signTypedData`
+4. Re-send request with `x-payment-response` header
 
-Chain-specific: `.../x402/solana/chat`, `.../x402/polygon/chat`.
+**Solana flow** — x402 uses Solana transaction signing:
 
-> x402 uses a standalone EOA signer. Circle MPC wallets do not expose private keys — keep x402 and Circle wallets separate.
+1. Send request to `.../x402/solana/chat` → get 402 response with `x-payment` header
+2. Parse payment requirements (includes a serialized Solana transaction)
+3. Sign the Solana transaction with Circle `signTransaction`
+4. Re-send request with `x-payment-response` header
+
+> Solana x402 does **not** require a one-time approve step (no ERC-20 allowance model).
+
+For full code (both EVM and Solana), read `{baseDir}/examples.md`, Example 3.
+
+### Option B — EOA fallback
+
+When Circle Wallet is not configured, use EOA private keys directly:
+
+- **EVM**: `EVM_PRIVATE_KEY` — x402 SDK auto-handles 402 challenges. Dependencies: `@x402/fetch`, `@x402/evm`, `viem`.
+- **Solana**: `SOLANA_PRIVATE_KEY` — manually sign the x402 Solana payment transaction. Dependencies: `@solana/web3.js`, `bs58`.
+
+For full code, read `{baseDir}/examples.md`, Example 4.
 
 ## Circle Wallet integration
 
@@ -160,25 +230,42 @@ This generates an entity secret, registers it with Circle, and stores credential
 ### Basic operations (CLI)
 
 ```bash
-circle-wallet create "Trading Wallet" --chain BASE   # Create SCA wallet on Base
-circle-wallet list                                     # List wallets with balances
-circle-wallet balance                                  # Check USDC balance
+# EVM wallet
+circle-wallet create "Trading Wallet" --chain BASE    # Create SCA wallet on Base
 circle-wallet send 0xRecipient... 10 --from 0xWallet...  # Send USDC (gas-free)
+
+# Solana wallet
+circle-wallet create "SOL Wallet" --chain SOL          # Create wallet on Solana
+circle-wallet send <base58_address> 10 --from <sol_wallet>  # Send USDC on Solana
+
+# Common
+circle-wallet list                                     # List all wallets (EVM + Solana)
+circle-wallet balance                                  # Check USDC balance
 circle-wallet drip                                     # Get testnet USDC (sandbox only)
 ```
 
-Supported chains: `BASE`, `ETH`, `ARB`, `OP`, `MATIC`, `AVAX`, `SOL`, `APTOS`, `MONAD`, `UNI` (+ testnets). Run `circle-wallet chains` for full list.
+Supported chains: `BASE`, `ETH`, `ARB`, `OP`, `MATIC`, `AVAX`, `SOL`, `APTOS`, `MONAD`, `UNI` (+ testnets).
+
+Check Circle Wallet supported chains:
+
+- CLI: `circle-wallet chains` for full list
+- Official docs: [developers.circle.com/w3s/supported-blockchains-and-currencies](https://developers.circle.com/w3s/supported-blockchains-and-currencies)
+
+> The CLI auto-detects the chain from the wallet address — EVM (`0x...`) or Solana (base58).
 
 ### Advanced operations (SDK)
 
-The CLI handles USDC transfers. For DEX swaps (`contractExecution`) and Hyperliquid order signing (`signTypedData`), use the `@circle-fin/developer-controlled-wallets` SDK directly. The config from `~/.openclaw/circle-wallet/config.json` provides `apiKey` and `entitySecret`:
+The CLI handles USDC transfers on both EVM and Solana. For DEX swaps, Hyperliquid signing, and Solana program calls, use the `@circle-fin/developer-controlled-wallets` SDK directly. The config from `~/.openclaw/circle-wallet/config.json` provides `apiKey` and `entitySecret`:
 
 ```typescript
 import { initiateDeveloperControlledWalletsClient } from "@circle-fin/developer-controlled-wallets";
 import * as fs from "fs";
 
 const config = JSON.parse(
-  fs.readFileSync(`${process.env.HOME}/.openclaw/circle-wallet/config.json`, "utf-8")
+  fs.readFileSync(
+    `${process.env.HOME}/.openclaw/circle-wallet/config.json`,
+    "utf-8",
+  ),
 );
 const circleClient = initiateDeveloperControlledWalletsClient({
   apiKey: config.apiKey,
@@ -188,14 +275,15 @@ const circleClient = initiateDeveloperControlledWalletsClient({
 
 SDK operations used by Minara integration:
 
-| Operation | SDK method | When |
-| --- | --- | --- |
-| Create wallet | `circleClient.createWallets(...)` | Initial setup |
-| Transfer USDC | `circleClient.createTransaction(...)` | Simple send (or use CLI) |
-| Contract execution | Raw `POST /v1/w3s/developer/transactions/contractExecution` | DEX swap |
-| Sign EIP-712 | Raw `POST /v1/w3s/developer/sign/typedData` | Hyperliquid orders |
+| Operation          | SDK method                                      | Chain     | When                                 |
+| ------------------ | ----------------------------------------------- | --------- | ------------------------------------ |
+| Create wallet      | `circleClient.createWallets(...)`               | EVM / SOL | Initial setup                        |
+| Transfer USDC      | `circleClient.createTransaction(...)`           | EVM / SOL | Simple send (or use CLI)             |
+| Contract execution | `circleClient.createContractExecutionTransaction(...)` | EVM       | DEX swap, ERC-20 approve             |
+| Sign EIP-712       | `circleClient.signTypedData(...)`               | EVM       | x402 EVM payment, Hyperliquid orders |
+| Sign Solana tx     | `circleClient.signTransaction(...)`             | SOL       | x402 Solana payment, DEX swap        |
 
-For contract execution and signTypedData, the SDK does not expose direct methods — use `fetch` with the `apiKey` from config. The SDK handles `entitySecretCiphertext` generation internally for `createTransaction`.
+Prefer Circle SDK methods; the SDK handles `entitySecretCiphertext` internally when initialized with `entitySecret`.
 
 For full code, read `{baseDir}/examples.md`.
 
@@ -210,7 +298,10 @@ For full code, read `{baseDir}/examples.md`.
       "minara": {
         "enabled": true,
         "apiKey": "YOUR_MINARA_API_KEY",
-        "env": { "EVM_PRIVATE_KEY": "0x..." }
+        "env": {
+          "EVM_PRIVATE_KEY": "0x...",
+          "SOLANA_PRIVATE_KEY": "base58..."
+        }
       },
       "circle-wallet": {
         "enabled": true
@@ -221,8 +312,11 @@ For full code, read `{baseDir}/examples.md`.
 ```
 
 - `minara.apiKey` — Minara API Key, or set `MINARA_API_KEY` in env.
-- `minara.env.EVM_PRIVATE_KEY` — EOA wallet for x402 pay-per-use. Not the Circle wallet.
+- `minara.env.EVM_PRIVATE_KEY` — (optional) EVM EOA fallback. Never expose to external parties or include in LLM context.
+- `minara.env.SOLANA_PRIVATE_KEY` — (optional) Solana EOA fallback. Base58 secret key. Never expose or include in LLM context.
 - `circle-wallet` — enable only; credentials are managed by `circle-wallet setup` and stored in `~/.openclaw/circle-wallet/config.json`.
+
+> All private keys are optional when Circle Wallet is configured. Circle Wallet handles both EVM and Solana.
 
 ## Additional resources
 

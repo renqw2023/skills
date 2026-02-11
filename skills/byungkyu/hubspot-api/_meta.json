@@ -3,11 +3,16 @@
   "slug": "hubspot-api",
   "displayName": "HubSpot",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1770343936002,
-    "commit": "https://github.com/openclaw/skills/commit/1c7e8c15a21624e64eac74316c489b74d01eda9b"
+    "version": "1.0.4",
+    "publishedAt": 1770755925446,
+    "commit": "https://github.com/openclaw/skills/commit/75f9f40050ab7f69817a317dd0dfc1d23efcbb48"
   },
   "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1770343936002,
+      "commit": "https://github.com/openclaw/skills/commit/1c7e8c15a21624e64eac74316c489b74d01eda9b"
+    },
     {
       "version": "1.0.1",
       "publishedAt": 1770117644692,

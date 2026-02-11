@@ -1,13 +1,18 @@
 {
   "owner": "autogame-17",
   "slug": "feishu-doc",
-  "displayName": "Feishu Doc",
+  "displayName": "feishu-doc",
   "latest": {
-    "version": "1.2.5",
-    "publishedAt": 1770561171164,
-    "commit": "https://github.com/openclaw/skills/commit/421f22e7b98b2c288281097afa33833ba219d47b"
+    "version": "1.2.6",
+    "publishedAt": 1770561263971,
+    "commit": "https://github.com/openclaw/skills/commit/85bd32cd9818c84689931617b49425d195a55a9d"
   },
   "history": [
+    {
+      "version": "1.2.5",
+      "publishedAt": 1770561171164,
+      "commit": "https://github.com/openclaw/skills/commit/421f22e7b98b2c288281097afa33833ba219d47b"
+    },
     {
       "version": "1.2.3",
       "publishedAt": 1770152124111,

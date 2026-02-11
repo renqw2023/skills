@@ -1,0 +1,11 @@
+{
+  "owner": "anton-abyzov",
+  "slug": "sw-anomaly-detector",
+  "displayName": "Anomaly Detector",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770713763256,
+    "commit": "https://github.com/openclaw/skills/commit/9fc061d88fae2ecd612083e71f0b21cea9a796de"
+  },
+  "history": []
+}

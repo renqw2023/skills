@@ -8,6 +8,11 @@ compatibility: Requires network access and valid Maton API key
 metadata:
   author: maton
   version: "1.0"
+  clawdbot:
+    emoji: 🧠
+    requires:
+      env:
+        - MATON_API_KEY
 ---
 
 # Kit
@@ -620,9 +625,7 @@ data = response.json()
 | 429 | Rate limited |
 | 4xx/5xx | Passthrough error from Kit API |
 
-### Troubleshooting: Invalid API Key
-
-**When you receive a "Invalid API key" error, ALWAYS follow these steps before concluding there is an issue:**
+### Troubleshooting: API Key Issues
 
 1. Check that the `MATON_API_KEY` environment variable is set:
 
@@ -641,9 +644,18 @@ print(json.dumps(json.load(urllib.request.urlopen(req)), indent=2))
 EOF
 ```
 
+### Troubleshooting: Invalid App Name
+
+1. Ensure your URL path starts with `kit`. For example:
+
+- Correct: `https://gateway.maton.ai/kit/v4/subscribers`
+- Incorrect: `https://gateway.maton.ai/v4/subscribers`
+
 ## Resources
 
 - [Kit API Overview](https://developers.kit.com/api-reference/overview)
 - [Kit API Subscribers](https://developers.kit.com/api-reference/subscribers/list-subscribers)
 - [Kit API Tags](https://developers.kit.com/api-reference/tags/list-tags)
 - [Kit API Forms](https://developers.kit.com/api-reference/forms/list-forms)
+- [Maton Community](https://discord.com/invite/dBfFAcefs2)
+- [Maton Support](mailto:support@maton.ai)

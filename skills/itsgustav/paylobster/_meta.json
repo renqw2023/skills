@@ -1,0 +1,11 @@
+{
+  "owner": "itsgustav",
+  "slug": "paylobster",
+  "displayName": "PayLobster",
+  "latest": {
+    "version": "3.0.0",
+    "publishedAt": 1770691917387,
+    "commit": "https://github.com/openclaw/skills/commit/661d6a1e2833a63e1473705809a0ab658dfead88"
+  },
+  "history": []
+}

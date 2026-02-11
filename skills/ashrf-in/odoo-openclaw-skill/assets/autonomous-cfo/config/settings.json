@@ -16,7 +16,7 @@
     "high_value_threshold": 10000
   },
   "reporting": {
-    "currency": "AED",
-    "fiscal_year_start": "2026-01-01"
+    "currency": null,
+    "fiscal_year_start": null
   }
 }

@@ -1,0 +1,11 @@
+{
+  "owner": "anton-abyzov",
+  "slug": "sw-kafka-iac-deployment",
+  "displayName": "Kafka Iac Deployment",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770713732495,
+    "commit": "https://github.com/openclaw/skills/commit/ec106ef7e5b2f616b55e5cf2207c49e3b4b79028"
+  },
+  "history": []
+}

@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.0.4] — 2026-02-10
+
+### Security / Safety
+- Added a CI-safe regression test to ensure `PRIVATE_KEY` is never printed to stdout/stderr.
+- Docs: Treat stdout/stderr as public logs (CI, terminals, chat).
+
 ## [2.0.3] — 2026-02-09
 
 ### Security / Safety

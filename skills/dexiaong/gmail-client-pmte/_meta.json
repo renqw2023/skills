@@ -1,0 +1,11 @@
+{
+  "owner": "dexiaong",
+  "slug": "gmail-client-pmte",
+  "displayName": "Gmail Client",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770716125619,
+    "commit": "https://github.com/openclaw/skills/commit/ff7cbc3d9040bd2ce355e0092bf4d0cb8d67d0e2"
+  },
+  "history": []
+}

@@ -1,0 +1,11 @@
+{
+  "owner": "anton-abyzov",
+  "slug": "sw-gitops-workflow",
+  "displayName": "Gitops Workflow",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770713745488,
+    "commit": "https://github.com/openclaw/skills/commit/37b4646f9532a4067c38e03b19f447cf7d7e621d"
+  },
+  "history": []
+}

@@ -15,11 +15,12 @@ async function createAgent() {
   await client.authenticate(process.env.WALLET_PRIVATE_KEY)
   console.log('✅ Authenticated')
 
-  // Create agent
+  // Create agent (with optional model_parameters)
   const agent = await client.agents.create({
     name: 'my-custom-agent',
     capabilities_description: 'Processes data and generates reports',
-    endpoint_url: 'https://my-agent.example.com'
+    endpoint_url: 'https://my-agent.example.com',
+    model_parameters: { model: 'gpt-4o', temperature: 0.5, parallel_tool_calls: false }
   })
   console.log(`✅ Created agent: ${agent.id}`)
 
@@ -34,8 +35,8 @@ async function createAgent() {
 
   // Create workflow
   const workflow = await client.workflows.create({
-    name: 'My Workflow',
-    goal: 'Process incoming requests',
+    name: 'Instant AI Concierge',
+    goal: 'Receive incoming requests, analyze and process them with AI, and return structured responses',
     agentIds: [agent.id]
   })
   console.log(`✅ Created workflow: ${workflow.id}`)
@@ -48,7 +49,7 @@ async function createAgent() {
     integrationConnectionId: connId,
     props: {
       waitForCompletion: true,
-      timeout: 180,
+      timeout: 600,
       inputSchema: {
         $schema: 'http://json-schema.org/draft-07/schema#',
         type: 'object',

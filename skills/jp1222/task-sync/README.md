@@ -1,4 +1,4 @@
-[**中文**](README_CN.md) | English
+English | [中文](README_CN.md)
 
 # Task Sync
 
@@ -39,8 +39,8 @@ scripts/
   setup_google_tasks.py        Google OAuth setup
   setup_ticktick.py            TickTick OAuth setup
 config.json                    Paths to tokens and data files
-sync_db.json                   Task/list mapping database (auto-generated)
-sync_log.json                  Sync statistics log (auto-generated)
+data/sync_db.json              Task/list mapping database (auto-generated)
+data/sync_log.json             Sync statistics log (auto-generated)
 e2e_test.py                    End-to-end test suite (15 tests)
 ```
 
@@ -86,7 +86,10 @@ pip install google-auth google-auth-oauthlib google-api-python-client requests
 python scripts/setup_google_tasks.py
 ```
 
-Follow the OAuth flow to authorize. Token is saved to `config/` or your configured path.
+Place your Google OAuth desktop client JSON at `config/google_credentials.json`
+(or set `GOOGLE_CREDENTIALS_FILE`), then follow the OAuth flow.
+The token is written to `config.json`'s `google_token` path when configured,
+or `data/google_token.json` by default.
 
 ### 3. Configure TickTick
 
@@ -94,7 +97,10 @@ Follow the OAuth flow to authorize. Token is saved to `config/` or your configur
 python scripts/setup_ticktick.py
 ```
 
-Follow the OAuth flow. You'll need your TickTick app's Client ID and Client Secret.
+Create `config/ticktick_creds.json` from `config/ticktick_creds.json.example`
+(or set `TICKTICK_CREDENTIALS_FILE`), then follow the OAuth flow.
+The token is written to `config.json`'s `ticktick_token` path when configured,
+or `data/ticktick_token.json` by default.
 
 ### 4. Edit config.json
 
@@ -102,8 +108,8 @@ Follow the OAuth flow. You'll need your TickTick app's Client ID and Client Secr
 {
   "google_token": "/path/to/google/token.json",
   "ticktick_token": "/path/to/ticktick/token.json",
-  "sync_db": "/path/to/sync_db.json",
-  "sync_log": "/path/to/sync_log.json",
+  "sync_db": "/path/to/data/sync_db.json",
+  "sync_log": "/path/to/data/sync_log.json",
   "ticktick_api_base": "https://api.ticktick.com/open/v1"
 }
 ```

@@ -1,9 +1,7 @@
-import {datatypes, OlvidClient} from "@olvid/bot-node";
-import { ResolvedOlvidAccount, resolveOlvidAccount } from "./accounts.js";
-import { extractDiscussionIdFromTarget } from "./normalize.js";
+import {datatypes} from "@olvid/bot-node";
+import { getDiscussionIdFromTarget } from "./normalize.js";
 import { getOlvidRuntime } from "./runtime.js";
-import { CoreConfig } from "./types.js";
-import {messageIdFromString, messageIdToString} from "./tools";
+import {getOlvidClient, messageIdFromString, messageIdToString} from "./tools";
 
 type OlvidSendOpts = {
   daemonUrl?: string;
@@ -11,12 +9,6 @@ type OlvidSendOpts = {
   accountId?: string;
   replyTo?: string;
   mediaUrls?: string[];
-};
-
-export type OlvidSendResult = {
-  messageId: string;
-  discussionId: number;
-  timestamp?: number;
 };
 
 /*
@@ -27,43 +19,38 @@ export async function sendMessageOlvid(
   to: string,
   text: string,
   opts: OlvidSendOpts = {},
-): Promise<OlvidSendResult> {
+): Promise<datatypes.Message> {
   const runtime = getOlvidRuntime();
-  const logger = runtime.logging.getChildLogger({channel: "olvid", accountId: opts.accountId});
-  const cfg = runtime.config.loadConfig() as CoreConfig;
-  let account: ResolvedOlvidAccount = resolveOlvidAccount({ cfg, accountId: opts.accountId });
+  const logger = runtime.logging.getChildLogger({module: "olvid"});
 
   if (!text?.trim() && !opts.mediaUrls) {
     throw new Error("Message must be non-empty for Olvid");
   }
 
-  let olvidClient = new OlvidClient({ clientKey: account.clientKey, serverUrl: account.daemonUrl });
+  let olvidClient = getOlvidClient(opts.accountId);
 
-  let discussionId: bigint = extractDiscussionIdFromTarget(to)!;
+  let discussionId: bigint|undefined = (await getDiscussionIdFromTarget(olvidClient, to))!;
   if (!discussionId) {
     throw new Error(`Cannot parse discussion id: ${to}`);
   }
 
-  let message: datatypes.Message;
+  let sentMessage: datatypes.Message;
   if (opts.mediaUrls) {
     let ret = await olvidClient.messageSendWithAttachmentsFiles({ discussionId, body: text, replyId: opts.replyTo ? messageIdFromString(opts.replyTo) : undefined, filesPath: opts.mediaUrls });
-    message = ret.message;
+    sentMessage = ret.message;
   } else {
-    message = await olvidClient.messageSend({ discussionId, body: text, replyId: opts.replyTo ? messageIdFromString(opts.replyTo) : undefined });
+    sentMessage = await olvidClient.messageSend({ discussionId, body: text, replyId: opts.replyTo ? messageIdFromString(opts.replyTo) : undefined });
   }
-  let result: OlvidSendResult = {
-    messageId: message?.id?.toString() ?? "",
-    discussionId: Number(message?.discussionId) ?? 0,
-    timestamp: Number(message.timestamp),
-  };
 
-  console.log(`message sent: ${messageIdToString(message.id)}`);
+  logger.info(`message sent: ${messageIdToString(sentMessage.id)}`);
 
   getOlvidRuntime().channel.activity.record({
     channel: "olvid",
-    accountId: account.accountId,
+    accountId: opts.accountId,
     direction: "outbound",
   });
 
-  return result;
+  olvidClient.stop();
+
+  return sentMessage;
 }

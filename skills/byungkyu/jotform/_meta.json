@@ -3,11 +3,16 @@
   "slug": "jotform",
   "displayName": "JotForm",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1770343895039,
-    "commit": "https://github.com/openclaw/skills/commit/7f93d7c6f875aab5f288ae5c4506e5a544f390b3"
+    "version": "1.0.4",
+    "publishedAt": 1770756034427,
+    "commit": "https://github.com/openclaw/skills/commit/ffac969bd7c7056c81faffc412d5830ccb913db1"
   },
   "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1770343895039,
+      "commit": "https://github.com/openclaw/skills/commit/7f93d7c6f875aab5f288ae5c4506e5a544f390b3"
+    },
     {
       "version": "1.0.1",
       "publishedAt": 1770117587576,

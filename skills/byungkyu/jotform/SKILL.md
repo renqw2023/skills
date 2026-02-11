@@ -6,6 +6,11 @@ compatibility: Requires network access and valid Maton API key
 metadata:
   author: maton
   version: "1.0"
+  clawdbot:
+    emoji: 🧠
+    requires:
+      env:
+        - MATON_API_KEY
 ---
 
 # JotForm
@@ -280,9 +285,7 @@ response = requests.get(
 | 429 | Rate limited (10 req/sec per account) |
 | 4xx/5xx | Passthrough error from JotForm API |
 
-### Troubleshooting: Invalid API Key
-
-**When you receive a "Invalid API key" error, ALWAYS follow these steps before concluding there is an issue:**
+### Troubleshooting: API Key Issues
 
 1. Check that the `MATON_API_KEY` environment variable is set:
 
@@ -301,9 +304,18 @@ print(json.dumps(json.load(urllib.request.urlopen(req)), indent=2))
 EOF
 ```
 
+### Troubleshooting: Invalid App Name
+
+1. Ensure your URL path starts with `jotform`. For example:
+
+- Correct: `https://gateway.maton.ai/jotform/user/forms`
+- Incorrect: `https://gateway.maton.ai/user/forms`
+
 ## Resources
 
 - [JotForm API Overview](https://api.jotform.com/docs/)
 - [User Forms](https://api.jotform.com/docs/#user-forms)
 - [Form Submissions](https://api.jotform.com/docs/#form-id-submissions)
 - [Webhooks](https://api.jotform.com/docs/#form-id-webhooks)
+- [Maton Community](https://discord.com/invite/dBfFAcefs2)
+- [Maton Support](mailto:support@maton.ai)

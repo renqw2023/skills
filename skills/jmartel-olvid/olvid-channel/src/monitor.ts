@@ -3,7 +3,7 @@ import { datatypes, OlvidClient } from "@olvid/bot-node";
 import { ResolvedOlvidAccount, resolveOlvidAccount } from "./accounts.js";
 import { getOlvidRuntime } from "./runtime.js";
 import { sendMessageOlvid } from "./send.js";
-import { messageIdToString } from "./tools.js";
+import {contactIdToString, discussionIdToString, messageIdToString} from "./tools.js";
 import { CoreConfig } from "./types.js";
 import * as fs from "node:fs";
 
@@ -15,30 +15,6 @@ export type MonitorOlvidOpts = {
   logger?: ChannelLogSink;
   statusSink?: (patch: Partial<ChannelAccountSnapshot>) => void;
 };
-
-async function deliverOlvidReply(params: {
-  payload: { text?: string; mediaUrls?: string[]; mediaUrl?: string; replyToId?: string };
-  accountId: string;
-  discussionId: bigint;
-  statusSink?: (patch: { lastOutboundAt?: number }) => void;
-}): Promise<void> {
-  const { payload, discussionId, accountId, statusSink } = params;
-  const text = payload.text ?? "";
-  const mediaList = payload.mediaUrls?.length
-    ? payload.mediaUrls
-    : payload.mediaUrl
-      ? [payload.mediaUrl]
-      : [];
-
-  if (!text.trim() && mediaList.length === 0) {
-    return;
-  }
-
-  const to: string = `olvid:${discussionId}`;
-
-  await sendMessageOlvid(to, text, { accountId, replyTo: payload.replyToId, mediaUrls: mediaList });
-  statusSink?.({ lastOutboundAt: Date.now() });
-}
 
 class OpenClawBot extends OlvidClient {
   private readonly opts: MonitorOlvidOpts;
@@ -56,6 +32,22 @@ class OpenClawBot extends OlvidClient {
     this.onMessageReceived({
       callback: this.onMessageReceivedHandler,
     });
+    this.startRoutine().then();
+  }
+
+  // list and handle unread messages (that arrived while bot was off)
+  private async startRoutine(): Promise<void> {
+    const runtime = getOlvidRuntime();
+    runtime.config.loadConfig().agents
+
+    let unreadMessageCount: number = 0;
+    for await (let message of this.messageList({unread: true})) {
+      await this.onMessageReceivedHandler(message);
+      unreadMessageCount++;
+    }
+    if (unreadMessageCount) {
+      this.logger?.info(`queued ${unreadMessageCount} pending message(s)`)
+    }
   }
 
   private async onMessageReceivedHandler(message: datatypes.Message) {
@@ -99,42 +91,62 @@ class OpenClawBot extends OlvidClient {
       this.logger?.info(`downloaded ${attachmentsWithPaths.length} attachment(s)`)
     }
 
+    // get replied message
+    const repliedMessage: datatypes.Message|undefined = message.repliedMessageId?.id ? await this.messageGet({messageId: message.repliedMessageId}) : undefined;
+    let repliedMessageSenderId: BigInt|undefined = undefined;
+    let repliedMessageSenderName: string|undefined = undefined;
+    if (repliedMessage) {
+      if (repliedMessage.senderId === 0n) {
+        repliedMessageSenderName = "you";
+        repliedMessageSenderId = 0n;
+      } else {
+        const repliedMessageContact: datatypes.Contact|undefined = repliedMessage && repliedMessage.senderId ? await repliedMessage.getSenderContact(this) : undefined;
+        repliedMessageSenderId = repliedMessageContact?.id;
+        repliedMessageSenderName = repliedMessageContact?.displayName;
+      }
+    }
+
     const route = runtime.channel.routing.resolveAgentRoute({
       cfg: this.cfg,
       channel: "olvid",
       accountId: this.account.accountId,
       peer: {
-        id: message.discussionId.toString(),
+        id: discussionIdToString(discussion.id),
         kind: isGroup ? "group" : "dm",
       },
     });
 
     const body = runtime.channel.reply.formatInboundEnvelope({
       channel: "olvid",
-      from: sender.displayName,
-      timestamp: Number(message.timestamp),
+      from: `olvid:contact:${message.senderId}`,
       body: message.body,
-      sender: { name: sender.displayName, id: sender.id.toString() },
+      timestamp: Number(message.timestamp),
+      senderLabel: sender.displayName,
+      sender: { name: sender.displayName, id: `olvid:contact:${sender.id.toString()}` },
     });
 
     const ctxPayload = runtime.channel.reply.finalizeInboundContext({
       Body: body,
       RawBody: message.body,
       CommandBody: message.body,
-      From: `olvid:${message.discussionId}`,
-      To: `olvid:${message.discussionId}`,
+      From: contactIdToString(sender.id),
+      To: discussionIdToString(discussion.id),
       SessionKey: route.sessionKey,
       AccountId: route.accountId,
       ChatType: discussion.isGroupDiscussion() ? "group" : "direct",
       ConversationLabel: discussion.title,
       SenderName: sender ? sender.displayName : "",
-      SenderId: sender.id.toString(),
+      SenderId: contactIdToString(sender.id),
       MessageId: messageIdToString(message.id!),
       Timestamp: message.timestamp,
       Provider: "olvid",
       Surface: "olvid",
       OriginatingChannel: "olvid",
-      OriginatingTo: `olvid:${discussion.id}`,
+      OriginatingTo: discussionIdToString(discussion.id),
+      ReplyToId: messageIdToString(repliedMessage?.id),
+      ReplyToBody: repliedMessage?.body,
+      ReplyToSenderId: repliedMessageSenderId,
+      ReplyToSenderName: repliedMessageSenderName,
       MediaPath: attachmentsWithPaths.length > 0 ? attachmentsWithPaths[0].path : undefined,
       MediaUrl: attachmentsWithPaths.length > 0 ? attachmentsWithPaths[0].path : undefined,
       MediaType: attachmentsWithPaths.length > 0 ? runtime.media.mediaKindFromMime(attachmentsWithPaths[0].attachment.mimeType) : undefined,
@@ -145,9 +157,7 @@ class OpenClawBot extends OlvidClient {
 
     const storePath = runtime.channel.session.resolveStorePath(
       (this.cfg as OpenClawConfig).session?.store,
-      {
-        agentId: route.agentId,
-      },
+      {agentId: route.agentId},
     );
 
     await runtime.channel.session.recordInboundSession({
@@ -159,43 +169,56 @@ class OpenClawBot extends OlvidClient {
       },
     });
 
+    // let robot: boolean = false;
     await runtime.channel.reply.dispatchReplyWithBufferedBlockDispatcher({
       ctx: ctxPayload,
       cfg: this.cfg,
       dispatcherOptions: {
+        // onReplyStart: async () => {
+          // if (!robot) {
+          //   // add "typing" reaction
+          //   await message.react(this, "🤖");
+          //   robot = true;
+          //   this.logger?.info("added typing reaction")
+          // }
+        // },
         deliver: async (payload: ReplyPayload) => {
           if (payload.replyToCurrent) {
             payload.replyToId = messageIdToString(message.id);
           }
-          await deliverOlvidReply({
-            payload: payload as {
-              text?: string;
-              mediaUrls?: string[];
-              mediaUrl?: string;
-              replyToId?: string;
-              replyToCurrent?: boolean
-            },
-            accountId: this.account.accountId,
-            discussionId: discussion.id,
-            statusSink: this.opts.statusSink,
-          });
+
+          // prepare and check response validity
+          const text = payload.text ?? "";
+          const mediaList = payload.mediaUrls?.length ? payload.mediaUrls : payload.mediaUrl ? [payload.mediaUrl] : [];
+          if (!text.trim() && mediaList.length === 0) {
+            return;
+          }
+          const to: string = `olvid:discussion:${discussion.id}`;
+
+          await sendMessageOlvid(to, text, { accountId: this.account.accountId, replyTo: payload.replyToId, mediaUrls: mediaList });
+          this.opts.statusSink?.({ lastOutboundAt: Date.now() });
+
+          // // remove "typing" reaction from this message
+          // await message.react(this, "");
+          // // remove "typing" reaction from messages older than this one
+          // for await (const m of this.messageList({filter: new datatypes.MessageFilter({reactionsFilter: [new datatypes.ReactionFilter({reaction: "🤖"})], maxTimestamp: message.timestamp})})) {
+          //   await m.react(this, "");
+          // }
         },
         onError: (err, info) => {
-          this.logger?.error?.(`olvid ${info.kind} reply failed: ${String(err)}`);
+          this.logger?.error?.(`${info.kind} reply failed: ${String(err)}`);
         },
-      },
+      }
     });
   }
 }
+
+let globalRunBot = false;
 
 export async function monitorOlvidProvider(opts: MonitorOlvidOpts = {}): Promise<void> {
   const core = getOlvidRuntime();
   const cfg: CoreConfig = opts.config ?? (core.config.loadConfig() as CoreConfig);
   const account = resolveOlvidAccount({ cfg: cfg, accountId: opts.accountId });
-  const logger = core.logging.getChildLogger({
-    channel: "olvid",
-    accountId: account.accountId,
-  });
 
   if (!account.daemonUrl) {
     throw new Error(`Olvid daemon url not configured for account "${account.accountId}"`);
@@ -204,16 +227,21 @@ export async function monitorOlvidProvider(opts: MonitorOlvidOpts = {}): Promise
     throw new Error(`Olvid client key not configured for account "${account.accountId}"`);
   }
 
-  try {
-    const bot = new OpenClawBot(account, opts, cfg);
-    opts.statusSink?.({ connected: true, lastConnectedAt: Date.now() });
-    await bot.waitForCallbacksEnd();
-  } catch (err) {
-    logger.error(`olvid: ${err}`);
-    opts.statusSink?.({
-      lastError: String(err),
-      connected: false,
-      lastDisconnect: { at: Date.now(), error: String(err) },
-    });
+  globalRunBot = true;
+  while (globalRunBot) {
+    try {
+      let bot = new OpenClawBot(account, opts, cfg);
+      opts.statusSink?.({connected: true, lastConnectedAt: Date.now()});
+      await bot.waitForCallbacksEnd();
+    } catch (err) {
+      opts.logger?.error(`olvid: ${err}`);
+      opts.statusSink?.({
+        lastError: String(err),
+        connected: false,
+        lastDisconnect: {at: Date.now(), error: String(err)},
+      });
+    }
+    opts.logger?.info("wait before reconnection try")
+    await new Promise(resolve => setTimeout(resolve, 5_000));
   }
 }

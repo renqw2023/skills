@@ -150,7 +150,12 @@ PRIVATE_KEY=0x... npx tsx src/swap.ts \
 | Tx reverts                  | Insufficient balance, expired, slippage    | Check balance, increase slippage   |
 | `uint128 max`               | Amount too large for V4                    | Use smaller amount                 |
 
-## Security
+## SECURITY
+
+- `PRIVATE_KEY` must be provided via an environment variable or secret manager only.
+- **NEVER** paste or send `PRIVATE_KEY` in chat.
+- **NEVER** commit `PRIVATE_KEY` (or `.env` files) to git.
+- Treat **stdout/stderr as public logs** (CI, terminals, chat). CI tests ensure the `PRIVATE_KEY` value is never printed.
 
 - **NEVER** pass private keys as CLI arguments (rejected by all scripts)
 - Private keys accepted via `PRIVATE_KEY` env var only

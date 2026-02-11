@@ -6,6 +6,11 @@ compatibility: Requires network access and valid Maton API key
 metadata:
   author: maton
   version: "1.0"
+  clawdbot:
+    emoji: 🧠
+    requires:
+      env:
+        - MATON_API_KEY
 ---
 
 # ClickUp
@@ -774,9 +779,7 @@ data = response.json()
 | 429 | Rate limited |
 | 4xx/5xx | Passthrough error from ClickUp API |
 
-### Troubleshooting: Invalid API Key
-
-**When you receive a "Invalid API key" error, ALWAYS follow these steps before concluding there is an issue:**
+### Troubleshooting: API Key Issues
 
 1. Check that the `MATON_API_KEY` environment variable is set:
 
@@ -795,6 +798,13 @@ print(json.dumps(json.load(urllib.request.urlopen(req)), indent=2))
 EOF
 ```
 
+### Troubleshooting: Invalid App Name
+
+1. Ensure your URL path starts with `clickup`. For example:
+
+- Correct: `https://gateway.maton.ai/clickup/api/v2/team`
+- Incorrect: `https://gateway.maton.ai/api/v2/team`
+
 ## Resources
 
 - [ClickUp API Overview](https://developer.clickup.com/docs/Getting%20Started.md)
@@ -808,3 +818,5 @@ EOF
 - [Custom Fields](https://developer.clickup.com/docs/customfields.md)
 - [Rate Limits](https://developer.clickup.com/docs/rate-limits.md)
 - [LLM Reference](https://developer.clickup.com/llms.txt)
+- [Maton Community](https://discord.com/invite/dBfFAcefs2)
+- [Maton Support](mailto:support@maton.ai)

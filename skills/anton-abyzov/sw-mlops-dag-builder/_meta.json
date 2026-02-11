@@ -1,0 +1,11 @@
+{
+  "owner": "anton-abyzov",
+  "slug": "sw-mlops-dag-builder",
+  "displayName": "Mlops Dag Builder",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770713794558,
+    "commit": "https://github.com/openclaw/skills/commit/292b5c330456c8c50574cbf0cb21dff72b8027d4"
+  },
+  "history": []
+}

@@ -1,0 +1,11 @@
+{
+  "owner": "ddakju",
+  "slug": "morning-briefing-demo",
+  "displayName": "Morning Briefing Demo",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770751309149,
+    "commit": "https://github.com/openclaw/skills/commit/09d257ebe0a2be34f71f3aa78517e157ae601175"
+  },
+  "history": []
+}

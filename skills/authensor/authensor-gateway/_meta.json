@@ -3,9 +3,15 @@
   "slug": "authensor-gateway",
   "displayName": "Authensor Gateway",
   "latest": {
-    "version": "0.1.0",
-    "publishedAt": 1770123512410,
-    "commit": "https://github.com/clawdbot/skills/commit/d1cc0ce4627cd63069835974de6c2f9bd138efe5"
+    "version": "0.5.1",
+    "publishedAt": 1770777429608,
+    "commit": "https://github.com/openclaw/skills/commit/0f4478559cdf9597029bbfc1dd7a6fde181b0427"
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.1.0",
+      "publishedAt": 1770123512410,
+      "commit": "https://github.com/clawdbot/skills/commit/d1cc0ce4627cd63069835974de6c2f9bd138efe5"
+    }
+  ]
 }

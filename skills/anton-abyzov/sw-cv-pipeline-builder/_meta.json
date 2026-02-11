@@ -1,0 +1,11 @@
+{
+  "owner": "anton-abyzov",
+  "slug": "sw-cv-pipeline-builder",
+  "displayName": "Cv Pipeline Builder",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770713769668,
+    "commit": "https://github.com/openclaw/skills/commit/7cb1fd146b437594677333a782a6f47441e9171c"
+  },
+  "history": []
+}

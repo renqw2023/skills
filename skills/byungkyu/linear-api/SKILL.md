@@ -8,6 +8,11 @@ description: |
 metadata:
   author: maton
   version: "1.0"
+  clawdbot:
+    emoji: 🧠
+    requires:
+      env:
+        - MATON_API_KEY
 ---
 
 # Linear
@@ -529,9 +534,7 @@ GraphQL errors are returned in the `errors` array:
 }
 ```
 
-### Troubleshooting: Invalid API Key
-
-**When you receive a "Invalid API key" error, ALWAYS follow these steps before concluding there is an issue:**
+### Troubleshooting: API Key Issues
 
 1. Check that the `MATON_API_KEY` environment variable is set:
 
@@ -550,9 +553,18 @@ print(json.dumps(json.load(urllib.request.urlopen(req)), indent=2))
 EOF
 ```
 
+### Troubleshooting: Invalid App Name
+
+1. Ensure your URL path starts with `linear`. For example:
+
+- Correct: `https://gateway.maton.ai/linear/graphql`
+- Incorrect: `https://gateway.maton.ai/graphql`
+
 ## Resources
 
 - [Linear API Overview](https://linear.app/developers)
 - [Linear GraphQL Getting Started](https://linear.app/developers/graphql)
 - [Linear GraphQL Schema (Apollo Studio)](https://studio.apollographql.com/public/Linear-API/schema/reference?variant=current)
 - [Linear API and Webhooks](https://linear.app/docs/api-and-webhooks)
+- [Maton Community](https://discord.com/invite/dBfFAcefs2)
+- [Maton Support](mailto:support@maton.ai)

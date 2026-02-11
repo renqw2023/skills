@@ -8,6 +8,11 @@ description: |
 metadata:
   author: maton
   version: "1.0"
+  clawdbot:
+    emoji: 🧠
+    requires:
+      env:
+        - MATON_API_KEY
 ---
 
 # Constant Contact
@@ -639,6 +644,32 @@ data = response.json()
 }
 ```
 
+### Troubleshooting: API Key Issues
+
+1. Check that the `MATON_API_KEY` environment variable is set:
+
+```bash
+echo $MATON_API_KEY
+```
+
+2. Verify the API key is valid by listing connections:
+
+```bash
+python <<'EOF'
+import urllib.request, os, json
+req = urllib.request.Request('https://ctrl.maton.ai/connections')
+req.add_header('Authorization', f'Bearer {os.environ["MATON_API_KEY"]}')
+print(json.dumps(json.load(urllib.request.urlopen(req)), indent=2))
+EOF
+```
+
+### Troubleshooting: Invalid App Name
+
+1. Ensure your URL path starts with `constant-contact`. For example:
+
+- Correct: `https://gateway.maton.ai/constant-contact/v3/contacts`
+- Incorrect: `https://gateway.maton.ai/v3/contacts`
+
 ## Resources
 
 - [Constant Contact V3 API Overview](https://developer.constantcontact.com/api_guide/getting_started.html)
@@ -647,3 +678,5 @@ data = response.json()
 - [Contacts Overview](https://developer.constantcontact.com/api_guide/contacts_overview.html)
 - [Email Campaigns Guide](https://developer.constantcontact.com/api_guide/email_campaigns_get_started.html)
 - [Contact Lists Overview](https://v3.developer.constantcontact.com/api_guide/lists_overview.html)
+- [Maton Community](https://discord.com/invite/dBfFAcefs2)
+- [Maton Support](mailto:support@maton.ai)

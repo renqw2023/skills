@@ -1,0 +1,11 @@
+{
+  "owner": "anton-abyzov",
+  "slug": "sw-aws-cost-expert",
+  "displayName": "Aws Cost Expert",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770713591957,
+    "commit": "https://github.com/openclaw/skills/commit/71c51a764aeb6ad12f21403cb81991f6849208e7"
+  },
+  "history": []
+}

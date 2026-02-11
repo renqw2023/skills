@@ -1,8 +1,8 @@
-# shield.md Template
+# SHIELD.md Template
 
-Guide for maintaining the local `shield.md` policy file after syncing the MoltThreats feed.
+Guide for maintaining the local `SHIELD.md` policy file after syncing the MoltThreats feed.
 
-The shield.md spec is **static** — agents must not modify the policy rules, decision
+The SHIELD.md spec is **static** — agents must not modify the policy rules, decision
 format, matching logic, or any section above the `Active threats (compressed)` table.
 Only the threat entries at the bottom of the file are updated on each feed sync.
 
@@ -12,18 +12,18 @@ Spec: https://nova-hunting.github.io/shield.md/
 
 ## Initial Setup
 
-If no `shield.md` exists yet, create it once using the full template below. After that,
+If no `SHIELD.md` exists yet, create it once using the full template below. After that,
 only the `Active threats (compressed)` section and the context metadata (threat count,
 last sync time) are touched.
 
 ```markdown
 ---
-name: shield.md
+name: SHIELD.md
 description: Context-based runtime threat feed policy. Uses structured threat entries to decide log, require_approval, or block.
 version: "0.1"
 ---
 
-# shield-v0.md
+# SHIELD-v0.md
 
 ## Purpose
 This document defines a context-loaded threat feed and the mandatory decision behavior when a threat matches an event.
@@ -204,9 +204,9 @@ from datetime import datetime, timezone
 def update_shield_threats(shield_md_content, feed_items, max_threats=25):
     """
     Update ONLY the Active threats table and context metadata in an
-    existing shield.md. Does not touch the static spec sections.
-    
-    If shield.md doesn't exist yet, use SHIELD_INITIAL_TEMPLATE to create it first.
+    existing SHIELD.md. Does not touch the static spec sections.
+
+    If SHIELD.md doesn't exist yet, use SHIELD_INITIAL_TEMPLATE to create it first.
     """
     
     # Filter eligible threats
@@ -256,7 +256,7 @@ def update_shield_threats(shield_md_content, feed_items, max_threats=25):
     
     new_table = "\n".join([header, separator] + rows)
     
-    # Replace only the threats table and metadata in the existing shield.md
+    # Replace only the threats table and metadata in the existing SHIELD.md
     # Find the marker and replace everything after it
     marker = "## Active threats (compressed)"
     if marker in shield_md_content:
@@ -295,7 +295,7 @@ The static spec sections above must never be modified.
 
 ## Key Differences from the Old security.md
 
-| Old (security.md) | New (shield.md v0.1) |
+| Old (security.md) | New (SHIELD.md v0.1) |
 |---|---|
 | Full file regenerated on each sync | Static spec, only threat table updated on sync |
 | Freeform markdown sections | Structured spec with deterministic decision model |

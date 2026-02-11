@@ -1,11 +1,16 @@
 ---
-name: acuityscheduling
+name: acuity-scheduling
 description: |
   Acuity Scheduling API integration with managed OAuth. Manage appointments, calendars, clients, and availability. Use this skill when users want to schedule, reschedule, or cancel appointments, check availability, or manage clients and calendars. For other third party apps, use the api-gateway skill (https://clawhub.ai/byungkyu/api-gateway).
 compatibility: Requires network access and valid Maton API key
 metadata:
   author: maton
   version: "1.0"
+  clawdbot:
+    emoji: 🧠
+    requires:
+      env:
+        - MATON_API_KEY
 ---
 
 # Acuity Scheduling
@@ -18,7 +23,7 @@ Access the Acuity Scheduling API with managed OAuth authentication. Manage appoi
 # List appointments
 python <<'EOF'
 import urllib.request, os, json
-req = urllib.request.Request('https://gateway.maton.ai/acuity-scheduling/appointments?max=10')
+req = urllib.request.Request('https://gateway.maton.ai/acuity-scheduling/api/v1/appointments?max=10')
 req.add_header('Authorization', f'Bearer {os.environ["MATON_API_KEY"]}')
 print(json.dumps(json.load(urllib.request.urlopen(req)), indent=2))
 EOF
@@ -27,10 +32,10 @@ EOF
 ## Base URL
 
 ```
-https://gateway.maton.ai/acuity-scheduling/{resource}
+https://gateway.maton.ai/acuity-scheduling/{native-api-path}
 ```
 
-Replace `{resource}` with the Acuity API resource path. The gateway proxies requests to `acuityscheduling.com/api/v1` and automatically injects your OAuth token.
+Replace `{native-api-path}` with the actual Acuity API endpoint path. The gateway proxies requests to `acuityscheduling.com` and automatically injects your OAuth token.
 
 ## Authentication
 
@@ -126,7 +131,7 @@ If you have multiple Acuity Scheduling connections, specify which one to use wit
 ```bash
 python <<'EOF'
 import urllib.request, os, json
-req = urllib.request.Request('https://gateway.maton.ai/acuity-scheduling/appointments')
+req = urllib.request.Request('https://gateway.maton.ai/acuity-scheduling/api/v1/appointments')
 req.add_header('Authorization', f'Bearer {os.environ["MATON_API_KEY"]}')
 req.add_header('Maton-Connection', '21fd90f9-5935-43cd-b6c8-bde9d915ca80')
 print(json.dumps(json.load(urllib.request.urlopen(req)), indent=2))
@@ -142,7 +147,7 @@ If omitted, the gateway uses the default (oldest) active connection.
 #### Get Account Info
 
 ```bash
-GET /acuity-scheduling/me
+GET /acuity-scheduling/api/v1/me
 ```
 
 Returns account information including timezone, scheduling page URL, and plan details.
@@ -165,7 +170,7 @@ Returns account information including timezone, scheduling page URL, and plan de
 #### List Appointments
 
 ```bash
-GET /acuity-scheduling/appointments
+GET /acuity-scheduling/api/v1/appointments
 ```
 
 **Query Parameters:**
@@ -187,7 +192,7 @@ GET /acuity-scheduling/appointments
 ```bash
 python <<'EOF'
 import urllib.request, os, json
-req = urllib.request.Request('https://gateway.maton.ai/acuity-scheduling/appointments?max=10&minDate=2026-02-01')
+req = urllib.request.Request('https://gateway.maton.ai/acuity-scheduling/api/v1/appointments?max=10&minDate=2026-02-01')
 req.add_header('Authorization', f'Bearer {os.environ["MATON_API_KEY"]}')
 print(json.dumps(json.load(urllib.request.urlopen(req)), indent=2))
 EOF
@@ -220,13 +225,13 @@ EOF
 #### Get Appointment
 
 ```bash
-GET /acuity-scheduling/appointments/{id}
+GET /acuity-scheduling/api/v1/appointments/{id}
 ```
 
 #### Create Appointment
 
 ```bash
-POST /acuity-scheduling/appointments
+POST /acuity-scheduling/api/v1/appointments
 Content-Type: application/json
 
 {
@@ -267,7 +272,7 @@ data = json.dumps({
     'lastName': 'Doe',
     'email': 'john.doe@example.com'
 }).encode()
-req = urllib.request.Request('https://gateway.maton.ai/acuity-scheduling/appointments', data=data, method='POST')
+req = urllib.request.Request('https://gateway.maton.ai/acuity-scheduling/api/v1/appointments', data=data, method='POST')
 req.add_header('Authorization', f'Bearer {os.environ["MATON_API_KEY"]}')
 req.add_header('Content-Type', 'application/json')
 print(json.dumps(json.load(urllib.request.urlopen(req)), indent=2))
@@ -277,7 +282,7 @@ EOF
 #### Update Appointment
 
 ```bash
-PUT /acuity-scheduling/appointments/{id}
+PUT /acuity-scheduling/api/v1/appointments/{id}
 Content-Type: application/json
 
 {
@@ -290,7 +295,7 @@ Content-Type: application/json
 #### Cancel Appointment
 
 ```bash
-PUT /acuity-scheduling/appointments/{id}/cancel
+PUT /acuity-scheduling/api/v1/appointments/{id}/cancel
 ```
 
 Returns the canceled appointment with `canceled: true`.
@@ -298,7 +303,7 @@ Returns the canceled appointment with `canceled: true`.
 #### Reschedule Appointment
 
 ```bash
-PUT /acuity-scheduling/appointments/{id}/reschedule
+PUT /acuity-scheduling/api/v1/appointments/{id}/reschedule
 Content-Type: application/json
 
 {
@@ -313,7 +318,7 @@ Content-Type: application/json
 #### List Calendars
 
 ```bash
-GET /acuity-scheduling/calendars
+GET /acuity-scheduling/api/v1/calendars
 ```
 
 **Response:**
@@ -336,7 +341,7 @@ GET /acuity-scheduling/calendars
 #### List Appointment Types
 
 ```bash
-GET /acuity-scheduling/appointment-types
+GET /acuity-scheduling/api/v1/appointment-types
 ```
 
 **Query Parameters:**
@@ -367,7 +372,7 @@ GET /acuity-scheduling/appointment-types
 #### Get Available Dates
 
 ```bash
-GET /acuity-scheduling/availability/dates?month=2026-02&appointmentTypeID=123
+GET /acuity-scheduling/api/v1/availability/dates?month=2026-02&appointmentTypeID=123
 ```
 
 **Required Parameters:**
@@ -390,7 +395,7 @@ GET /acuity-scheduling/availability/dates?month=2026-02&appointmentTypeID=123
 #### Get Available Times
 
 ```bash
-GET /acuity-scheduling/availability/times?date=2026-02-10&appointmentTypeID=123
+GET /acuity-scheduling/api/v1/availability/times?date=2026-02-10&appointmentTypeID=123
 ```
 
 **Required Parameters:**
@@ -415,7 +420,7 @@ GET /acuity-scheduling/availability/times?date=2026-02-10&appointmentTypeID=123
 #### List Clients
 
 ```bash
-GET /acuity-scheduling/clients
+GET /acuity-scheduling/api/v1/clients
 ```
 
 **Query Parameters:**
@@ -425,7 +430,7 @@ GET /acuity-scheduling/clients
 ```bash
 python <<'EOF'
 import urllib.request, os, json
-req = urllib.request.Request('https://gateway.maton.ai/acuity-scheduling/clients?search=John')
+req = urllib.request.Request('https://gateway.maton.ai/acuity-scheduling/api/v1/clients?search=John')
 req.add_header('Authorization', f'Bearer {os.environ["MATON_API_KEY"]}')
 print(json.dumps(json.load(urllib.request.urlopen(req)), indent=2))
 EOF
@@ -447,7 +452,7 @@ EOF
 #### Create Client
 
 ```bash
-POST /acuity-scheduling/clients
+POST /acuity-scheduling/api/v1/clients
 Content-Type: application/json
 
 {
@@ -461,7 +466,7 @@ Content-Type: application/json
 #### Update Client
 
 ```bash
-PUT /acuity-scheduling/clients
+PUT /acuity-scheduling/api/v1/clients
 Content-Type: application/json
 
 {
@@ -476,7 +481,7 @@ Content-Type: application/json
 #### Delete Client
 
 ```bash
-DELETE /acuity-scheduling/clients
+DELETE /acuity-scheduling/api/v1/clients
 Content-Type: application/json
 
 {
@@ -490,7 +495,7 @@ Content-Type: application/json
 #### List Blocks
 
 ```bash
-GET /acuity-scheduling/blocks
+GET /acuity-scheduling/api/v1/blocks
 ```
 
 **Query Parameters:**
@@ -502,13 +507,13 @@ GET /acuity-scheduling/blocks
 #### Get Block
 
 ```bash
-GET /acuity-scheduling/blocks/{id}
+GET /acuity-scheduling/api/v1/blocks/{id}
 ```
 
 #### Create Block
 
 ```bash
-POST /acuity-scheduling/blocks
+POST /acuity-scheduling/api/v1/blocks
 Content-Type: application/json
 
 {
@@ -534,7 +539,7 @@ Content-Type: application/json
 #### Delete Block
 
 ```bash
-DELETE /acuity-scheduling/blocks/{id}
+DELETE /acuity-scheduling/api/v1/blocks/{id}
 ```
 
 Returns 204 No Content on success.
@@ -544,7 +549,7 @@ Returns 204 No Content on success.
 #### List Forms
 
 ```bash
-GET /acuity-scheduling/forms
+GET /acuity-scheduling/api/v1/forms
 ```
 
 **Response:**
@@ -572,7 +577,7 @@ GET /acuity-scheduling/forms
 #### List Labels
 
 ```bash
-GET /acuity-scheduling/labels
+GET /acuity-scheduling/api/v1/labels
 ```
 
 **Response:**
@@ -590,10 +595,10 @@ Acuity Scheduling uses the `max` parameter to limit results. Use `minDate` and `
 
 ```bash
 # First page
-GET /acuity-scheduling/appointments?max=100&minDate=2026-01-01&maxDate=2026-01-31
+GET /acuity-scheduling/api/v1/appointments?max=100&minDate=2026-01-01&maxDate=2026-01-31
 
 # Next page
-GET /acuity-scheduling/appointments?max=100&minDate=2026-02-01&maxDate=2026-02-28
+GET /acuity-scheduling/api/v1/appointments?max=100&minDate=2026-02-01&maxDate=2026-02-28
 ```
 
 ## Code Examples
@@ -602,7 +607,7 @@ GET /acuity-scheduling/appointments?max=100&minDate=2026-02-01&maxDate=2026-02-2
 
 ```javascript
 const response = await fetch(
-  'https://gateway.maton.ai/acuity-scheduling/appointments?max=10',
+  'https://gateway.maton.ai/acuity-scheduling/api/v1/appointments?max=10',
   {
     headers: {
       'Authorization': `Bearer ${process.env.MATON_API_KEY}`
@@ -619,7 +624,7 @@ import os
 import requests
 
 response = requests.get(
-    'https://gateway.maton.ai/acuity-scheduling/appointments',
+    'https://gateway.maton.ai/acuity-scheduling/api/v1/appointments',
     headers={'Authorization': f'Bearer {os.environ["MATON_API_KEY"]}'},
     params={'max': 10}
 )
@@ -646,9 +651,7 @@ appointments = response.json()
 | 429 | Rate limited |
 | 4xx/5xx | Passthrough error from Acuity API |
 
-### Troubleshooting: Invalid API Key
-
-**When you receive a "Invalid API key" error, ALWAYS follow these steps before concluding there is an issue:**
+### Troubleshooting: API Key Issues
 
 1. Check that the `MATON_API_KEY` environment variable is set:
 
@@ -667,6 +670,13 @@ print(json.dumps(json.load(urllib.request.urlopen(req)), indent=2))
 EOF
 ```
 
+### Troubleshooting: Invalid App Name
+
+1. Ensure your URL path starts with `acuity-scheduling`. For example:
+
+- Correct: `https://gateway.maton.ai/acuity-scheduling/api/v1/appointments`
+- Incorrect: `https://gateway.maton.ai/api/v1/appointments`
+
 ## Resources
 
 - [Acuity Scheduling API Quick Start](https://developers.acuityscheduling.com/reference/quick-start)
@@ -675,3 +685,5 @@ EOF
 - [Calendars API](https://developers.acuityscheduling.com/reference/get-calendars)
 - [Clients API](https://developers.acuityscheduling.com/reference/clients)
 - [OAuth2 Documentation](https://developers.acuityscheduling.com/docs/oauth2)
+- [Maton Community](https://discord.com/invite/dBfFAcefs2)
+- [Maton Support](mailto:support@maton.ai)

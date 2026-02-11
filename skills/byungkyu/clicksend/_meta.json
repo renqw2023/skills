@@ -1,0 +1,11 @@
+{
+  "owner": "byungkyu",
+  "slug": "clicksend",
+  "displayName": "ClickSend",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770728421295,
+    "commit": "https://github.com/openclaw/skills/commit/067daa23a0929d4c96179d8f114c9ddbfb3029c8"
+  },
+  "history": []
+}

@@ -3,11 +3,16 @@
   "slug": "google-merchant",
   "displayName": "Google Merchant Center",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1770496655079,
-    "commit": "https://github.com/openclaw/skills/commit/9a457a55a592500d945e8945c476d26deee7988f"
+    "version": "1.0.3",
+    "publishedAt": 1770761787212,
+    "commit": "https://github.com/openclaw/skills/commit/37fb66fb63126c9bc2d81e4b78c8c2b3b6d07d5b"
   },
   "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1770496655079,
+      "commit": "https://github.com/openclaw/skills/commit/9a457a55a592500d945e8945c476d26deee7988f"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1770462881185,

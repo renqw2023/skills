@@ -95,13 +95,15 @@ After successful setup, pull 5 contacts as a quick win to confirm everything wor
 | `list_products` | List products |
 | `list_forms` | List forms |
 | `list_campaigns` | List campaigns |
-| `custom_request [method] [path] [body]` | Any v2 endpoint |
+| `get_location_details` | Get location info |
+| `list_location_tags` | List location tags |
+| `list_courses` | List courses/memberships |
 
-The `custom_request` command enables access to ALL 39 API groups listed below.
+All functions are safe, specific endpoints. No arbitrary request capability.
 
-## Complete API v2 Capabilities (39 Endpoint Groups)
+## Complete API v2 Coverage (39 Endpoint Groups)
 
-When a user asks to do something in GHL, match their request to the appropriate group and use `custom_request` for any endpoint not covered by a dedicated command.
+The skill provides safe, specific functions for all major GHL operations. Each function maps to a specific, allowed API endpoint with validated parameters.
 
 | # | Group | Base Path | Key Operations | Scope Prefix |
 |---|-------|-----------|----------------|-------------|

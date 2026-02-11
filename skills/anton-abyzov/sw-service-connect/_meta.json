@@ -1,0 +1,11 @@
+{
+  "owner": "anton-abyzov",
+  "slug": "sw-service-connect",
+  "displayName": "Service Connect",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770714088749,
+    "commit": "https://github.com/openclaw/skills/commit/74cc876cc9d4209cc0b003d437677d10ad888d9e"
+  },
+  "history": []
+}

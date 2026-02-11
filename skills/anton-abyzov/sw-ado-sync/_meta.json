@@ -1,0 +1,11 @@
+{
+  "owner": "anton-abyzov",
+  "slug": "sw-ado-sync",
+  "displayName": "Ado Sync",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770713542083,
+    "commit": "https://github.com/openclaw/skills/commit/de008d2be3e459a28242b1ab404319ee1f780773"
+  },
+  "history": []
+}

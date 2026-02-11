@@ -3,11 +3,16 @@
   "slug": "typhoon-starknet-account",
   "displayName": "Typhoon Starknet Account",
   "latest": {
-    "version": "0.2.5",
-    "publishedAt": 1770206143453,
-    "commit": "https://github.com/clawdbot/skills/commit/dff59a123d4a23d83fbd1c2afde2860a05b20364"
+    "version": "0.3.1",
+    "publishedAt": 1770758560386,
+    "commit": "https://github.com/openclaw/skills/commit/722b30612d0b5b388984eb8283f2792bce2259d9"
   },
   "history": [
+    {
+      "version": "0.2.5",
+      "publishedAt": 1770206143453,
+      "commit": "https://github.com/clawdbot/skills/commit/dff59a123d4a23d83fbd1c2afde2860a05b20364"
+    },
     {
       "version": "0.2.4",
       "publishedAt": 1770178862456,

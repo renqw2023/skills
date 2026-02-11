@@ -1,0 +1,11 @@
+{
+  "owner": "anton-abyzov",
+  "slug": "sw-diagrams-generator",
+  "displayName": "Diagrams Generator",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770713604894,
+    "commit": "https://github.com/openclaw/skills/commit/2142c4d5e279af0341f96498d1365fea60c07106"
+  },
+  "history": []
+}

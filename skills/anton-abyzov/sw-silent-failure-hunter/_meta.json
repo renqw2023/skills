@@ -1,0 +1,11 @@
+{
+  "owner": "anton-abyzov",
+  "slug": "sw-silent-failure-hunter",
+  "displayName": "Silent Failure Hunter",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770713902725,
+    "commit": "https://github.com/openclaw/skills/commit/ce3bbf522a0f417bba5320c1c38cb38b238d48bd"
+  },
+  "history": []
+}

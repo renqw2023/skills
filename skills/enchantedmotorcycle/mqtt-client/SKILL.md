@@ -14,4 +14,4 @@ This skill does not require any parameters.
 
 ## Resources
 - `scripts/bootstrap.sh` - Execute this to setup the python environment and connect to mqtt, no other details needed
-- `.env` - Connection details are loaded from environment
+- `.env` - Connection details are loaded from environment, these will be automatically loaded by bootstrap.sh

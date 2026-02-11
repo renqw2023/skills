@@ -48,26 +48,15 @@ life-coaching-pipeline/
 WALLET_PRIVATE_KEY=0x...
 ```
 
-### package.json
+### Dependencies
 
-```json
-{
-  "name": "life-coaching-pipeline",
-  "type": "module",
-  "scripts": {
-    "setup": "tsx src/setup.ts"
-  },
-  "dependencies": {
-    "@openserv-labs/client": "^2.0.0",
-    "dotenv": "^16.4.5"
-  },
-  "devDependencies": {
-    "@types/node": "^20.14.9",
-    "tsx": "^4.16.0",
-    "typescript": "^5.5.2"
-  }
-}
+```bash
+npm init -y && npm pkg set type=module
+npm i @openserv-labs/client dotenv
+npm i -D @types/node tsx typescript
 ```
+
+> **Note:** The project must use `"type": "module"` in `package.json`. Add a `"setup": "tsx src/setup.ts"` script for local development.
 
 ### src/setup.ts
 
@@ -116,8 +105,8 @@ async function setup() {
 
   console.log('3. Creating workflow...')
   const workflow = await client.workflows.create({
-    name: 'Life Coaching Report',
-    goal: 'Generate a tailored life coaching report and action plan from client intake',
+    name: 'Life Catalyst Pro',
+    goal: 'Assess client goals and challenges, develop personalized coaching strategies across wellness dimensions, and produce a comprehensive life coaching report with an actionable plan',
     agentIds: [researcher.id, coach.id, analyst.id, planner.id, writer.id],
     // Define the complete workflow declaratively
     triggers: [
@@ -282,9 +271,6 @@ flowchart TD
 ## Usage
 
 ```bash
-# Install dependencies
-npm install
-
 # Run setup (creates workflow, tasks, trigger)
 npm run setup
 

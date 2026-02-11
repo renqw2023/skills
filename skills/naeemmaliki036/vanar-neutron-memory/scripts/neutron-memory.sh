@@ -27,6 +27,8 @@ EXTERNAL_USER_ID="${EXTERNAL_USER_ID:-1}"
 if [[ -z "$API_KEY" || "$API_KEY" == "null" ]]; then
     echo "Error: NEUTRON_API_KEY not found"
     echo ""
+    echo "Get your API keys at: https://openclaw.vanarchain.com/"
+    echo ""
     echo "Option 1 - Environment variables:"
     echo "  export NEUTRON_API_KEY=your_key"
     echo "  export NEUTRON_AGENT_ID=your_agent_id"

@@ -1,0 +1,11 @@
+{
+  "owner": "anton-abyzov",
+  "slug": "sw-ml-pipeline-orchestrator",
+  "displayName": "Ml Pipeline Orchestrator",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770713791552,
+    "commit": "https://github.com/openclaw/skills/commit/38cc008c75b23b805e0342b510d9a7acb6fafe06"
+  },
+  "history": []
+}

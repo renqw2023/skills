@@ -70,7 +70,7 @@ def main():
     print(f"Scanning: {skill_path}")
 
     # Find files
-    exts = {".md", ".py", ".js", ".ts", ".sh", ".jsx", ".tsx"}
+    exts = {".md", ".py", ".js", ".ts", ".sh", ".jsx", ".tsx", ".html", ".htm", ".json", ".json5", ".yaml", ".yml", ".toml", ".cfg", ".conf", ".ini"}
     files = []
     for root, dirs, fnames in os.walk(skill_path):
         dirs[:] = [d for d in dirs if d not in ("node_modules", ".git", "__pycache__")]

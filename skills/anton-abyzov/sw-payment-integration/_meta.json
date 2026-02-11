@@ -1,0 +1,11 @@
+{
+  "owner": "anton-abyzov",
+  "slug": "sw-payment-integration",
+  "displayName": "Payment Integration",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770713848883,
+    "commit": "https://github.com/openclaw/skills/commit/f78ff2846ed836ee05b8f9f50f1bb7c8076f57cc"
+  },
+  "history": []
+}

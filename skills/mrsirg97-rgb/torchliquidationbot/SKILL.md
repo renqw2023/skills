@@ -4,11 +4,12 @@ description: a read-only lending market scanner that discovers Torch Market posi
 license: MIT
 metadata:
   author: torch-market
-  version: "1.0.4"
+  version: "1.0.5"
   clawhub: https://clawhub.ai/mrsirg97-rgb/torchliquidationbot
   npm: https://www.npmjs.com/package/torch-liquidation-bot
   github: https://github.com/mrsirg97-rgb/torch-liquidation-bot
   sdk: https://github.com/mrsirg97-rgb/torchsdk
+  agentkit: https://github.com/mrsirg97-rgb/solana-agent-kit-torch-market
 compatibility: Requires a Solana RPC endpoint. Default info mode is fully read-only. Wallet keypair only needed if the user opts into bot or watch mode. Distributed via npm.
 ---
 

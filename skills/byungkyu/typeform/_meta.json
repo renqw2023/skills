@@ -3,11 +3,16 @@
   "slug": "typeform",
   "displayName": "Typeform",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1770343591382,
-    "commit": "https://github.com/openclaw/skills/commit/b9b406510352eca323cf634b374aba9c703d245f"
+    "version": "1.0.4",
+    "publishedAt": 1770756111221,
+    "commit": "https://github.com/openclaw/skills/commit/598fdb8be0f0b7924f9f7e1fe7a24603f9e1e017"
   },
   "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1770343591382,
+      "commit": "https://github.com/openclaw/skills/commit/b9b406510352eca323cf634b374aba9c703d245f"
+    },
     {
       "version": "1.0.1",
       "publishedAt": 1770117405466,

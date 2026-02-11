@@ -3,9 +3,15 @@
   "slug": "openserv-multi-agent-workflows",
   "displayName": "Openserv Multi Agent Workflows",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1770637671264,
-    "commit": "https://github.com/openclaw/skills/commit/19cf46f609d30637ce1f83adc7882998cf2fa1a6"
+    "version": "1.0.1",
+    "publishedAt": 1770765633872,
+    "commit": "https://github.com/openclaw/skills/commit/76792155d19f17b1f80fca7c24b4c0d2af0bd099"
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1770637671264,
+      "commit": "https://github.com/openclaw/skills/commit/19cf46f609d30637ce1f83adc7882998cf2fa1a6"
+    }
+  ]
 }

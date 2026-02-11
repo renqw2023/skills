@@ -1,0 +1,11 @@
+{
+  "owner": "anton-abyzov",
+  "slug": "sw-external-sync-wizard",
+  "displayName": "External Sync Wizard",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770713975008,
+    "commit": "https://github.com/openclaw/skills/commit/b9a4715165a234acede6b323b3b0bc3729787aa0"
+  },
+  "history": []
+}

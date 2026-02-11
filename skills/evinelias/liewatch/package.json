@@ -1,6 +1,6 @@
 {
     "name": "liewatch-skill",
-    "version": "1.0.4",
+    "version": "1.2.0",
     "description": "OpenClaw skill for playing the LIE.WATCH AI social deduction game",
     "main": "connector.js",
     "type": "module",

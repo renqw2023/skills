@@ -13,6 +13,7 @@ function buildGepPrompt({
   capsulesPreview,
   capabilityCandidatesPreview,
   externalCandidatesPreview,
+  recentInnovationTargets,
 }) {
   const parentValue = parentEventId ? `"${parentEventId}"` : 'null';
   const selectedGeneId = selectedGene && selectedGene.id ? selectedGene.id : null;
@@ -295,6 +296,14 @@ VII. Evolution Philosophy
    - Example: if GIF images crash the LLM, add a GIF-to-PNG converter or filter GIFs before sending.
    The system should NEVER crash repeatedly on the same error. Fix it once, forever.
 
+6. KNOWN ISSUES (DO NOT ATTEMPT TO FIX -- already handled externally)
+   The following errors appear in logs but have been fixed or are managed outside the evolver:
+   - "230001: invalid message content" -- Feishu messaging API content limit. Fixed in feishu-post/send.js (truncation + sanitization).
+   - "HTTP 400" from feishu_doc_append/feishu_doc_write -- Block validation edge cases. Fixed in feishu-doc/input_guard.js.
+   - "gateway timeout after 630000ms" -- Transient gateway slowness, auto-fallback to embedded mode.
+   - "ENOENT" / "spawn openclaw" -- PATH resolution issue, fixed in wrapper with explicit binary search.
+   If you see these errors in logs, SKIP THEM. Focus on NEW errors or genuinely unresolved issues.
+
 ━━━━━━━━━━━━━━━━━━━━━━
 VIII. A2A Evolution Exchange (Optional)
 ━━━━━━━━━━━━━━━━━━━━━━
@@ -342,11 +351,42 @@ You MUST NOT delete them, truncate them to empty, or replace their entire conten
 You MUST NOT modify evolver core source files -- they are deployed from a versioned repo.
 If you need to reorganize a protected file, create a new version alongside it first.
 
+━━━━━━━━━━━━━━━━━━━━━━
+X. Forbidden Innovation Zones (DO NOT CREATE)
+━━━━━━━━━━━━━━━━━━━━━━
+
+DO NOT create skills or scripts that duplicate existing infrastructure:
+
+- Process lifecycle management (start/stop/restart/watchdog/daemon/cron)
+  Already provided by src/ops/lifecycle.js and the wrapper's --loop mode.
+- Skill health monitoring or auditing
+  Already provided by src/ops/skills_monitor.js.
+- Evolver self-management (PID locks, singleton guards, loop schedulers)
+  Already built into index.js and src/ops/.
+- Crontab or systemd installers
+  System-level scheduling is managed by the operator, not the evolver.
+
+Creating duplicates of the above is a protocol violation.
+
+Instead, focus innovation on:
+- NEW capabilities the system does not have (tools, integrations, automations)
+- Enhancements to EXISTING user-facing skills
+- Automating recurring manual tasks observed in session logs
+
 Final Directive
 ━━━━━━━━━━━━━━━━━━━━━━
 
 You are an evolution engine. Every cycle must leave the system measurably better.
 Protocol compliance matters, but tangible output matters more.
+
+Context [Innovation Cooldown]:
+${(() => {
+  var targets = recentInnovationTargets || {};
+  var keys = Object.keys(targets);
+  if (keys.length === 0) return '(none -- all targets available)';
+  return 'The following targets were innovated on in the last 10 cycles. Do NOT choose them again unless no other option exists:\n' +
+    keys.map(function(k) { return '- ' + k + ' (' + targets[k] + 'x)'; }).join('\n');
+})()}
 
 Context [Signals]:
 ${JSON.stringify(signals)}

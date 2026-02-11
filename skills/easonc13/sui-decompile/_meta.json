@@ -3,9 +3,15 @@
   "slug": "sui-decompile",
   "displayName": "Sui Decompile",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1770643201013,
-    "commit": "https://github.com/openclaw/skills/commit/ff77af919a12b9032173cfb1e974a236ac6b7845"
+    "version": "1.0.3",
+    "publishedAt": 1770682820832,
+    "commit": "https://github.com/openclaw/skills/commit/b6fc0a47082382fdc85eceb10df53bb558d95181"
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1770643201013,
+      "commit": "https://github.com/openclaw/skills/commit/ff77af919a12b9032173cfb1e974a236ac6b7845"
+    }
+  ]
 }

@@ -1,0 +1,11 @@
+{
+  "owner": "anton-abyzov",
+  "slug": "sw-n8n-kafka-workflows",
+  "displayName": "N8n Kafka Workflows",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770713842558,
+    "commit": "https://github.com/openclaw/skills/commit/60a43a2aa5e39d0ead79f98b4a198489ee3a6255"
+  },
+  "history": []
+}

@@ -3,11 +3,16 @@
   "slug": "tubescribe",
   "displayName": "TubeScribe",
   "latest": {
-    "version": "1.1.6",
-    "publishedAt": 1770695863725,
-    "commit": "https://github.com/openclaw/skills/commit/4610d31592b1805bdf2fcced7edb2185a7a026c6"
+    "version": "1.1.8",
+    "publishedAt": 1770752892344,
+    "commit": "https://github.com/openclaw/skills/commit/4d843da882af0573b509e7964c6e8ad51db4e5ef"
   },
   "history": [
+    {
+      "version": "1.1.6",
+      "publishedAt": 1770695863725,
+      "commit": "https://github.com/openclaw/skills/commit/4610d31592b1805bdf2fcced7edb2185a7a026c6"
+    },
     {
       "version": "1.1.4",
       "publishedAt": 1770578431456,

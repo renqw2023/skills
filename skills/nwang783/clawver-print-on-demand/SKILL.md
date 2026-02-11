@@ -1,7 +1,7 @@
 ---
 name: clawver-print-on-demand
 description: Sell print-on-demand merchandise on Clawver. Browse Printful catalog, create product variants, track fulfillment and shipping. Use when selling physical products like posters, t-shirts, mugs, or apparel.
-version: 1.0.0
+version: 1.1.0
 homepage: https://clawver.store
 metadata: {"openclaw":{"emoji":"👕","homepage":"https://clawver.store","requires":{"env":["CLAW_API_KEY"]},"primaryEnv":"CLAW_API_KEY"}}
 ---
@@ -14,7 +14,7 @@ Sell physical merchandise on Clawver using Printful integration. No inventory re
 
 - `CLAW_API_KEY` environment variable
 - Stripe onboarding completed
-- High-resolution design files hosted at accessible HTTPS URLs
+- High-resolution design files hosted at accessible HTTPS URLs (optional but highly recommended)
 
 ## How Print-on-Demand Works
 
@@ -23,97 +23,42 @@ Sell physical merchandise on Clawver using Printful integration. No inventory re
 3. Printful prints and ships directly to customer
 4. You keep the profit margin (your price - Printful base cost - 2% platform fee)
 
+## Key Concepts (Read This First)
+
+### Printful IDs Are Strings
+
+`printOnDemand.printfulProductId` and `printOnDemand.printfulVariantId` must be strings (e.g. `"1"`, `"4013"`), even though the Printful catalog returns numeric IDs.
+
+### Variants Are Required For Activation
+
+When publishing a `print_on_demand` product (`PATCH /v1/products/{id} {"status":"active"}`), your product must have a non-empty `printOnDemand.variants` array configured.
+
+### Uploading Designs Is Optional (But Highly Recommended)
+
+You can sell POD products without uploading design files (legacy / external sync workflows), but uploading designs is **highly recommended** because it enables:
+- Attaching design files to orders (when configured)
+- Mockup generation for storefront images
+- Better operational reliability and fewer fulfillment surprises
+
+If you want the platform to enforce design uploads before activation and at fulfillment time, set `metadata.podDesignMode` to `"local_upload"`.
+
 ## Browse the Printful Catalog
 
-### List Available Products
-
+1. List catalog products:
 ```bash
-curl https://api.clawver.store/v1/products/printful/catalog \
+curl "https://api.clawver.store/v1/products/printful/catalog?q=poster&limit=10" \
   -H "Authorization: Bearer $CLAW_API_KEY"
 ```
 
-**Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "products": [
-      {
-        "id": 1,
-        "type": "POSTER",
-        "type_name": "Enhanced Matte Paper Poster",
-        "model": "Enhanced Matte Paper Poster",
-        "brand": null,
-        "image": "https://files.cdn.printful.com/...",
-        "variant_count": 12,
-        "is_discontinued": false
-      },
-      {
-        "id": 71,
-        "type": "T-SHIRT",
-        "type_name": "Unisex Staple T-Shirt",
-        "model": "Bella + Canvas 3001",
-        "brand": "Bella + Canvas",
-        "image": "https://files.cdn.printful.com/...",
-        "variant_count": 86,
-        "is_discontinued": false
-      }
-    ]
-  }
-}
-```
-
-**Note:** Response contains Printful catalog product objects. Fields include `id`, `type`, `type_name`, `model`, `brand`, `image`, `variant_count`, `is_discontinued`, `description`, and more.
-
-### Get Product Variants
-
+2. Get variants for a Printful product:
 ```bash
-curl https://api.clawver.store/v1/products/printful/catalog/1 \
+curl "https://api.clawver.store/v1/products/printful/catalog/1?inStock=true&limit=10" \
   -H "Authorization: Bearer $CLAW_API_KEY"
 ```
-
-**Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "variants": {
-      "product": {
-        "id": 1,
-        "type": "POSTER",
-        "type_name": "Enhanced Matte Paper Poster",
-        "model": "Enhanced Matte Paper Poster"
-      },
-      "variants": [
-        {
-          "id": 4012,
-          "product_id": 1,
-          "name": "Enhanced Matte Paper Poster / 12×16",
-          "size": "12×16",
-          "color": "White",
-          "price": "11.00",
-          "in_stock": true
-        },
-        {
-          "id": 4013,
-          "product_id": 1,
-          "name": "Enhanced Matte Paper Poster / 18×24",
-          "size": "18×24",
-          "color": "White",
-          "price": "14.50",
-          "in_stock": true
-        }
-      ]
-    }
-  }
-}
-```
-
-**Note:** Response is `data.variants` object containing `product` (metadata) and `variants` (array). Variant `price` is a string in USD (e.g., `"14.50"`). Convert to cents for pricing calculations.
 
 ## Create a POD Product
 
-### Step 1: Create the Product
+### Step 1: Create the Product (Draft)
 
 ```bash
 curl -X POST https://api.clawver.store/v1/products \
@@ -126,42 +71,83 @@ curl -X POST https://api.clawver.store/v1/products \
     "priceInCents": 2499,
     "images": ["https://your-storage.com/design-preview.jpg"],
     "printOnDemand": {
-      "printfulProductId": 1,
-      "printfulVariantId": 4013
+      "printfulProductId": "1",
+      "printfulVariantId": "4013",
+      "variants": [
+        {
+          "id": "poster-18x24",
+          "name": "18x24",
+          "priceInCents": 2499,
+          "printfulVariantId": "4013"
+        }
+      ]
+    },
+    "metadata": {
+      "podDesignMode": "local_upload"
     }
   }'
 ```
 
-**Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "product": {
-      "id": "prod_abc123",
-      "name": "AI Landscape Poster 18×24",
-      "type": "print_on_demand",
-      "priceInCents": 2499,
-      "status": "draft",
-      "printOnDemand": {
-        "printfulProductId": 1,
-        "printfulVariantId": 4013
-      },
-      "createdAt": "2024-01-15T10:30:00.000Z",
-      "updatedAt": "2024-01-15T10:30:00.000Z"
-    }
-  }
-}
+Required for POD creation/publishing:
+- `printOnDemand.printfulProductId` (string)
+- `printOnDemand.printfulVariantId` (string)
+- `printOnDemand.variants` (must be non-empty to publish)
+
+Optional but recommended:
+- `metadata.podDesignMode: "local_upload"` to enforce design uploads before activation and at fulfillment time
+
+### Step 2 (Optional, Highly Recommended): Upload POD Design File
+
+Upload one or more design files to the product. These can be used for previews and for fulfillment (depending on `podDesignMode`).
+
+**Option A: Upload from URL**
+```bash
+curl -X POST https://api.clawver.store/v1/products/{productId}/pod-designs \
+  -H "Authorization: Bearer $CLAW_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "fileUrl": "https://your-storage.com/design.png",
+    "fileType": "png",
+    "placement": "default",
+    "variantIds": ["4013"]
+  }'
 ```
 
-**POD-specific fields:**
+**Option B: Upload base64 data**
+```bash
+curl -X POST https://api.clawver.store/v1/products/{productId}/pod-designs \
+  -H "Authorization: Bearer $CLAW_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "fileData": "iVBORw0KGgoAAAANSUhEUgAA...",
+    "fileType": "png",
+    "placement": "default"
+  }'
+```
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `printOnDemand.printfulProductId` | integer | Yes | Printful product ID from catalog |
-| `printOnDemand.printfulVariantId` | integer | Yes | Variant ID from catalog |
+**Notes:**
+- `placement` is typically `"default"` unless you know the Printful placement name (e.g. `front`, `back` for apparel).
+- Use `variantIds` to map a design to specific variants (strings). If omitted, the platform will fall back to the first eligible design for fulfillment and previews.
 
-### Step 2: Publish
+### Step 3 (Optional, Recommended): Generate a Mockup and Cache It
+
+Generate a Printful mockup, cache it in storage, and set the product's `printOnDemand.primaryMockup` on first success (it will not overwrite an existing primary mockup).
+
+```bash
+curl -X POST https://api.clawver.store/v1/products/{productId}/pod-designs/{designId}/mockup \
+  -H "Authorization: Bearer $CLAW_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "placement": "default",
+    "variantId": "4013"
+  }'
+```
+
+If the mockup task is still processing, you may receive `202` with a `taskId`. Retry after the returned `retryAfterMs`.
+
+### Step 4: Publish
+
+Publishing requires a non-empty `printOnDemand.variants` array. If `metadata.podDesignMode` is `"local_upload"`, you must upload at least one design before activating.
 
 ```bash
 curl -X PATCH https://api.clawver.store/v1/products/{productId} \
@@ -170,7 +156,51 @@ curl -X PATCH https://api.clawver.store/v1/products/{productId} \
   -d '{"status": "active"}'
 ```
 
-**Note:** POD products must have `printfulProductId` and `printfulVariantId` configured before activation.
+**Note:** POD products must have `printOnDemand.variants` configured before activation.
+
+## Manage POD Designs
+
+### List Designs
+
+```bash
+curl https://api.clawver.store/v1/products/{productId}/pod-designs \
+  -H "Authorization: Bearer $CLAW_API_KEY"
+```
+
+### Get a Signed Preview URL (Owner)
+
+```bash
+curl https://api.clawver.store/v1/products/{productId}/pod-designs/{designId}/preview \
+  -H "Authorization: Bearer $CLAW_API_KEY"
+```
+
+### Public Preview (Active Products)
+
+If the product is active, you can request a public preview (no API key). This will attempt to generate a Printful mockup and fall back to returning a signed source image URL if mockup generation fails.
+
+```bash
+curl https://api.clawver.store/v1/products/{productId}/pod-designs/{designId}/public-preview
+```
+
+### Update Design Metadata
+
+```bash
+curl -X PATCH https://api.clawver.store/v1/products/{productId}/pod-designs/{designId} \
+  -H "Authorization: Bearer $CLAW_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Front artwork v2",
+    "placement": "default",
+    "variantIds": ["4013"]
+  }'
+```
+
+### Archive a Design
+
+```bash
+curl -X DELETE https://api.clawver.store/v1/products/{productId}/pod-designs/{designId} \
+  -H "Authorization: Bearer $CLAW_API_KEY"
+```
 
 ## Track Fulfillment
 
@@ -179,22 +209,6 @@ curl -X PATCH https://api.clawver.store/v1/products/{productId} \
 ```bash
 curl "https://api.clawver.store/v1/orders?status=processing" \
   -H "Authorization: Bearer $CLAW_API_KEY"
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "orders": [
-      {
-        "id": "ord_abc123",
-        "status": "processing",
-        "items": [...]
-      }
-    ]
-  }
-}
 ```
 
 POD order statuses:
@@ -223,71 +237,4 @@ curl -X POST https://api.clawver.store/v1/webhooks \
     "events": ["order.shipped"],
     "secret": "your-secret-min-16-chars"
   }'
-```
-
-## Pricing Strategy
-
-**Your profit = Your price - Printful base cost - Clawver fee (2% of subtotal)**
-
-Example for 18×24″ poster (variant `price: "14.50"`):
-- Printful base cost: $14.50
-- Your selling price: $24.99
-- Clawver fee (2% of $24.99): $0.50
-- **Your profit: $9.99**
-
-**Calculating from variant price:**
-```python
-# Variant price is a string in USD
-variant_price_usd = float(variant["price"])  # e.g., 14.50
-base_cost_cents = int(variant_price_usd * 100)  # 1450
-
-# Set your markup
-markup_percent = 0.70  # 70% markup
-selling_price_cents = int(base_cost_cents * (1 + markup_percent))  # 2465
-```
-
-Recommended markup: 40-100% above base cost.
-
-## Design Requirements
-
-| Product Type | Recommended Size | Format |
-|--------------|------------------|--------|
-| Posters | 300 DPI at print size | PNG |
-| T-shirts | 4500×5400 px | PNG (transparent) |
-| Mugs | 2700×1100 px | PNG |
-| Canvas | 300 DPI at print size | PNG/JPEG |
-
-**Note:** Design files should be hosted at accessible HTTPS URLs and referenced in your product images.
-
-## Popular Product Categories
-
-1. **Posters & Prints** - Easiest to start, high margins
-2. **Canvas Prints** - Premium pricing, good for art
-3. **T-shirts** - Requires careful design placement
-4. **Mugs** - Good for designs with wraparound appeal
-5. **Phone Cases** - Tech audience, frequent updates
-
-## Example: Create Poster from AI Art
-
-```python
-# Generate high-res artwork
-design = generate_artwork(width=5400, height=7200, dpi=300)
-preview_url = upload_to_storage(design.preview)
-
-# Create POD product
-response = api.post("/v1/products", {
-    "name": f"AI Art: {design.title}",
-    "description": design.description,
-    "type": "print_on_demand",
-    "priceInCents": 2499,
-    "images": [preview_url],
-    "printOnDemand": {
-        "printfulProductId": "1",
-        "printfulVariantId": "4013"
-    }
-})
-product_id = response["data"]["product"]["id"]
-
-# Publish
-api.patch(f"/v1/products/{product_id}", {"status": "active"})
 ```

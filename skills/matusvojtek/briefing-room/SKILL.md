@@ -1,6 +1,14 @@
 ---
 name: Briefing Room
-description: "Daily news briefing generator — produces a conversational radio-host-style audio briefing + DOCX document covering weather, world news, politics, tech, sports, markets, and crypto. Use when user asks for a news briefing, morning briefing, daily update, or similar."
+description: "Daily news briefing generator — produces a conversational radio-host-style audio briefing + DOCX document covering weather, X/Twitter trends, web trends, world news, politics, tech, local news, sports, markets, and crypto. macOS only (uses Apple TTS and afplay). Use when user asks for a news briefing, morning briefing, daily update, or similar."
+metadata:
+  {
+    "openclaw":
+      {
+        "emoji": "📻",
+        "requires": { "bins": ["curl"] }
+      }
+  }
 ---
 
 # Briefing Room 📻
@@ -9,11 +17,12 @@ description: "Daily news briefing generator — produces a conversational radio-
 
 On demand, research and compose a comprehensive ~10 minute news briefing in a conversational radio-host style. Output: audio file (MP3) + formatted document (DOCX).
 
-### 💸 100% Free & Local
+### 💸 100% Free
 
-- **No subscription** — uses free APIs and web search
-- **No paid TTS** — MLX-Audio Kokoro (English) or Apple TTS (multilingual)
-- **No data leaves your computer** — all generation is local
+- **No subscriptions, API keys, or paid services**
+- Uses free public APIs (Open-Meteo weather, Coinbase prices, Google Trends RSS), web search, and local TTS
+- TTS is fully local, no keys needed: MLX-Audio Kokoro (English) or Apple `say` (any language)
+- Reads/writes: `~/.briefing-room/config.json` (settings) and `~/Documents/Briefing Room/` (output)
 
 ## First-Run Setup
 
@@ -45,7 +54,7 @@ When user asks for a briefing (e.g. "give me a briefing", "morning update", "wha
 4. Reply: "📻 Briefing Room is firing up — gathering today's news. I'll ping you when it's ready!"
 5. **DO NOT BLOCK** — spawn and move on instantly
 
-**Language override:** If user says "po slovensky", "v slovenčine", "auf deutsch", etc. → pass that to the sub-agent. Otherwise use the configured default language.
+**Language override:** If user says "po slovensky", "v slovenčine", "auf deutsch", "en français", etc. → pass that to the sub-agent. Otherwise use the configured default language. Any language macOS supports will work — the agent writes the script in that language and TTS auto-detects a matching voice.
 
 ### Spawn Command
 
@@ -53,11 +62,14 @@ When user asks for a briefing (e.g. "give me a briefing", "morning update", "wha
 sessions_spawn(
   task="<full pipeline instructions — see below>",
   label="briefing-room",
-  runTimeoutSeconds=600
+  runTimeoutSeconds=600,
+  cleanup="delete"
 )
 ```
 
 The task message should include ALL the pipeline steps below so the sub-agent is fully self-contained. **Replace all `SKILL_DIR` references with the actual absolute path to this skill's directory.**
+
+**Host name:** Read `host.name` from config. If empty, use your own agent name (from your identity). Pass it to the sub-agent as the radio host name (e.g. "Good morning, I'm Jackie, and this is your Briefing Room...").
 
 ## Configuration
 
@@ -91,7 +103,10 @@ python3 SKILL_DIR/scripts/config.py set language "de"
 | `audio.enabled` | true | Generate audio |
 | `audio.format` | mp3 | Audio format (mp3, wav, aiff) |
 | `audio.tts_engine` | auto | TTS engine (auto, mlx, kokoro, builtin) |
-| `sections` | all 9 (see below) | Which sections to include |
+| `sections` | all 11 (see below) | Which sections to include |
+| `host.name` | (empty = agent name) | Radio host name for the briefing |
+| `trends.regions` | united-states,united-kingdom, | X/Twitter trend regions (comma-separated, trailing comma = worldwide) |
+| `webtrends.regions` | US,GB, | Google Trends regions (ISO codes, trailing comma = worldwide) |
 
 ### Voice Configuration Per Language
 
@@ -193,13 +208,24 @@ Map `weather_code` to descriptions:
 
 Use `web_search` tool for each section. Add current date to queries for freshness. Use the configured `$CITY` for local news.
 
-**Local news** (based on configured city):
+**X/Twitter Trends (from getdaytrends.com — real-time, no API key):**
+```bash
+bash SKILL_DIR/scripts/briefing.sh trends
 ```
-web_search("$CITY news today {date}", count=5)
+This fetches top 25 trends from US, UK, and Worldwide. Use the output to:
+- Identify the most interesting/newsworthy trends (skip generic ones like "Good Tuesday", "Taco Tuesday")
+- Filter out non-Latin script trends unless they're globally significant
+- Pick ~5-10 trends that overlap across regions or seem newsworthy
+- Use `web_search` to get context on the top trends you selected
+
+**Web Trends (from Google Trends RSS — what people are searching):**
+```bash
+bash SKILL_DIR/scripts/briefing.sh webtrends
 ```
-If language is not English, also search in local language:
-- Slovak: `"$CITY správy dnes {date}"`
-- German: `"$CITY Nachrichten heute {date}"`
+This fetches trending Google searches from US, UK, and Worldwide with:
+- Search term and approximate traffic volume
+- Top news headline explaining why it's trending
+Use this data for the Web Trends section. The headlines already provide context — no extra searching needed for most items.
 
 **World News:**
 ```
@@ -226,16 +252,23 @@ web_search("tech news today {date}", count=5)
 web_search("AI artificial intelligence news today {date}", count=5)
 ```
 
+**Local news** (based on configured city):
+```
+web_search("$CITY news today {date}", count=5)
+```
+Also search in the configured language if not English:
+```
+web_search("$CITY [news today] in $LANG {date}", count=5)
+```
+Examples:
+- Slovak: `"Bratislava správy dnes"`
+- German: `"Wien Nachrichten heute"`
+- Czech: `"Praha zprávy dnes"`
+
 **Sports:**
 ```
 web_search("sports news today {date}", count=5)
 web_search("football soccer results today", count=5)
-```
-
-**X/Twitter Sentiment:**
-```
-web_search("trending on X Twitter today {date}", count=5)
-web_search("Twitter trending topics today", count=5)
 ```
 
 ### Step 3: Gather Data — Markets & Crypto (APIs + Search)
@@ -265,8 +298,9 @@ Write as a **conversational radio-host monologue**.
 
 **Style guidelines:**
 - Write like a smart, engaging radio host — NOT a list of headlines
+- **Use the host name** — introduce yourself: "Good morning, I'm [host name], and this is your Briefing Room for [date]..."
+- Sprinkle the name naturally throughout (sign-off, transitions) — don't overdo it
 - Do NOT start markdown with a `# Title` header — pandoc adds title from metadata
-- Open with greeting and hook: "Good morning! It's [date], and today..."
 - Connect stories with transitions
 - Add context: "here's why this matters"
 - **Stay neutral and balanced** — report facts, present sides, let listener decide
@@ -283,22 +317,26 @@ Write as a **conversational radio-host monologue**.
 **Section order:**
 1. **Opening** — Date, quick teaser of top stories
 2. **Weather** — Current + week outlook for configured city
-3. **Sentiment on X** — Trending on X/Twitter
-4. **Local** — News for configured city/country
+3. **Trending on X** — What's hot on X/Twitter
+4. **Web Trends** — What people are searching (Google Trends)
 5. **World** — Top 3-5 global stories
 6. **Politics** — US, EU, geopolitics
 7. **Tech & AI** — Launches, breakthroughs
-8. **Sports** — Headlines, results
-9. **Markets** — S&P 500, Dow, Nasdaq, movers
-10. **Crypto & Commodities** — BTC, ETH, alts, gold, silver
-11. **Closing** — Wrap-up, sign-off
+8. **Local** — News for configured city/country
+9. **Sports** — Headlines, results
+10. **Markets** — S&P 500, Dow, Nasdaq, movers
+11. **Crypto & Commodities** — BTC, ETH, alts, gold, silver
+12. **This Day in History** — 1-2 interesting events that happened on this date
+13. **Closing** — Wrap-up, sign-off
+
+**This Day in History:** No research needed — use your own knowledge. Pick 1-2 interesting, surprising, or fun events that happened on today's date. Mix it up: science, culture, politics, weird stuff. Keep it conversational: "And before I let you go — did you know that on this day in 1996..."
 
 Only include sections from the configured `sections` list. Skip sections the user has removed.
 
 Save as `/tmp/briefing_draft_$TIMESTAMP.md` (working file).
 
 **For the markdown**, include:
-- Section headers with emojis: `## 🌤️ Weather`, `## 🌍 World`, etc.
+- Section headers with emojis: `## 🌤️ Weather`, `## 🌍 World`, `## 📜 This Day in History`, etc.
 - Source links after key facts
 - Key data in bold
 
@@ -382,8 +420,20 @@ python_bin = os.path.join(mlx_path, ".venv/bin/python3")
 
 **Built-in Apple TTS (any language):**
 
+If there's no voice configured for the language, auto-detect one:
 ```bash
+# Try to get configured voice, fall back to auto-detect
 VOICE=$(python3 SKILL_DIR/scripts/config.py get voices.$LANG.builtin_voice)
+if [ "$VOICE" = "None" ] || [ -z "$VOICE" ]; then
+    # Auto-detect: match locale (e.g. sk_SK, de_DE, fr_FR)
+    # Prefer Enhanced/Premium voices, fall back to any
+    VOICE=$(say -v '?' | grep "${LANG}_" \
+      | grep -i "Enhanced\|Premium" | head -1 \
+      | sed 's/ *[a-z][a-z]_[A-Z][A-Z].*//' | xargs)
+    [ -z "$VOICE" ] && VOICE=$(say -v '?' \
+      | grep "${LANG}_" | head -1 \
+      | sed 's/ *[a-z][a-z]_[A-Z][A-Z].*//' | xargs)
+fi
 RATE=$(python3 SKILL_DIR/scripts/config.py get voices.$LANG.builtin_rate)
 # Strip markdown for TTS
 DRAFT="/tmp/briefing_draft_$TIMESTAMP.md"
@@ -451,6 +501,8 @@ Report back with:
 ```bash
 bash SKILL_DIR/scripts/briefing.sh setup     # Check dependencies + config
 bash SKILL_DIR/scripts/briefing.sh weather    # Fetch weather (uses config location)
+bash SKILL_DIR/scripts/briefing.sh trends     # Fetch X/Twitter trends (US + UK + Worldwide)
+bash SKILL_DIR/scripts/briefing.sh webtrends  # Fetch Google Trends (US + UK + Worldwide)
 bash SKILL_DIR/scripts/briefing.sh crypto     # Fetch crypto prices
 bash SKILL_DIR/scripts/briefing.sh open       # Open today's folder
 bash SKILL_DIR/scripts/briefing.sh list       # List all briefings

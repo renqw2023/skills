@@ -51,8 +51,8 @@ def poll_task(api_key: str, task_id: str, max_attempts: int = 20, interval: int 
     Returns:
         Final task data
     """
+    data = None
     for attempt in range(max_attempts):
-        data = None
         try:
             data = query_task(api_key, task_id)
             if not data or len(data) == 0:

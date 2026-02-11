@@ -1,0 +1,11 @@
+{
+  "owner": "anton-abyzov",
+  "slug": "sw-billing-automation",
+  "displayName": "Billing Automation",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770713845817,
+    "commit": "https://github.com/openclaw/skills/commit/33176d99c8587918822a331b2466e7234dd21365"
+  },
+  "history": []
+}

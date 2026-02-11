@@ -1,0 +1,11 @@
+{
+  "owner": "anton-abyzov",
+  "slug": "sw-helm-chart-scaffolding",
+  "displayName": "Helm Chart Scaffolding",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770713749207,
+    "commit": "https://github.com/openclaw/skills/commit/0ffed69796343206519824d550f50e0339b70780"
+  },
+  "history": []
+}

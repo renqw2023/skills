@@ -1,0 +1,11 @@
+{
+  "owner": "byungkyu",
+  "slug": "dropbox-api",
+  "displayName": "Dropbox",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770689692647,
+    "commit": "https://github.com/openclaw/skills/commit/792d5de2fc6791a7ddd54faf24c47051fb63f24e"
+  },
+  "history": []
+}

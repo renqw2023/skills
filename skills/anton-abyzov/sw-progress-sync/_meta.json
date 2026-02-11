@@ -1,0 +1,11 @@
+{
+  "owner": "anton-abyzov",
+  "slug": "sw-progress-sync",
+  "displayName": "Progress Sync",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770714023329,
+    "commit": "https://github.com/openclaw/skills/commit/f1fd165284fb29bb4af293e67860e40953848754"
+  },
+  "history": []
+}

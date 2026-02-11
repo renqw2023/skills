@@ -52,7 +52,7 @@ Use OpenClaw cron if available.
 
 1. Re-run both OAuth setup scripts if auth errors appear.
 2. Verify `config.json` paths point to existing token files.
-3. Run `python {baseDir}/sync.py` and inspect `sync_log.json` and `sync_db.json`.
+3. Run `python {baseDir}/sync.py` and inspect `{baseDir}/data/sync_log.json` and `{baseDir}/data/sync_db.json`.
 4. Check API wrappers:
    - `{baseDir}/utils/google_api.py`
    - `{baseDir}/utils/ticktick_api.py`

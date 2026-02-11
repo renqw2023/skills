@@ -1,0 +1,11 @@
+{
+  "owner": "anton-abyzov",
+  "slug": "sw-dotnet-backend",
+  "displayName": "Dotnet Backend",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770713557044,
+    "commit": "https://github.com/openclaw/skills/commit/65ea25dd4aa3545b9f458ed3dbe9dd1712d3207f"
+  },
+  "history": []
+}

@@ -1,0 +1,11 @@
+{
+  "owner": "byungkyu",
+  "slug": "wordpress-api",
+  "displayName": "WordPress",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770728453298,
+    "commit": "https://github.com/openclaw/skills/commit/f7796ac0fcc41c363cdef8cf6e374da76b272bba"
+  },
+  "history": []
+}

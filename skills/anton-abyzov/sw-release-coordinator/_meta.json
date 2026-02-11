@@ -1,0 +1,11 @@
+{
+  "owner": "anton-abyzov",
+  "slug": "sw-release-coordinator",
+  "displayName": "Release Coordinator",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770713877441,
+    "commit": "https://github.com/openclaw/skills/commit/a648b2be845c708574f0b6f7e0a9a8cc16026b55"
+  },
+  "history": []
+}

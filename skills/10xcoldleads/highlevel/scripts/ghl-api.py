@@ -13,10 +13,23 @@ All requests include: Authorization: Bearer <token>, Version: 2021-07-28
 import json, os, sys, time, urllib.request, urllib.error, urllib.parse
 
 BASE = "https://services.leadconnectorhq.com"
-TOKEN = os.environ.get("HIGHLEVEL_TOKEN", "")
-LOC_ID = os.environ.get("HIGHLEVEL_LOCATION_ID", "")
 VERSION = "2021-07-28"
 MAX_RETRIES = 3
+
+# Load credentials from secure storage
+def _load_creds():
+    """Load credentials from secure storage."""
+    cred_path = "/data/.openclaw/credentials/image-generation-keys.json"
+    try:
+        with open(cred_path, 'r') as f:
+            creds = json.load(f)
+        hl = creds.get('highlevel', {})
+        return hl.get('api_key', ''), hl.get('location_id', '')
+    except:
+        # Fallback to env vars
+        return os.environ.get("HIGHLEVEL_TOKEN", ""), os.environ.get("HIGHLEVEL_LOCATION_ID", "")
+
+TOKEN, LOC_ID = _load_creds()
 
 
 def _headers():
@@ -29,7 +42,47 @@ def _headers():
 
 
 def _request(method, path, body=None, retries=MAX_RETRIES):
-    """Make API request with retry logic for 429/5xx errors."""
+    """Make API request using curl (avoids Cloudflare blocks)."""
+    import subprocess
+    url = f"{BASE}{path}" if path.startswith("/") else f"{BASE}/{path}"
+    
+    cmd = [
+        "curl", "-s", "-L",
+        "-H", f"Authorization: Bearer {TOKEN}",
+        "-H", f"Version: {VERSION}",
+        "-H", "Content-Type: application/json",
+        "-H", "Accept: application/json",
+        "-H", "User-Agent: curl/7.68.0"
+    ]
+    
+    if body:
+        cmd.extend(["-d", json.dumps(body)])
+    cmd.extend(["-X", method, url])
+    
+    for attempt in range(retries):
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+            if result.returncode == 0:
+                try:
+                    return json.loads(result.stdout)
+                except json.JSONDecodeError:
+                    return {"error": "Invalid JSON response", "raw": result.stdout[:200]}
+            else:
+                if attempt < retries - 1:
+                    time.sleep(1)
+                    continue
+                return {"error": result.returncode, "message": result.stderr}
+        except Exception as e:
+            if attempt < retries - 1:
+                time.sleep(1)
+                continue
+            return {"error": str(e)}
+    
+    return {"error": "Max retries exceeded"}
+
+# Old urllib implementation (kept for reference, not used)
+def _request_old_urllib(method, path, body=None, retries=MAX_RETRIES):
+    """Make API request with retry logic for 429/5xx errors. (Deprecated - use curl)"""
     url = f"{BASE}{path}" if path.startswith("/") else f"{BASE}/{path}"
     data = json.dumps(body).encode() if body else None
     for attempt in range(retries):
@@ -70,6 +123,88 @@ def _delete(path):
     return _request("DELETE", path)
 
 
+def _get_paginated(endpoint_base, params=None, max_pages=50):
+    """
+    Automatically paginate through all results.
+    
+    Args:
+        endpoint_base: API endpoint path (e.g., "/contacts/")
+        params: Dict of query parameters (will add locationId automatically)
+        max_pages: Safety limit (default 50 = 5000 records max)
+    
+    Returns:
+        Dict with "items" (all results), "total" (count), "pages" (pages fetched)
+    """
+    import subprocess
+    
+    all_items = []
+    start_after = None
+    start_after_id = None
+    page = 1
+    item_key = None  # Will detect from first response (contacts, opportunities, etc.)
+    
+    # Build base params
+    base_params = {"locationId": LOC_ID, "limit": 100}
+    if params:
+        base_params.update(params)
+    
+    while page <= max_pages:
+        # Build URL with current pagination
+        url_params = base_params.copy()
+        if start_after and start_after_id:
+            url_params["startAfter"] = start_after
+            url_params["startAfterId"] = start_after_id
+        
+        query_string = urllib.parse.urlencode(url_params)
+        url = f"{BASE}{endpoint_base}?{query_string}"
+        
+        # Make request via curl
+        cmd = [
+            "curl", "-s", "-L",
+            "-H", f"Authorization: Bearer {TOKEN}",
+            "-H", f"Version: {VERSION}",
+            "-H", "Accept: application/json",
+            url
+        ]
+        
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+            if result.returncode != 0:
+                break
+            
+            data = json.loads(result.stdout)
+            
+            # Detect item key from first response
+            if item_key is None:
+                for key in data.keys():
+                    if key != "meta" and key != "traceId" and isinstance(data[key], list):
+                        item_key = key
+                        break
+            
+            if item_key:
+                items = data.get(item_key, [])
+                all_items.extend(items)
+            
+            # Check for next page
+            meta = data.get("meta", {})
+            if not meta.get("nextPageUrl"):
+                break
+            
+            start_after = meta.get("startAfter")
+            start_after_id = meta.get("startAfterId")
+            page += 1
+            
+        except Exception:
+            break
+    
+    return {
+        item_key or "items": all_items,
+        "total": len(all_items),
+        "pages": page,
+        "endpoint": endpoint_base
+    }
+
+
 def _out(data):
     print(json.dumps(data, indent=2))
 
@@ -79,21 +214,38 @@ def _out(data):
 # ──────────────────────────────────────────────
 
 def test_connection():
-    """Verify token and location ID are working."""
+    """Verify token and location ID are working using contacts endpoint."""
     if not TOKEN:
-        return {"error": "HIGHLEVEL_TOKEN not set. Run /highlevel-setup for instructions."}
+        return {"error": "HIGHLEVEL_TOKEN not set. Check credentials file or run /highlevel-setup"}
     if not LOC_ID:
-        return {"error": "HIGHLEVEL_LOCATION_ID not set. Run /highlevel-setup for instructions."}
-    result = _get(f"/locations/{LOC_ID}")
+        return {"error": "HIGHLEVEL_LOCATION_ID not set. Check credentials file or run /highlevel-setup"}
+    
+    # Use contacts endpoint (most reliable, requires contacts.readonly scope)
+    result = _get(f"/contacts/?locationId={LOC_ID}&limit=1")
+    
     if "error" in result:
+        error_code = result.get("error")
+        if error_code == 403:
+            return {
+                "error": 403,
+                "message": "Token needs scopes enabled in GHL",
+                "fix": [
+                    "1. Go to app.gohighlevel.com",
+                    "2. Settings → Private Integrations",
+                    "3. Find your 'Claude AI Assistant' integration",
+                    "4. Click 'Edit Scopes'",
+                    "5. ENABLE: contacts.readonly (and others needed)",
+                    "6. Save - no need to regenerate token"
+                ]
+            }
         return result
-    loc = result.get("location", result)
+    
+    total = result.get("total", 0)
     return {
         "status": "connected",
-        "locationName": loc.get("name", "Unknown"),
         "locationId": LOC_ID,
-        "address": loc.get("address", ""),
-        "timezone": loc.get("timezone", ""),
+        "totalContacts": total,
+        "message": f"Successfully connected! Found {total} contacts."
     }
 
 
@@ -101,10 +253,26 @@ def test_connection():
 # Contacts
 # ──────────────────────────────────────────────
 
-def search_contacts(query="", limit=20):
-    """Search contacts by name, email, phone, or company."""
-    params = urllib.parse.urlencode({"locationId": LOC_ID, "query": query, "limit": limit})
-    return _get(f"/contacts/?{params}")
+def search_contacts(query="", limit=20, paginate=True):
+    """Search contacts by name, email, phone, or company.
+    
+    Args:
+        query: Search term
+        limit: Max results per page (default 20, max 100) - only used if paginate=False
+        paginate: If True (default), fetch ALL contacts across all pages
+    """
+    if not paginate:
+        params = urllib.parse.urlencode({"locationId": LOC_ID, "query": query, "limit": limit})
+        return _get(f"/contacts/?{params}")
+    
+    # Auto-paginate to get all results
+    params = {"query": query} if query else {}
+    return _get_paginated("/contacts/", params)
+
+
+def list_all_contacts():
+    """Get ALL contacts with automatic pagination (convenience wrapper)."""
+    return search_contacts(query="", limit=100, paginate=True)
 
 
 def get_contact(contact_id):
@@ -211,12 +379,24 @@ def create_appointment(calendar_id, data):
 # Opportunities & Pipelines
 # ──────────────────────────────────────────────
 
-def list_opportunities(pipeline_id=None, limit=20):
-    """List opportunities. Optionally filter by pipeline."""
-    params = {"locationId": LOC_ID, "limit": limit}
+def list_opportunities(pipeline_id=None, limit=20, paginate=True):
+    """List opportunities. Optionally filter by pipeline.
+    
+    Args:
+        pipeline_id: Filter by specific pipeline
+        limit: Max per page (only if paginate=False)
+        paginate: If True (default), fetch ALL opportunities
+    """
+    if not paginate:
+        params = {"locationId": LOC_ID, "limit": limit}
+        if pipeline_id:
+            params["pipelineId"] = pipeline_id
+        return _get(f"/opportunities/search?{urllib.parse.urlencode(params)}")
+    
+    params = {}
     if pipeline_id:
         params["pipelineId"] = pipeline_id
-    return _get(f"/opportunities/search?{urllib.parse.urlencode(params)}")
+    return _get_paginated("/opportunities/search", params)
 
 
 def get_opportunity(opp_id):
@@ -241,9 +421,15 @@ def list_pipelines():
 # Workflows & Campaigns
 # ──────────────────────────────────────────────
 
-def list_workflows():
-    """List all workflows."""
-    return _get(f"/workflows/?locationId={LOC_ID}")
+def list_workflows(paginate=True):
+    """List all workflows.
+    
+    Args:
+        paginate: If True (default), fetch ALL workflows
+    """
+    if not paginate:
+        return _get(f"/workflows/?locationId={LOC_ID}")
+    return _get_paginated("/workflows/")
 
 
 def add_to_workflow(contact_id, workflow_id):
@@ -258,19 +444,32 @@ def remove_from_workflow(contact_id, workflow_id):
     return _delete(f"/contacts/{contact_id}/workflow/{workflow_id}")
 
 
-def list_campaigns():
-    """List all campaigns."""
-    return _get(f"/campaigns/?locationId={LOC_ID}")
+def list_campaigns(paginate=True):
+    """List all campaigns.
+    
+    Args:
+        paginate: If True (default), fetch ALL campaigns
+    """
+    if not paginate:
+        return _get(f"/campaigns/?locationId={LOC_ID}")
+    return _get_paginated("/campaigns/")
 
 
 # ──────────────────────────────────────────────
 # Invoices
 # ──────────────────────────────────────────────
 
-def list_invoices(limit=20):
-    """List invoices."""
-    params = urllib.parse.urlencode({"locationId": LOC_ID, "limit": limit})
-    return _get(f"/invoices/?{params}")
+def list_invoices(limit=20, paginate=True):
+    """List invoices.
+    
+    Args:
+        limit: Max per page (only if paginate=False)
+        paginate: If True (default), fetch ALL invoices
+    """
+    if not paginate:
+        params = urllib.parse.urlencode({"locationId": LOC_ID, "limit": limit})
+        return _get(f"/invoices/?{params}")
+    return _get_paginated("/invoices/")
 
 
 def get_invoice(invoice_id):
@@ -291,32 +490,60 @@ def create_invoice(data):
 # Payments
 # ──────────────────────────────────────────────
 
-def list_orders(limit=20):
-    """List payment orders."""
-    params = urllib.parse.urlencode({"locationId": LOC_ID, "limit": limit})
-    return _get(f"/payments/orders/?{params}")
+def list_orders(limit=20, paginate=True):
+    """List payment orders.
+    
+    Args:
+        limit: Max per page (only if paginate=False)
+        paginate: If True (default), fetch ALL orders
+    """
+    if not paginate:
+        params = urllib.parse.urlencode({"locationId": LOC_ID, "limit": limit})
+        return _get(f"/payments/orders/?{params}")
+    return _get_paginated("/payments/orders/")
 
 
-def list_transactions(limit=20):
-    """List payment transactions."""
-    params = urllib.parse.urlencode({"locationId": LOC_ID, "limit": limit})
-    return _get(f"/payments/transactions/?{params}")
+def list_transactions(limit=20, paginate=True):
+    """List payment transactions.
+    
+    Args:
+        limit: Max per page (only if paginate=False)
+        paginate: If True (default), fetch ALL transactions
+    """
+    if not paginate:
+        params = urllib.parse.urlencode({"locationId": LOC_ID, "limit": limit})
+        return _get(f"/payments/transactions/?{params}")
+    return _get_paginated("/payments/transactions/")
 
 
-def list_subscriptions(limit=20):
-    """List payment subscriptions."""
-    params = urllib.parse.urlencode({"locationId": LOC_ID, "limit": limit})
-    return _get(f"/payments/subscriptions/?{params}")
+def list_subscriptions(limit=20, paginate=True):
+    """List payment subscriptions.
+    
+    Args:
+        limit: Max per page (only if paginate=False)
+        paginate: If True (default), fetch ALL subscriptions
+    """
+    if not paginate:
+        params = urllib.parse.urlencode({"locationId": LOC_ID, "limit": limit})
+        return _get(f"/payments/subscriptions/?{params}")
+    return _get_paginated("/payments/subscriptions/")
 
 
 # ──────────────────────────────────────────────
 # Products
 # ──────────────────────────────────────────────
 
-def list_products(limit=20):
-    """List products."""
-    params = urllib.parse.urlencode({"locationId": LOC_ID, "limit": limit})
-    return _get(f"/products/?{params}")
+def list_products(limit=20, paginate=True):
+    """List products.
+    
+    Args:
+        limit: Max per page (only if paginate=False)
+        paginate: If True (default), fetch ALL products
+    """
+    if not paginate:
+        params = urllib.parse.urlencode({"locationId": LOC_ID, "limit": limit})
+        return _get(f"/products/?{params}")
+    return _get_paginated("/products/")
 
 
 def get_product(product_id):
@@ -328,25 +555,53 @@ def get_product(product_id):
 # Forms, Surveys, Funnels
 # ──────────────────────────────────────────────
 
-def list_forms():
-    """List all forms."""
-    return _get(f"/forms/?locationId={LOC_ID}")
+def list_forms(paginate=True):
+    """List all forms.
+    
+    Args:
+        paginate: If True (default), fetch ALL forms
+    """
+    if not paginate:
+        return _get(f"/forms/?locationId={LOC_ID}")
+    return _get_paginated("/forms/")
 
 
-def list_form_submissions(form_id, limit=20):
-    """Get form submissions."""
-    params = urllib.parse.urlencode({"locationId": LOC_ID, "limit": limit})
-    return _get(f"/forms/submissions?{params}&formId={form_id}")
+def list_form_submissions(form_id, limit=20, paginate=True):
+    """Get form submissions.
+    
+    Args:
+        form_id: The form ID to get submissions for
+        limit: Max per page (only if paginate=False)
+        paginate: If True (default), fetch ALL submissions
+    """
+    if not paginate:
+        params = urllib.parse.urlencode({"locationId": LOC_ID, "limit": limit})
+        return _get(f"/forms/submissions?{params}&formId={form_id}")
+    
+    params = {"formId": form_id}
+    return _get_paginated("/forms/submissions", params)
 
 
-def list_surveys():
-    """List all surveys."""
-    return _get(f"/surveys/?locationId={LOC_ID}")
+def list_surveys(paginate=True):
+    """List all surveys.
+    
+    Args:
+        paginate: If True (default), fetch ALL surveys
+    """
+    if not paginate:
+        return _get(f"/surveys/?locationId={LOC_ID}")
+    return _get_paginated("/surveys/")
 
 
-def list_funnels():
-    """List all funnels."""
-    return _get(f"/funnels/funnel/list?locationId={LOC_ID}")
+def list_funnels(paginate=True):
+    """List all funnels.
+    
+    Args:
+        paginate: If True (default), fetch ALL funnels
+    """
+    if not paginate:
+        return _get(f"/funnels/funnel/list?locationId={LOC_ID}")
+    return _get_paginated("/funnels/funnel/list")
 
 
 # ──────────────────────────────────────────────
@@ -387,14 +642,42 @@ def list_trigger_links():
 
 
 # ──────────────────────────────────────────────
-# Custom Request — Access ANY v2 Endpoint
+# Safe Specific Functions (Replacing custom_request)
 # ──────────────────────────────────────────────
 
-def custom_request(method, path, body=None):
-    """Make any API v2 request. method=GET/POST/PUT/DELETE, path starts with /."""
-    if body and isinstance(body, str):
-        body = json.loads(body)
-    return _request(method.upper(), path, body)
+def get_location_details():
+    """Get current location details."""
+    return _get(f"/locations/{LOC_ID}")
+
+
+def list_location_custom_fields():
+    """List custom fields for this location."""
+    return _get(f"/locations/{LOC_ID}/customFields")
+
+
+def list_location_tags():
+    """List tags for this location."""
+    return _get(f"/locations/{LOC_ID}/tags")
+
+
+def list_location_custom_values():
+    """List custom values for this location."""
+    return _get(f"/locations/{LOC_ID}/customValues")
+
+
+def list_courses():
+    """List courses/memberships."""
+    return _get(f"/courses/?locationId={LOC_ID}")
+
+
+def list_snapshots():
+    """List available snapshots (Agency only)."""
+    return _get("/snapshots/")
+
+
+def get_snapshot_status(snapshot_id):
+    """Get snapshot installation status."""
+    return _get(f"/snapshots/{snapshot_id}/status")
 
 
 # ──────────────────────────────────────────────
@@ -404,6 +687,7 @@ def custom_request(method, path, body=None):
 COMMANDS = {
     "test_connection": lambda: test_connection(),
     "search_contacts": lambda: search_contacts(sys.argv[2] if len(sys.argv) > 2 else ""),
+    "list_all_contacts": lambda: list_all_contacts(),
     "get_contact": lambda: get_contact(sys.argv[2]),
     "create_contact": lambda: create_contact(sys.argv[2]),
     "update_contact": lambda: update_contact(sys.argv[2], sys.argv[3]),
@@ -441,7 +725,13 @@ COMMANDS = {
     "list_media": lambda: list_media(),
     "list_users": lambda: list_users(),
     "list_trigger_links": lambda: list_trigger_links(),
-    "custom_request": lambda: custom_request(sys.argv[2], sys.argv[3], sys.argv[4] if len(sys.argv) > 4 else None),
+    "get_location_details": lambda: get_location_details(),
+    "list_location_custom_fields": lambda: list_location_custom_fields(),
+    "list_location_tags": lambda: list_location_tags(),
+    "list_location_custom_values": lambda: list_location_custom_values(),
+    "list_courses": lambda: list_courses(),
+    "list_snapshots": lambda: list_snapshots(),
+    "get_snapshot_status": lambda: get_snapshot_status(sys.argv[2]),
 }
 
 if __name__ == "__main__":

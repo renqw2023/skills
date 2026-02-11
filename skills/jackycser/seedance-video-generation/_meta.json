@@ -1,0 +1,11 @@
+{
+  "owner": "jackycser",
+  "slug": "seedance-video-generation",
+  "displayName": "Seedance Video Generation",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770701416300,
+    "commit": "https://github.com/openclaw/skills/commit/29b89f955b2c41049532356fea634ae5938a8f54"
+  },
+  "history": []
+}

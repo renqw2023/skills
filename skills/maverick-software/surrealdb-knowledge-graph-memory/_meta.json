@@ -1,0 +1,11 @@
+{
+  "owner": "maverick-software",
+  "slug": "surrealdb-knowledge-graph-memory",
+  "displayName": "SurrealDB Knowledge Graph Memory",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770706651408,
+    "commit": "https://github.com/openclaw/skills/commit/cf8ef372d530aa4746d2e9736d0a600eb4b9e0c9"
+  },
+  "history": []
+}

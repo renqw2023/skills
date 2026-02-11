@@ -1,0 +1,11 @@
+{
+  "owner": "anton-abyzov",
+  "slug": "sw-ml-deployment-helper",
+  "displayName": "Ml Deployment Helper",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770713785408,
+    "commit": "https://github.com/openclaw/skills/commit/2f3ebf5827bc8957896fd6b776ce7ef426a2350e"
+  },
+  "history": []
+}

@@ -1,10 +1,25 @@
+---
+name: Grokipedia
+description: Search and fetch articles from Grokipedia.com — xAI's AI-generated encyclopedia (like Wikipedia but written by Grok). Use when asked about topics that might have a Grokipedia article, or when the user explicitly mentions Grokipedia.
+---
+
 # Grokipedia Parser
 
-Search and fetch articles from Grokipedia.com - xAI's AI-generated encyclopedia.
+Search and fetch articles from [Grokipedia.com](https://grokipedia.com) — xAI's AI-generated encyclopedia.
 
-## Overview
+**Source:** [github.com/kirillleventcov/grokipedia-parser](https://github.com/kirillleventcov/grokipedia-parser)
 
-Grokipedia is an AI-powered encyclopedia created by xAI (makers of Grok). This skill provides clean, LLM-friendly access to search and retrieve articles.
+## Requirements
+
+- **Node.js** (v18+) — used to run the search and fetch scripts
+- **npm dependencies** — `jsdom` and `@mozilla/readability` (installed via `npm install`)
+
+## Install
+
+```bash
+cd ~/.openclaw/workspace/grokipedia-parser
+npm install --production
+```
 
 ## Scripts
 
@@ -41,6 +56,14 @@ node ~/.openclaw/workspace/grokipedia-parser/scripts/fetch.mjs "Article_Slug"
 node ~/.openclaw/workspace/grokipedia-parser/scripts/fetch.mjs "Helsinki"
 node ~/.openclaw/workspace/grokipedia-parser/scripts/fetch.mjs "Artificial_intelligence"
 ```
+
+## What This Skill Does
+
+- **Network access:** Fetches from `grokipedia.com` only (search API + article pages)
+- **No credentials:** Public read-only access, no API keys or tokens needed
+- **No file writes:** Only outputs to stdout (JSON for search, markdown for articles)
+- **No persistence:** No background processes, no cron, no elevated privileges
+- **Dependencies:** `jsdom` (DOM parsing) and `@mozilla/readability` (article extraction)
 
 ## Notes
 

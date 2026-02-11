@@ -3,11 +3,16 @@
   "slug": "stripe-api",
   "displayName": "Stripe",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1770343638867,
-    "commit": "https://github.com/openclaw/skills/commit/a2df86635bf1079860c4a67a378d6793a8ac700f"
+    "version": "1.0.8",
+    "publishedAt": 1770766965851,
+    "commit": "https://github.com/openclaw/skills/commit/b288963f38bee7d02ce2cd3247832109327a345e"
   },
   "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1770343638867,
+      "commit": "https://github.com/openclaw/skills/commit/a2df86635bf1079860c4a67a378d6793a8ac700f"
+    },
     {
       "version": "1.0.1",
       "publishedAt": 1770117429583,

@@ -1,0 +1,10 @@
+{
+  "name": "diary-visualizer",
+  "version": "1.0.0",
+  "description": "Visualizes the latest diary entry as a short AI video or image.",
+  "main": "visualize.js",
+  "dependencies": {
+    "dotenv": "^17.2.3",
+    "commander": "^14.0.3"
+  }
+}

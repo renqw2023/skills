@@ -6,10 +6,19 @@ author: Maxxit
 description: Execute perpetual trades on Ostium via Maxxit's Lazy Trading API
 homepage: https://maxxit.ai
 repository: https://github.com/Maxxit-ai/maxxit-latest
+disableModelInvocation: true
 requires:
   env:
     - MAXXIT_API_KEY
     - MAXXIT_API_URL
+metadata:
+  openclaw:
+    requiredEnv:
+      - MAXXIT_API_KEY
+      - MAXXIT_API_URL
+    bins:
+      - curl
+    primaryCredential: MAXXIT_API_KEY
 ---
 
 # Maxxit Lazy Trading

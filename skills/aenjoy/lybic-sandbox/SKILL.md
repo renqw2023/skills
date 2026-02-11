@@ -1,6 +1,6 @@
 ---
 name: lybic cloud-computer skill
-description: A skill for controlling Lybic cloud sandboxes(computer).
+description: Lybic Sandbox is a cloud sandbox built for agents and automation workflows. Think of it as a disposable cloud computer you can spin up on demand. Agents can perform GUI actions like seeing the screen, clicking, typing, and handling pop ups, which makes it a great fit for legacy apps and complex flows where APIs are missing or incomplete. It is designed for control and observability. You can monitor execution in real time, stop it when needed, and use logs and replay to debug, reproduce runs, and evaluate reliability. For long running tasks, iterative experimentation, or sensitive environments, sandboxed execution helps reduce risk and operational overhead.
 homepage: https://lybic.ai
 metadata: {
     "openclaw": {

@@ -1,0 +1,11 @@
+{
+  "owner": "anton-abyzov",
+  "slug": "sw-jira-sync-judge",
+  "displayName": "Jira Sync Judge",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770713709690,
+    "commit": "https://github.com/openclaw/skills/commit/1fdb9012b17d5b09509a16b944128ed065abf93e"
+  },
+  "history": []
+}

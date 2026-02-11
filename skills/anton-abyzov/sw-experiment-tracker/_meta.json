@@ -1,0 +1,11 @@
+{
+  "owner": "anton-abyzov",
+  "slug": "sw-experiment-tracker",
+  "displayName": "Experiment Tracker",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770713779030,
+    "commit": "https://github.com/openclaw/skills/commit/577b0ede95c34d6f02b9dcc0a0657d5f312b461f"
+  },
+  "history": []
+}

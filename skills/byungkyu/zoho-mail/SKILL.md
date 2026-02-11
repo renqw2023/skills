@@ -8,6 +8,12 @@ description: |
 metadata:
   author: maton
   version: "1.0"
+  clawdbot:
+    emoji: 🧠
+    homepage: "https://maton.ai"
+    requires:
+      env:
+        - MATON_API_KEY
 ---
 
 # Zoho Mail
@@ -598,9 +604,7 @@ data = response.json()
 | 429 | Rate limited |
 | 4xx/5xx | Passthrough error from Zoho Mail API |
 
-### Troubleshooting: Invalid API Key
-
-**When you receive a "Invalid API key" error, ALWAYS follow these steps before concluding there is an issue:**
+### Troubleshooting: API Key Issues
 
 1. Check that the `MATON_API_KEY` environment variable is set:
 
@@ -619,9 +623,18 @@ print(json.dumps(json.load(urllib.request.urlopen(req)), indent=2))
 EOF
 ```
 
+### Troubleshooting: Invalid App Name
+
+1. Ensure your URL path starts with `zoho-mail`. For example:
+
+- Correct: `https://gateway.maton.ai/zoho-mail/api/accounts`
+- Incorrect: `https://gateway.maton.ai/api/accounts`
+
 ## Resources
 
 - [Zoho Mail API Overview](https://www.zoho.com/mail/help/api/overview.html)
 - [Zoho Mail API Index](https://www.zoho.com/mail/help/api/)
 - [Email Messages API](https://www.zoho.com/mail/help/api/email-api.html)
 - [Getting Started with Zoho Mail API](https://www.zoho.com/mail/help/api/getting-started-with-api.html)
+- [Maton Community](https://discord.com/invite/dBfFAcefs2)
+- [Maton Support](mailto:support@maton.ai)

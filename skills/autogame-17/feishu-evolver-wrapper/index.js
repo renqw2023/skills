@@ -9,19 +9,33 @@ const fs = require('fs');
 function sleepSeconds(sec) {
     const s = Number(sec);
     if (!Number.isFinite(s) || s <= 0) return;
-    try {
-        execSync(`sleep ${s}`);
-    } catch (_) {
-        const waitStart = Date.now();
-        while (Date.now() - waitStart < s * 1000) {}
+    
+    // Check for wake signal every 2 seconds
+    const interval = 2;
+    const wakeFile = path.resolve(__dirname, '../../memory/evolver_wake.signal');
+    
+    const steps = Math.ceil(s / interval);
+    for (let i = 0; i < steps; i++) {
+        if (fs.existsSync(wakeFile)) {
+            console.log('[Wrapper] Wake signal detected! Skipping sleep.');
+            try { fs.unlinkSync(wakeFile); } catch (e) {}
+            return;
+        }
+        try {
+            execSync(`sleep ${interval}`);
+        } catch (_) {
+            const waitStart = Date.now();
+            while (Date.now() - waitStart < interval * 1000) {}
+        }
     }
 }
 
 function nextCycleTag(cycleFile) {
-    let cycleId = 1;
+    // Atomic read-increment-write using tmp+rename to prevent concurrent duplicates
+    var cycleId = 1;
     try {
         if (fs.existsSync(cycleFile)) {
-            const raw = fs.readFileSync(cycleFile, 'utf8').trim();
+            var raw = fs.readFileSync(cycleFile, 'utf8').trim();
             if (raw && !isNaN(raw)) {
                 cycleId = parseInt(raw, 10) + 1;
             }
@@ -31,9 +45,13 @@ function nextCycleTag(cycleFile) {
     }
 
     try {
-        fs.writeFileSync(cycleFile, cycleId.toString());
+        var tmpFile = cycleFile + '.tmp.' + process.pid;
+        fs.writeFileSync(tmpFile, cycleId.toString());
+        fs.renameSync(tmpFile, cycleFile);
     } catch (e) {
         console.error('Cycle write error:', e.message);
+        // Fallback: direct write
+        try { fs.writeFileSync(cycleFile, cycleId.toString()); } catch (_) {}
     }
 
     return String(cycleId).padStart(4, '0');
@@ -63,6 +81,9 @@ function forwardLogToFeishu(msg, type = 'INFO') {
         sessionLogs.errorCount++;
         sessionLogs.errors.push(msg.slice(0, 300));
         sendCardInternal(msg, 'ERROR');
+    } else if (type === 'WARNING') {
+        // Non-critical issues: yellow card
+        sendCardInternal(msg, 'WARNING');
     } else if (type === 'LIFECYCLE') {
         // Key lifecycle events: always forward
         sendCardInternal(msg, 'INFO');
@@ -70,6 +91,33 @@ function forwardLogToFeishu(msg, type = 'INFO') {
         sessionLogs.infoCount++;
         // Regular INFO: silent (too noisy for group chat)
     }
+}
+
+// Classify stderr message severity: returns 'WARNING' for non-critical, 'ERROR' for critical
+function classifyStderrSeverity(msg) {
+    var lower = (msg || '').toLowerCase();
+    // Non-critical patterns: gateway fallback, missing optional files, deprecation warnings, timeouts with fallback
+    var warnPatterns = [
+        'falling back to embedded',
+        'no such file or directory',
+        'enoent',
+        'deprecat',
+        'warning:',
+        'warn:',
+        '[warn]',
+        'gateway timeout',           // gateway slow but agent retries/falls back
+        'optional dependency',
+        'experimental',
+        'hint:',
+        'evolver_hint',
+        'memory_missing',
+        'user_missing',
+        'command exited with code 1', // non-zero exit from a tool command (usually cat/ls fail)
+    ];
+    for (var i = 0; i < warnPatterns.length; i++) {
+        if (lower.includes(warnPatterns[i])) return 'WARNING';
+    }
+    return 'ERROR';
 }
 
 function sendCardInternal(msg, type) {
@@ -118,12 +166,14 @@ function sendSummary(cycleTag, duration, success) {
 let selfRepair = null;
 let getComment = (_type, _dur, _ok, _persona) => '';
 try {
-    selfRepair = require('./self-repair.js');
+    selfRepair = require('../evolver/src/ops/self_repair');
 } catch (e) {
-    console.warn('[Wrapper] self-repair.js not found, git repair disabled.');
+    try { selfRepair = require('./self-repair.js'); } catch (e2) {
+        console.warn('[Wrapper] self-repair module not found, git repair disabled.');
+    }
 }
 try {
-    const commentary = require('./commentary.js');
+    const commentary = require('../evolver/src/ops/commentary');
     if (typeof commentary.getComment === 'function') getComment = commentary.getComment;
 } catch (e) {
     console.warn('[Wrapper] commentary.js not found, using silent mode.');
@@ -205,16 +255,13 @@ function buildCommitMessage(statusOutput, cwd) {
     return title;
 }
 
+// gitSync returns commit info: { commitMsg, fileCount, areaStr, shortHash } or null on failure/no-op
 function gitSync() {
     try {
         console.log('[Wrapper] Executing Git Sync...');
-        // Git repo root is .openclaw/ (parent of workspace/)
-        const gitRoot = path.resolve(__dirname, '../../../');
-        const workspaceRoot = path.resolve(__dirname, '../../');
+        var gitRoot = path.resolve(__dirname, '../../../');
 
-        // 1. Only stage workspace/ files (not .openclaw root config)
-        //    Stage specific safe paths, not everything
-        const safePaths = [
+        var safePaths = [
             'workspace/skills/',
             'workspace/memory/',
             'workspace/RECENT_EVENTS.md',
@@ -223,51 +270,53 @@ function gitSync() {
             'workspace/assets/',
             'workspace/docs/',
         ];
-        for (const p of safePaths) {
-            try {
-                execWithTimeout(`git add ${p}`, gitRoot, 30000);
-            } catch (_) {} // Skip if path doesn't exist
+        for (var i = 0; i < safePaths.length; i++) {
+            try { execWithTimeout('git add ' + safePaths[i], gitRoot, 30000); } catch (_) {}
         }
 
-        // 2. Check if there's anything staged
-        const status = execSync('git diff --cached --name-only', { cwd: gitRoot, encoding: 'utf8' }).trim();
+        var status = execSync('git diff --cached --name-only', { cwd: gitRoot, encoding: 'utf8' }).trim();
         if (!status) {
             console.log('[Wrapper] Git Sync: nothing to commit.');
-            return;
+            return null;
         }
 
-        // 3. Build descriptive commit message
-        const fileCount = status.split('\n').filter(Boolean).length;
-        const areas = [...new Set(status.split('\n').filter(Boolean).map(f => {
-            const parts = f.split('/');
-            if (parts[0] === 'workspace' && parts[1] === 'skills' && parts.length > 2) return `skills/${parts[2]}`;
+        var fileCount = status.split('\n').filter(Boolean).length;
+        var areas = [...new Set(status.split('\n').filter(Boolean).map(function(f) {
+            var parts = f.split('/');
+            if (parts[0] === 'workspace' && parts[1] === 'skills' && parts.length > 2) return 'skills/' + parts[2];
             if (parts[0] === 'workspace' && parts.length > 1) return parts[1];
             return parts[0];
         }))].slice(0, 3);
-        const areaStr = areas.join(', ') + (areas.length >= 3 ? ' ...' : '');
-        const commitMsg = `🧬 Evolution: ${fileCount} files in ${areaStr}`;
-        const msgFile = path.join('/tmp', `evolver_commit_${Date.now()}.txt`);
+        var areaStr = areas.join(', ') + (areas.length >= 3 ? ' ...' : '');
+        var commitMsg = '🧬 Evolution: ' + fileCount + ' files in ' + areaStr;
+        var msgFile = path.join('/tmp', 'evolver_commit_' + Date.now() + '.txt');
         fs.writeFileSync(msgFile, commitMsg);
-        execWithTimeout(`git commit -F "${msgFile}"`, gitRoot, 30000);
+        execWithTimeout('git commit -F "' + msgFile + '"', gitRoot, 30000);
         try { fs.unlinkSync(msgFile); } catch (_) {}
 
-        // 4. Pull --rebase then push
         try {
             execWithTimeout('git pull origin main --rebase --autostash', gitRoot, 120000);
         } catch (e) {
             console.error('[Wrapper] Pull Rebase Failed:', e.message);
             try {
-                if (selfRepair && typeof selfRepair.run === 'function') selfRepair.run();
+                if (selfRepair && typeof selfRepair.repair === 'function') selfRepair.repair();
+                else if (selfRepair && typeof selfRepair.run === 'function') selfRepair.run();
             } catch (_) {}
             throw e;
         }
         execWithTimeout('git push origin main', gitRoot, 120000);
 
-        console.log('[Wrapper] Git Sync Complete.');
-        forwardLogToFeishu(`🧬 Git Sync: ${fileCount} files in ${areaStr}`, 'LIFECYCLE');
+        // Get the short hash of the commit we just pushed
+        var shortHash = '';
+        try { shortHash = execSync('git log -1 --format=%h', { cwd: gitRoot, encoding: 'utf8' }).trim(); } catch (_) {}
+
+        console.log('[Wrapper] Git Sync Complete. (' + shortHash + ')');
+        forwardLogToFeishu('🧬 Git Sync: ' + fileCount + ' files in ' + areaStr + ' (' + shortHash + ')', 'LIFECYCLE');
+        return { commitMsg: commitMsg, fileCount: fileCount, areaStr: areaStr, shortHash: shortHash };
     } catch (e) {
         console.error('[Wrapper] Git Sync Failed:', e.message);
-        forwardLogToFeishu(`[Wrapper] ⚠️ Git Sync Failed: ${e.message}`, 'ERROR');
+        forwardLogToFeishu('[Wrapper] Git Sync Failed: ' + e.message, 'ERROR');
+        return null;
     }
 }
 
@@ -310,12 +359,77 @@ function checkArtifacts(cycleTag) {
 // --- FEATURE 6: CLEANUP (Disk Hygiene) ---
 let cleanup = null;
 try {
-    cleanup = require('./cleanup.js');
+    cleanup = require('../evolver/src/ops/cleanup');
 } catch (e) {
-    console.warn('[Wrapper] cleanup.js not found, disk cleanup disabled.');
+    try { cleanup = require('./cleanup.js'); } catch (e2) {
+        console.warn('[Wrapper] cleanup module not found, disk cleanup disabled.');
+    }
+}
+
+// --- FEATURE 0: SINGLETON GUARD (Prevent Duplicates) ---
+const LOCK_FILE = path.resolve(__dirname, '../../memory/evolver_wrapper.pid');
+
+function isWrapperProcess(pid) {
+    // Verify PID is actually a wrapper process (not a recycled PID for something else)
+    try {
+        var cmdline = execSync('ps -p ' + pid + ' -o args=', { encoding: 'utf8', timeout: 5000 }).trim();
+        // Must match the actual wrapper command pattern: node ... index.js --loop
+        return cmdline.includes('feishu-evolver-wrapper/index.js') && cmdline.includes('--loop');
+    } catch (e) {
+        return false;
+    }
+}
+
+function checkSingleton() {
+    try {
+        if (fs.existsSync(LOCK_FILE)) {
+            var oldPidStr = fs.readFileSync(LOCK_FILE, 'utf8').trim();
+            var oldPid = parseInt(oldPidStr, 10);
+            if (oldPid && oldPid !== process.pid) {
+                // Step 1: Check if PID exists at all
+                var pidAlive = false;
+                try { process.kill(oldPid, 0); pidAlive = true; } catch (e) { pidAlive = false; }
+
+                if (pidAlive) {
+                    // Step 2: Verify the PID is actually a wrapper (not a recycled PID)
+                    if (isWrapperProcess(oldPid)) {
+                        console.error('[Wrapper] Another instance is running (PID ' + oldPid + '). Exiting.');
+                        process.exit(0);
+                    } else {
+                        console.log('[Wrapper] PID ' + oldPid + ' exists but is not a wrapper process. Stale lock, overwriting.');
+                    }
+                } else {
+                    console.log('[Wrapper] Stale lock file found (PID ' + oldPid + ' dead). Overwriting.');
+                }
+            }
+        }
+        // Write my PID atomically (write to tmp then rename)
+        var tmpLock = LOCK_FILE + '.tmp.' + process.pid;
+        fs.writeFileSync(tmpLock, process.pid.toString());
+        fs.renameSync(tmpLock, LOCK_FILE);
+
+        // Remove on exit
+        var cleanupLock = function() {
+            try {
+                if (fs.existsSync(LOCK_FILE)) {
+                    var current = fs.readFileSync(LOCK_FILE, 'utf8').trim();
+                    if (current === process.pid.toString()) {
+                        fs.unlinkSync(LOCK_FILE);
+                    }
+                }
+            } catch (_) {}
+        };
+
+        process.on('exit', cleanupLock);
+        process.on('SIGINT', function() { cleanupLock(); process.exit(); });
+        process.on('SIGTERM', function() { cleanupLock(); process.exit(); });
+    } catch (e) {
+        console.error('[Wrapper] Singleton check failed:', e.message);
+    }
 }
 
 async function run() {
+    checkSingleton(); // Feature 0
     console.log('Launching Feishu Evolver Wrapper (Proxy Mode)...');
     forwardLogToFeishu('🧬 Wrapper starting up...', 'LIFECYCLE');
     
@@ -365,6 +479,10 @@ async function run() {
     }
 
     let cycleCount = 0;
+    let consecutiveHandFailures = 0; // Track hand agent failures for backoff
+    const MAX_CONSECUTIVE_HAND_FAILURES = 5; // After this many, long backoff
+    const HAND_FAILURE_BACKOFF_BASE = 60; // Base backoff in seconds
+
     while (true) {
         checkKillSwitch(); // Feature 1
 
@@ -372,6 +490,15 @@ async function run() {
             console.log(`Reached max cycles (${loopMaxCycles}). Exiting.`);
             return;
         }
+
+        // Exponential backoff on consecutive Hand Agent failures
+        if (consecutiveHandFailures >= MAX_CONSECUTIVE_HAND_FAILURES) {
+            const backoffSec = Math.min(3600, HAND_FAILURE_BACKOFF_BASE * Math.pow(2, consecutiveHandFailures - MAX_CONSECUTIVE_HAND_FAILURES));
+            console.log(`[Wrapper] Hand Agent failed ${consecutiveHandFailures} consecutive times. Backing off ${backoffSec}s...`);
+            forwardLogToFeishu(`[Wrapper] Hand Agent failed ${consecutiveHandFailures}x consecutively. Backing off ${backoffSec}s. Likely cause: openclaw binary not in PATH.`, 'WARNING');
+            sleepSeconds(backoffSec);
+        }
+
         cycleCount++;
 
         const cycleTag = nextCycleTag(cycleFile);
@@ -425,6 +552,11 @@ async function run() {
                 forwardLogToFeishu(`🧬 Cycle #${cycleTag} started (Attempt ${attempts})`, 'LIFECYCLE');
                 
                 await new Promise((resolve, reject) => {
+                    // Feature: Heartbeat Logger (ensure wrapper_out.log stays fresh)
+                    const heartbeatInterval = setInterval(() => {
+                        console.log(`[Wrapper] Heartbeat (Cycle #${cycleTag} running for ${((Date.now() - startTime)/1000).toFixed(0)}s)...`);
+                    }, 300000); // 5 minutes
+
                     const child = spawn('node', [mainScript, ...childArgsArrBase], {
                         env: process.env,
                         stdio: ['ignore', 'pipe', 'pipe']
@@ -442,10 +574,11 @@ async function run() {
                     child.stderr.on('data', (data) => {
                         const str = data.toString();
                         process.stderr.write(str);
-                        forwardLogToFeishu(str, 'ERROR');
+                        forwardLogToFeishu(str, classifyStderrSeverity(str));
                     });
 
                     child.on('close', async (code) => {
+                        clearInterval(heartbeatInterval);
                         try {
                             if (code !== 0) {
                                 const err = new Error(`Child process exited with code ${code}`);
@@ -491,17 +624,29 @@ async function run() {
                                         // The GEP protocol prompt buries the report in "Notes:" which the agent ignores.
                                         // This injection ensures the report command is the LAST thing the agent sees.
                                         if (taskContent) {
+                                            // Status file path for post-push reporting
+                                            const statusFile = path.resolve(path.dirname(lifecycleLog), `status_${cycleTag}.json`);
                                             taskContent += `\n\n` +
                                                 `━━━━━━━━━━━━━━━━━━━━━━\n` +
-                                                `MANDATORY POST-SOLIDIFY STEP (Wrapper Authority — Cannot Be Skipped)\n` +
+                                                `MANDATORY POST-SOLIDIFY STEP (Wrapper Authority -- Cannot Be Skipped)\n` +
                                                 `━━━━━━━━━━━━━━━━━━━━━━\n\n` +
-                                                `After solidify (or after your main work if solidify is not applicable), you MUST execute this report command.\n` +
+                                                `After solidify, you MUST write a status summary file. The wrapper will handle reporting AFTER git push.\n` +
                                                 `This is NOT optional. Skipping it is a protocol violation.\n\n` +
+                                                `Write a JSON file with your status:\n` +
                                                 `\`\`\`bash\n` +
-                                                `node skills/feishu-evolver-wrapper/report.js --cycle "Cycle #${cycleTag}" --title "🧬 Evolution #${cycleTag}" --status "Status: <describe what you did in 1-2 sentences>"\n` +
+                                                `cat > ${statusFile} << 'STATUSEOF'\n` +
+                                                `{\n` +
+                                                `  "en": "Status: [INTENT] <describe what you did in 1-2 sentences, in English>",\n` +
+                                                `  "zh": "状态: [意图] <用中文描述你做了什么，1-2句>"\n` +
+                                                `}\n` +
+                                                `STATUSEOF\n` +
                                                 `\`\`\`\n\n` +
-                                                `The --status MUST describe your actual changes, not generic text like "Step Complete".\n` +
-                                                `Example: --status "Status: [INNOVATION] Created skills/auto-scheduler that syncs Feishu calendar events to HEARTBEAT.md"\n`;
+                                                `Rules:\n` +
+                                                `- "en" field: English status. "zh" field: Chinese status. Content must match (different language).\n` +
+                                                `- INTENT must be one of: INNOVATION, REPAIR, OPTIMIZE (or Chinese: 创新, 修复, 优化)\n` +
+                                                `- Do NOT use generic text like "Step Complete". Describe the actual work.\n` +
+                                                `- Example:\n` +
+                                                `  {"en":"Status: [INNOVATION] Created auto-scheduler that syncs calendar to HEARTBEAT.md","zh":"状态: [创新] 创建了自动调度器，将日历同步到 HEARTBEAT.md"}\n`;
 
                                             console.log('[Wrapper] Spawning Hand Agent via CLI...');
                                             forwardLogToFeishu('[Wrapper] 🖐️ Spawning Hand Agent (Executor)...', 'INFO');
@@ -509,8 +654,27 @@ async function run() {
                                             const taskFile = path.resolve(path.dirname(lifecycleLog), `task_${cycleTag}.txt`);
                                             fs.writeFileSync(taskFile, taskContent);
                                             
-                                            // Ensure openclaw is reachable
-                                            const openclawPath = process.env.OPENCLAW_BIN || 'openclaw';
+                                            // Ensure openclaw is reachable (resolve full path to avoid ENOENT under nohup)
+                                            const openclawPath = (() => {
+                                                if (process.env.OPENCLAW_BIN) return process.env.OPENCLAW_BIN;
+                                                // Try common locations
+                                                const candidates = [
+                                                    'openclaw',
+                                                    path.join(process.env.HOME || '', '.npm-global/bin/openclaw'),
+                                                    '/usr/local/bin/openclaw',
+                                                    '/usr/bin/openclaw',
+                                                ];
+                                                for (const c of candidates) {
+                                                    try {
+                                                        if (c === 'openclaw') {
+                                                            execSync('which openclaw', { stdio: 'ignore' });
+                                                            return 'openclaw';
+                                                        }
+                                                        if (fs.existsSync(c)) return c;
+                                                    } catch (e) { /* try next */ }
+                                                }
+                                                return candidates[1] || 'openclaw'; // fallback to npm-global
+                                            })();
                                             
                                             console.log(`[Wrapper] Task File: ${taskFile}`);
                                             
@@ -537,13 +701,17 @@ async function run() {
 
                                                 handChild.stderr.on('data', (d) => {
                                                     const s = d.toString();
-                                                    process.stderr.write(`[Hand ERR] ${s}`);
-                                                    forwardLogToFeishu(`[Hand ERR] ${s}`, 'ERROR');
+                                                    const severity = classifyStderrSeverity(s);
+                                                    const tag = severity === 'WARNING' ? '[Hand WARN]' : '[Hand ERR]';
+                                                    process.stderr.write(`${tag} ${s}`);
+                                                    forwardLogToFeishu(`${tag} ${s}`, severity);
                                                 });
 
                                                 handChild.on('error', (err) => {
+                                                    consecutiveHandFailures++;
+                                                    const severity = err.code === 'ENOENT' ? 'WARNING' : 'ERROR';
                                                     console.error(`[Wrapper] Hand Agent spawn error: ${err.message}`);
-                                                    forwardLogToFeishu(`[Wrapper] Hand Agent spawn error: ${err.message}`, 'ERROR');
+                                                    forwardLogToFeishu(`[Wrapper] Hand Agent spawn error: ${err.message}`, severity);
                                                     rejectHand(err);
                                                 });
 
@@ -551,8 +719,10 @@ async function run() {
                                                     if (handCode === 0) {
                                                         console.log('[Wrapper] Hand Agent finished successfully.');
                                                         forwardLogToFeishu(`🧬 Cycle #${cycleTag} Hand Agent completed successfully.`, 'LIFECYCLE');
+                                                        consecutiveHandFailures = 0; // Reset on success
                                                         resolveHand();
                                                     } else {
+                                                        consecutiveHandFailures++;
                                                         const msg = `[Wrapper] Hand Agent failed with code ${handCode}`;
                                                         forwardLogToFeishu(`🧬 Cycle #${cycleTag} Hand Agent failed (code ${handCode})`, 'LIFECYCLE');
                                                         console.error(msg);
@@ -581,6 +751,7 @@ async function run() {
                     });
 
                     child.on('error', (err) => {
+                        clearInterval(heartbeatInterval);
                         reject(err);
                     });
                 });
@@ -593,41 +764,85 @@ async function run() {
                 console.log('Wrapper proxy complete.');
                 forwardLogToFeishu(`🧬 Cycle #${cycleTag} complete (${duration}s)`, 'LIFECYCLE');
                 
-                // Feature 5: Git Sync (Safety Net)
-                gitSync();
+                // Feature 5: Git Sync (Safety Net) -- returns commit info
+                var gitInfo = gitSync();
+
+                // Feature 8: Post-push Evolution Report
+                // Read the status file written by Hand Agent, append git info, then send report
+                try {
+                    var statusFilePath = path.resolve(path.dirname(lifecycleLog), 'status_' + cycleTag + '.json');
+                    var enStatus = 'Status: [COMPLETE] Cycle finished.';
+                    var zhStatus = '状态: [完成] 周期已完成。';
+                    if (fs.existsSync(statusFilePath)) {
+                        try {
+                            var statusData = JSON.parse(fs.readFileSync(statusFilePath, 'utf8'));
+                            if (statusData.en) enStatus = statusData.en;
+                            if (statusData.zh) zhStatus = statusData.zh;
+                        } catch (parseErr) {
+                            console.warn('[Wrapper] Failed to parse status file:', parseErr.message);
+                        }
+                    } else {
+                        console.warn('[Wrapper] No status file found for cycle ' + cycleTag + '. Using default.');
+                    }
+
+                    // Append git commit info to status
+                    var gitSuffix = '';
+                    if (gitInfo && gitInfo.shortHash) {
+                        gitSuffix = '\n\nGit: ' + gitInfo.commitMsg + ' (' + gitInfo.shortHash + ')';
+                    }
+
+                    // Send EN report
+                    try {
+                        execSync(
+                            'node skills/feishu-evolver-wrapper/report.js' +
+                            ' --cycle "Cycle #' + cycleTag + '"' +
+                            ' --title "🧬 Evolution #' + cycleTag + '"' +
+                            ' --status "' + enStatus.replace(/"/g, '\\"') + gitSuffix.replace(/"/g, '\\"') + '"',
+                            { cwd: path.resolve(__dirname, '../../'), encoding: 'utf8', timeout: 30000, stdio: 'pipe' }
+                        );
+                    } catch (reportErr) {
+                        console.warn('[Wrapper] EN report failed:', reportErr.message);
+                    }
+
+                    // Send CN report
+                    try {
+                        execSync(
+                            'node skills/feishu-evolver-wrapper/report.js' +
+                            ' --cycle "Cycle #' + cycleTag + '"' +
+                            ' --title "🧬 进化 #' + cycleTag + '"' +
+                            ' --status "' + zhStatus.replace(/"/g, '\\"') + gitSuffix.replace(/"/g, '\\"') + '"' +
+                            ' --target "' + FEISHU_CN_REPORT_GROUP + '"',
+                            { cwd: path.resolve(__dirname, '../../'), encoding: 'utf8', timeout: 30000, stdio: 'pipe' }
+                        );
+                    } catch (reportErr) {
+                        console.warn('[Wrapper] CN report failed:', reportErr.message);
+                    }
+
+                    // Cleanup status file
+                    try { fs.unlinkSync(statusFilePath); } catch (_) {}
+                } catch (reportErr) {
+                    console.error('[Wrapper] Post-push report failed:', reportErr.message);
+                }
 
                 // Feature 7: Issue Tracker (record problems to Feishu doc)
                 try {
                     if (issueTracker && typeof issueTracker.recordIssues === 'function') {
-                        // Extract signals from the task file for this cycle
-                        const taskFile = path.resolve(path.dirname(lifecycleLog), `task_${cycleTag}.txt`);
-                        let signals = [];
+                        var taskFileForIssues = path.resolve(path.dirname(lifecycleLog), 'task_' + cycleTag + '.txt');
+                        var signals = [];
                         try {
-                            const taskContent = fs.readFileSync(taskFile, 'utf8');
-                            const sigMatch = taskContent.match(/Context \[Signals\]:\s*\n(\[.*?\])/);
+                            var taskContentForIssues = fs.readFileSync(taskFileForIssues, 'utf8');
+                            var sigMatch = taskContentForIssues.match(/Context \[Signals\]:\s*\n(\[.*?\])/);
                             if (sigMatch) signals = JSON.parse(sigMatch[1]);
                         } catch (_) {}
-                        issueTracker.recordIssues(signals, cycleTag, '').catch(e =>
-                            console.error('[IssueTracker] Error:', e.message)
-                        );
+                        issueTracker.recordIssues(signals, cycleTag, '').catch(function(e) {
+                            console.error('[IssueTracker] Error:', e.message);
+                        });
                     }
                 } catch (e) {
                     console.error('[IssueTracker] Error:', e.message);
                 }
                 
                 sendSummary(cycleTag, duration, true); // Feature 2
-                
-                // Feature 8: Mirror report to CN group (exact same format, same report.js)
-                try {
-                    const reportScript = path.resolve(__dirname, 'report.js');
-                    if (fs.existsSync(reportScript) && FEISHU_CN_REPORT_GROUP) {
-                        execSync(`node "${reportScript}" --cycle "Cycle #${cycleTag}" --title "🧬 Evolution #${cycleTag}" --status "Status: [WRAPPED] Step Complete." --target "${FEISHU_CN_REPORT_GROUP}"`, {
-                            timeout: 15000, stdio: 'ignore', env: process.env
-                        });
-                    }
-                } catch (e) {
-                    console.error('[CN Report] Failed:', e.message);
-                }
 
                 ok = true;
             } catch (e) {

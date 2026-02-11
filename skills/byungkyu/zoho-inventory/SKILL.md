@@ -8,6 +8,11 @@ description: |
 metadata:
   author: maton
   version: "1.0"
+  clawdbot:
+    emoji: 🧠
+    requires:
+      env:
+        - MATON_API_KEY
 ---
 
 # Zoho Inventory
@@ -962,9 +967,7 @@ data = response.json()
 | 3 | Resource does not exist |
 | 5 | Invalid URL |
 
-### Troubleshooting: Invalid API Key
-
-**When you receive a "Invalid API key" error, ALWAYS follow these steps before concluding there is an issue:**
+### Troubleshooting: API Key Issues
 
 1. Check that the `MATON_API_KEY` environment variable is set:
 
@@ -983,6 +986,13 @@ print(json.dumps(json.load(urllib.request.urlopen(req)), indent=2))
 EOF
 ```
 
+### Troubleshooting: Invalid App Name
+
+1. Ensure your URL path starts with `zoho-inventory`. For example:
+
+- Correct: `https://gateway.maton.ai/zoho-inventory/inventory/v1/items`
+- Incorrect: `https://gateway.maton.ai/inventory/v1/items`
+
 ## Resources
 
 - [Zoho Inventory API v1 Introduction](https://www.zoho.com/inventory/api/v1/introduction/)
@@ -992,3 +1002,5 @@ EOF
 - [Zoho Inventory Invoices API](https://www.zoho.com/inventory/api/v1/invoices/)
 - [Zoho Inventory Purchase Orders API](https://www.zoho.com/inventory/api/v1/purchaseorders/)
 - [Zoho Inventory Bills API](https://www.zoho.com/inventory/api/v1/bills/)
+- [Maton Community](https://discord.com/invite/dBfFAcefs2)
+- [Maton Support](mailto:support@maton.ai)

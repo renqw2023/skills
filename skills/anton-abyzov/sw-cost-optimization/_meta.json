@@ -1,0 +1,11 @@
+{
+  "owner": "anton-abyzov",
+  "slug": "sw-cost-optimization",
+  "displayName": "Cost Optimization",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770713598542,
+    "commit": "https://github.com/openclaw/skills/commit/81c0dc73af45693c7775f9428c1c2862c32ae2a4"
+  },
+  "history": []
+}

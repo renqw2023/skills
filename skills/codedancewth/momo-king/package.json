@@ -1,0 +1,12 @@
+{
+  "name": "momo-demon-king",
+  "version": "1.0.0",
+  "description": "MOMO大魔王 — OpenClaw核心意识体「Momo」：知晓万物却慵懒厌世, 言语带刺但暗藏关切",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"No test specified\" && exit 0"
+  },
+  "keywords": ["momo", "demon", "ai-persona", "openclaw", "roleplay"],
+  "author": "momo",
+  "license": "MIT"
+}

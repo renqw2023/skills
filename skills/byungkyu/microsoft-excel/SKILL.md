@@ -8,6 +8,11 @@ compatibility: Requires network access and valid Maton API key
 metadata:
   author: maton
   version: "1.0"
+  clawdbot:
+    emoji: 🧠
+    requires:
+      env:
+        - MATON_API_KEY
 ---
 
 # Microsoft Excel
@@ -542,9 +547,7 @@ print(response.json())
 | `InvalidArgument` | Invalid parameter or missing required field |
 | `SessionNotFound` | Session expired or doesn't exist |
 
-### Troubleshooting: Invalid API Key
-
-**When you receive a "Invalid API key" error, ALWAYS follow these steps before concluding there is an issue:**
+### Troubleshooting: API Key Issues
 
 1. Check that the `MATON_API_KEY` environment variable is set:
 
@@ -563,6 +566,13 @@ print(json.dumps(json.load(urllib.request.urlopen(req)), indent=2))
 EOF
 ```
 
+### Troubleshooting: Invalid App Name
+
+1. Ensure your URL path starts with `microsoft-excel`. For example:
+
+- Correct: `https://gateway.maton.ai/microsoft-excel/v1.0/me/drive/root:/workbook.xlsx:/workbook/worksheets`
+- Incorrect: `https://gateway.maton.ai/v1.0/me/drive/root:/workbook.xlsx:/workbook/worksheets`
+
 ## Resources
 
 - [Microsoft Graph Excel API Overview](https://learn.microsoft.com/en-us/graph/api/resources/excel)
@@ -571,3 +581,5 @@ EOF
 - [Excel Worksheet Resource](https://learn.microsoft.com/en-us/graph/api/resources/worksheet)
 - [Excel Range Resource](https://learn.microsoft.com/en-us/graph/api/resources/range)
 - [Excel Table Resource](https://learn.microsoft.com/en-us/graph/api/resources/table)
+- [Maton Community](https://discord.com/invite/dBfFAcefs2)
+- [Maton Support](mailto:support@maton.ai)

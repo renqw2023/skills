@@ -3,7 +3,7 @@ const path = require('path');
 const os = require('os');
 const { execSync } = require('child_process');
 const { getRepoRoot, getMemoryDir } = require('./gep/paths');
-const { extractSignals } = require('./gep/signals');
+const { extractSignals, analyzeRecentHistory } = require('./gep/signals');
 const {
   loadGenes,
   loadCapsules,
@@ -641,18 +641,14 @@ async function run() {
     recordOutcomeFromState({ signals, observations });
   } catch (e) {
     // If we can't read/write memory graph, refuse to evolve (no "memoryless evolution").
-    console.error(`[MemoryGraph] Outcome write failed: ${e.message}`);
-    console.error(`[MemoryGraph] Refusing to evolve without causal memory. Target: ${memoryGraphPath()}`);
-    process.exit(2);
+    throw new Error(`MemoryGraph Outcome write failed: ${e.message}`);
   }
 
   // Memory Graph: record current signals as a first-class node. If this fails, refuse to evolve.
   try {
     recordSignalSnapshot({ signals, observations });
   } catch (e) {
-    console.error(`[MemoryGraph] Signal snapshot write failed: ${e.message}`);
-    console.error(`[MemoryGraph] Refusing to evolve without causal memory. Target: ${memoryGraphPath()}`);
-    process.exit(2);
+    throw new Error(`MemoryGraph Signal snapshot write failed: ${e.message}`);
   }
 
   // Capability candidates (structured, short): persist and preview.
@@ -733,9 +729,7 @@ async function run() {
   try {
     memoryAdvice = getMemoryAdvice({ signals, genes, driftEnabled: IS_RANDOM_DRIFT });
   } catch (e) {
-    console.error(`[MemoryGraph] Read failed: ${e.message}`);
-    console.error(`[MemoryGraph] Refusing to evolve without causal memory. Target: ${memoryGraphPath()}`);
-    process.exit(2);
+    throw new Error(`MemoryGraph Read failed: ${e.message}`);
   }
 
   const { selectedGene, capsuleCandidates, selector } = selectGeneAndCapsule({
@@ -985,6 +979,9 @@ Mutation directive:
 ${mutationDirective}
 `.trim();
 
+  // Analyze recent history for innovation cooldown
+  const historyAnalysis = analyzeRecentHistory(recentEvents);
+
   const prompt = buildGepPrompt({
     nowIso: new Date().toISOString(),
     context,
@@ -997,6 +994,7 @@ ${mutationDirective}
     capsulesPreview,
     capabilityCandidatesPreview,
     externalCandidatesPreview,
+    recentInnovationTargets: historyAnalysis.recentInnovationTargets || {},
   });
 
   // Optional: emit a compact thought process block for wrappers (noise-controlled).

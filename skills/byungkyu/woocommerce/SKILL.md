@@ -6,6 +6,11 @@ compatibility: Requires network access and valid Maton API key
 metadata:
   author: maton
   version: "1.0"
+  clawdbot:
+    emoji: 🧠
+    requires:
+      env:
+        - MATON_API_KEY
 ---
 
 # WooCommerce
@@ -1213,9 +1218,7 @@ order = response.json()
 }
 ```
 
-### Troubleshooting: Invalid API Key
-
-**When you receive a "Invalid API key" error, ALWAYS follow these steps before concluding there is an issue:**
+### Troubleshooting: API Key Issues
 
 1. Check that the `MATON_API_KEY` environment variable is set:
 
@@ -1233,6 +1236,13 @@ req.add_header('Authorization', f'Bearer {os.environ["MATON_API_KEY"]}')
 print(json.dumps(json.load(urllib.request.urlopen(req)), indent=2))
 EOF
 ```
+
+### Troubleshooting: Invalid App Name
+
+1. Ensure your URL path starts with `woocommerce`. For example:
+
+- Correct: `https://gateway.maton.ai/woocommerce/wp-json/wc/v3/products`
+- Incorrect: `https://gateway.maton.ai/wp-json/wc/v3/products`
 
 ## Resources
 
@@ -1299,3 +1309,5 @@ EOF
 ### System
 - [System Status](https://woocommerce.github.io/woocommerce-rest-api-docs/#system-status)
 - [System Status Tools](https://woocommerce.github.io/woocommerce-rest-api-docs/#system-status-tools)
+- [Maton Community](https://discord.com/invite/dBfFAcefs2)
+- [Maton Support](mailto:support@maton.ai)

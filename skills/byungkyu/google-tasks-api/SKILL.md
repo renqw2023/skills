@@ -8,6 +8,11 @@ compatibility: Requires network access and valid Maton API key
 metadata:
   author: maton
   version: "1.0"
+  clawdbot:
+    emoji: 🧠
+    requires:
+      env:
+        - MATON_API_KEY
 ---
 
 # Google Tasks
@@ -533,9 +538,7 @@ create_response = requests.post(
 | 429 | Rate limited |
 | 4xx/5xx | Passthrough error from Google Tasks API |
 
-### Troubleshooting: Invalid API Key
-
-**When you receive a "Invalid API key" error, ALWAYS follow these steps before concluding there is an issue:**
+### Troubleshooting: API Key Issues
 
 1. Check that the `MATON_API_KEY` environment variable is set:
 
@@ -554,8 +557,17 @@ print(json.dumps(json.load(urllib.request.urlopen(req)), indent=2))
 EOF
 ```
 
+### Troubleshooting: Invalid App Name
+
+1. Ensure your URL path starts with `google-tasks`. For example:
+
+- Correct: `https://gateway.maton.ai/google-tasks/tasks/v1/users/@me/lists`
+- Incorrect: `https://gateway.maton.ai/tasks/v1/users/@me/lists`
+
 ## Resources
 
 - [Google Tasks API Overview](https://developers.google.com/workspace/tasks)
 - [Tasks Reference](https://developers.google.com/workspace/tasks/reference/rest/v1/tasks)
 - [TaskLists Reference](https://developers.google.com/workspace/tasks/reference/rest/v1/tasklists)
+- [Maton Community](https://discord.com/invite/dBfFAcefs2)
+- [Maton Support](mailto:support@maton.ai)

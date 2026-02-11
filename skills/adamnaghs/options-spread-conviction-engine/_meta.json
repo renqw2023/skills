@@ -3,9 +3,15 @@
   "slug": "options-spread-conviction-engine",
   "displayName": "Options Spread Conviction Engine",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1770663054358,
-    "commit": "https://github.com/openclaw/skills/commit/8326ae49d0499adc8e04d0ca34e6653b5f3306d8"
+    "version": "1.2.1",
+    "publishedAt": 1770704638387,
+    "commit": "https://github.com/openclaw/skills/commit/18a8171be6d660909d93b660190fd7850b2758ce"
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1770663054358,
+      "commit": "https://github.com/openclaw/skills/commit/8326ae49d0499adc8e04d0ca34e6653b5f3306d8"
+    }
+  ]
 }

@@ -1,0 +1,11 @@
+{
+  "owner": "anton-abyzov",
+  "slug": "sw-kafka-streams-topology",
+  "displayName": "Kafka Streams Topology",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770713716324,
+    "commit": "https://github.com/openclaw/skills/commit/87ceb7de734caa40870d5b89a36036104cbdf648"
+  },
+  "history": []
+}

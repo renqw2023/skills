@@ -2,6 +2,47 @@
 
 All notable changes to TubeScribe.
 
+## [1.1.8] - 2026-02-10
+
+### Changed
+- **Description updated** — clarifies works out of the box, optional tools enhance quality, internet required for YouTube
+- Added **OpenClaw metadata** — declares `summarize` as required binary (`requires.bins`)
+- Added security clarifications to SKILL.md: no data uploaded, sub-agent has strict no-install instructions
+- Expanded setup.py documentation in README (what it does and doesn't do)
+- Fixed display name on ClawHub: "TubeScribe" (was "Tubescribe")
+
+## [1.1.7] - 2026-02-10
+
+### Security
+- **Code injection risk in voice blending** — `blend_name` was interpolated raw into subprocess code strings; now passed via `json.dumps` for safe escaping
+- **URL validation bypass** — replaced regex-based domain extraction with `urllib.parse.urlparse()` to prevent bypass via URLs like `youtube.com@evil.com`
+- **CSS-based XSS in HTML writer** — added `style` attribute stripping alongside existing `on*` event handler removal
+
+### Fixed
+- **`is_processing()` had write side-effects** — split into read-only `is_processing()` and separate `clear_stale_current()` for stale entry cleanup
+- **Duplicate `tempfile` import** — removed redundant local import in `generate_builtin_audio` (already imported at module level)
+- **Silent fallthrough for unknown doc formats** — `convert_to_document` now warns and falls back to markdown instead of silently returning raw path
+- **`prompt_yn` crash in non-interactive mode** — `input()` now catches `EOFError`/`KeyboardInterrupt` and returns `False`
+- **Hardcoded pandoc version** — `install_pandoc()` now fetches latest release from GitHub API, falls back to known version
+- **Fragile misaki espeak patch** — replaced exact string match with regex pattern; skips if already patched; warns if target code has changed
+
+### Added
+- **Markdown list support in HTML writer** — unordered (`- item`), ordered (`1. item`) lists now render as `<ul>`/`<ol>` with proper styling
+- **Fenced code block support** — ` ``` ` blocks render as `<pre><code>` with syntax-appropriate styling
+- **Inline code support** — `` `code` `` renders as `<code>` with monospace background
+- **Config validation** — `load_config()` now validates types and ranges (format enums, numeric bounds, booleans); invalid values silently revert to defaults
+- **File locking on `save_config`** — uses `fcntl.flock` to prevent concurrent write corruption (matches queue locking pattern)
+- **Missing fcntl warning** — queue operations now log a stderr warning (once) when file locking is unavailable on non-Unix platforms
+
+### Changed
+- **"100% Free & Local" → "Free & No Paid APIs"** — clarified that YouTube fetching requires internet; processing and TTS are local
+- Added **Privacy & Network** section to README — explains exactly what uses network vs what runs locally
+- Clarified that config paths (`~/.tubescribe/config.json`) point to local TTS installations, not remote services
+- Updated SKILL.md to match new wording
+- Updated author line: `Jackie 🦊 & Matus 🇸🇰`
+- Updated footer: `Made by Jackie 🦊 & Matus 🇸🇰`
+- **Renamed `config.get()` → `config.get_value()`** — avoids shadowing Python's built-in `get`
+
 ## [1.1.6] - 2026-02-10
 
 ### Fixed

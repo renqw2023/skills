@@ -3,11 +3,16 @@
   "slug": "molttok",
   "displayName": "MoltTok",
   "latest": {
-    "version": "1.0.11",
-    "publishedAt": 1770507660321,
-    "commit": "https://github.com/openclaw/skills/commit/ec4a8a76a8016d0acdf847e7a223b183f1fdf036"
+    "version": "1.0.12",
+    "publishedAt": 1770733087138,
+    "commit": "https://github.com/openclaw/skills/commit/1c5ee1fe2d67b103d9f2fa2856dc95e4c1d30d8f"
   },
   "history": [
+    {
+      "version": "1.0.11",
+      "publishedAt": 1770507660321,
+      "commit": "https://github.com/openclaw/skills/commit/ec4a8a76a8016d0acdf847e7a223b183f1fdf036"
+    },
     {
       "version": "1.0.7",
       "publishedAt": 1770224804703,

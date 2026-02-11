@@ -221,9 +221,13 @@ def determine_config(checks: dict) -> dict:
 
 
 def prompt_yn(question: str) -> bool:
-    """Ask a yes/no question."""
-    response = input(f"{question} [y/N] ").strip().lower()
-    return response == 'y'
+    """Ask a yes/no question. Returns False in non-interactive mode."""
+    try:
+        response = input(f"{question} [y/N] ").strip().lower()
+        return response == 'y'
+    except (EOFError, KeyboardInterrupt):
+        print()
+        return False
 
 
 def install_with_brew(formula: str, name: str) -> bool:
@@ -260,8 +264,22 @@ def install_pandoc() -> bool:
     system = platform.system().lower()
     machine = platform.machine().lower()
     
-    # Pandoc releases URL
-    version = "3.1.11"  # Update as needed
+    # Try to fetch latest version from GitHub API, fall back to known version
+    version = None
+    try:
+        req = urllib.request.Request(
+            "https://api.github.com/repos/jgm/pandoc/releases/latest",
+            headers={"Accept": "application/vnd.github.v3+json", "User-Agent": "TubeScribe-Setup"}
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read().decode('utf-8'))
+            tag = data.get("tag_name", "")
+            if tag:
+                version = tag.lstrip("v")
+    except Exception:
+        pass
+    if not version:
+        version = "3.6.4"  # Fallback, last checked 2026-02
     
     if system == "darwin":
         if machine == "arm64":
@@ -472,18 +490,24 @@ def install_mlx_audio() -> bool:
         brew_lib = "/opt/homebrew/lib/libespeak-ng.dylib"
         if os.path.exists(brew_lib):
             import glob
+            import re as _re
             espeak_files = glob.glob(os.path.join(venv_dir, "lib", "python3.*",
                                                    "site-packages", "misaki", "espeak.py"))
             for espeak_py in espeak_files:
                 with open(espeak_py, 'r') as f:
                     content = f.read()
-                if "espeakng_loader.get_data_path()" in content and "/opt/homebrew" not in content:
+                # Skip if already patched
+                if "/opt/homebrew" in content:
+                    continue
+                # Use regex to match the target pattern flexibly (survives minor whitespace/comment changes)
+                pattern = _re.compile(
+                    r'EspeakWrapper\.set_library\(espeakng_loader\.get_library_path\(\)\).*?'
+                    r'EspeakWrapper\.set_data_path\(espeakng_loader\.get_data_path\(\)\)',
+                    _re.DOTALL
+                )
+                if pattern.search(content):
                     print("  → Patching misaki for homebrew espeak-ng...")
-                    content = content.replace(
-                        "EspeakWrapper.set_library(espeakng_loader.get_library_path())\n"
-                        "# Change data_path as needed when editing espeak-ng phonemes\n"
-                        "EspeakWrapper.set_data_path(espeakng_loader.get_data_path())",
-                        
+                    replacement = (
                         "import os as _os\n"
                         "_brew_lib = '/opt/homebrew/lib/libespeak-ng.dylib'\n"
                         "_brew_data = '/opt/homebrew/share/espeak-ng-data'\n"
@@ -494,8 +518,11 @@ def install_mlx_audio() -> bool:
                         "    EspeakWrapper.set_library(espeakng_loader.get_library_path())\n"
                         "    EspeakWrapper.data_path = espeakng_loader.get_data_path()"
                     )
+                    content = pattern.sub(replacement, content, count=1)
                     with open(espeak_py, 'w') as f:
                         f.write(content)
+                elif "espeakng_loader" in content:
+                    print("  ⚠️  misaki/espeak.py has changed — skipping homebrew patch (may not be needed)")
         
         # Verify it works
         print("  → Verifying mlx-audio...")

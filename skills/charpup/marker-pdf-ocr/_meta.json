@@ -1,0 +1,11 @@
+{
+  "owner": "charpup",
+  "slug": "marker-pdf-ocr",
+  "displayName": "Marker PDF OCR",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770718650351,
+    "commit": "https://github.com/openclaw/skills/commit/e8283e116eb53545a63759ab5f0be6240d18e5a5"
+  },
+  "history": []
+}

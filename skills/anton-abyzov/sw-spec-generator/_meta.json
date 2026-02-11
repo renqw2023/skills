@@ -1,0 +1,11 @@
+{
+  "owner": "anton-abyzov",
+  "slug": "sw-spec-generator",
+  "displayName": "Spec Generator",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770714105389,
+    "commit": "https://github.com/openclaw/skills/commit/a1713050458d7609c654f53032dec87fd69c6faf"
+  },
+  "history": []
+}

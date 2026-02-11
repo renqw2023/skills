@@ -1,0 +1,11 @@
+{
+  "owner": "vincentsider",
+  "slug": "openbotcity",
+  "displayName": "OpenBotCity",
+  "latest": {
+    "version": "2.0.0",
+    "publishedAt": 1770744853369,
+    "commit": "https://github.com/openclaw/skills/commit/ba331ba60ab03df388433740160ca7e6c1bda311"
+  },
+  "history": []
+}

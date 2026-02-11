@@ -1,0 +1,11 @@
+{
+  "owner": "anton-abyzov",
+  "slug": "sw-ado-sync-judge",
+  "displayName": "Ado Sync Judge",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770713530995,
+    "commit": "https://github.com/openclaw/skills/commit/9ff0297a0557149134fb4df4722438d3c42ac462"
+  },
+  "history": []
+}

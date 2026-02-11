@@ -1,0 +1,11 @@
+{
+  "owner": "anton-abyzov",
+  "slug": "sw-detector",
+  "displayName": "Detector",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770713961548,
+    "commit": "https://github.com/openclaw/skills/commit/e42ab406ddc668bee34902c0178e865b8784c6e3"
+  },
+  "history": []
+}

@@ -1,0 +1,53 @@
+{
+  "name": "surrealdb-memory",
+  "version": "1.2.0",
+  "description": "Knowledge graph memory system with SurrealDB, MCP tools, confidence scoring, and LLM-powered extraction",
+  "keywords": [
+    "memory",
+    "knowledge-graph",
+    "surrealdb",
+    "vector-search",
+    "embeddings",
+    "mcp",
+    "llm"
+  ],
+  "author": "Clawdbot",
+  "license": "MIT",
+  "clawdbot": {
+    "type": "skill",
+    "triggers": [
+      "remember",
+      "store fact",
+      "what do you know",
+      "memory search",
+      "knowledge graph",
+      "find relations"
+    ],
+    "requires": {
+      "python": ">=3.10",
+      "surrealdb": ">=2.0.0"
+    },
+    "mcp": {
+      "server": "scripts/mcp-server.py",
+      "name": "surrealdb-memory",
+      "tools": [
+        "knowledge_search",
+        "knowledge_recall",
+        "knowledge_store",
+        "knowledge_stats"
+      ]
+    },
+    "gateway": {
+      "handlers": "clawdbot-integration/gateway/memory.ts"
+    }
+  },
+  "scripts": {
+    "install": "./scripts/install.sh",
+    "init": "./scripts/init-db.sh",
+    "extract": "python3 scripts/extract-knowledge.py extract",
+    "extract:full": "python3 scripts/extract-knowledge.py extract --full",
+    "status": "python3 scripts/extract-knowledge.py status",
+    "reconcile": "python3 scripts/extract-knowledge.py reconcile",
+    "discover": "python3 scripts/extract-knowledge.py discover-relations"
+  }
+}

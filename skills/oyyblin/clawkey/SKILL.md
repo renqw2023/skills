@@ -19,11 +19,11 @@ Register your agent under your human owner powered by VeryAI palm verification. 
 
 ## Key files
 
-| File         | Purpose                                                                                       |
-| ------------ | --------------------------------------------------------------------------------------------- |
-| SKILL.md     | https://clawkey.ai/skill.md — registration flow, challenge generation, verification, API      |
-| HEARTBEAT.md | https://clawkey.ai/heartbeat.md — periodic checklist: skill updates, registration status, etc |
-| Identity     | `~/.openclaw/identity/device.json` — OpenClaw deviceId and keys (do not send private key)     |
+| File         | Purpose                                                                                   |
+| ------------ | ----------------------------------------------------------------------------------------- |
+| SKILL.md     | https://clawkey.ai/skill.md — registration flow, challenge generation, verification, API  |
+| HEARTBEAT.md | https://clawkey.ai/heartbeat.md — periodic checklist: registration status, etc            |
+| Identity     | `~/.openclaw/identity/device.json` — OpenClaw deviceId and keys (do not send private key) |
 
 ## Security
 

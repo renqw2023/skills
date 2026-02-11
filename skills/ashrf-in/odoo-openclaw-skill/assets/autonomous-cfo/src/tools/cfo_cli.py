@@ -13,6 +13,12 @@ from src.connectors.odoo_client import OdooClient
 from src.runtime_env import load_env_file
 from src.logic.finance_engine import FinanceEngine
 from src.logic.intelligence_engine import IntelligenceEngine
+from src.reporters.health import FinancialHealthReporter
+from src.reporters.revenue import RevenueReporter
+from src.reporters.aging import AgingReporter
+from src.reporters.expenses import ExpenseReporter
+from src.reporters.executive import ExecutiveReporter
+from src.reporters.adhoc import AdHocReporter
 
 
 def load_settings():
@@ -130,6 +136,49 @@ def main():
     rpc_parser.add_argument("--model", required=True, type=str, help="Odoo model (e.g., res.partner)")
     rpc_parser.add_argument("--method", required=True, type=str, help="Model method (e.g., search_read)")
     rpc_parser.add_argument("--payload", type=str, default="{}", help="JSON object payload (JSON-2: named args, XML-RPC: {args:[], kwargs:{}})")
+
+    # === NEW REPORT COMMANDS (v2.0) ===
+    
+    # Financial Health Report
+    health_parser = subparsers.add_parser("health", help="Financial health report (cash, burn rate, runway)")
+    health_parser.add_argument("--from", dest="date_from", type=str, help="Start date (YYYY-MM-DD)")
+    health_parser.add_argument("--to", dest="date_to", type=str, help="End date (YYYY-MM-DD)")
+    health_parser.add_argument("--output", choices=["whatsapp", "pdf", "both"], default="whatsapp", help="Output format")
+    
+    # Revenue Analytics Report
+    revenue_parser = subparsers.add_parser("revenue", help="Revenue analytics (trends, top customers)")
+    revenue_parser.add_argument("--from", dest="date_from", type=str, help="Start date (YYYY-MM-DD)")
+    revenue_parser.add_argument("--to", dest="date_to", type=str, help="End date (YYYY-MM-DD)")
+    revenue_parser.add_argument("--breakdown", choices=["Month", "Week", "Customer", "Category"], default="Month")
+    revenue_parser.add_argument("--output", choices=["whatsapp", "pdf", "both"], default="whatsapp")
+    
+    # AR/AP Aging Report
+    aging_parser = subparsers.add_parser("aging", help="AR/AP aging report")
+    aging_parser.add_argument("--as-of", dest="as_of_date", type=str, help="As of date (YYYY-MM-DD)")
+    aging_parser.add_argument("--buckets", type=str, default="30,60,90", help="Aging buckets (comma-separated)")
+    aging_parser.add_argument("--output", choices=["whatsapp", "pdf", "both"], default="whatsapp")
+    
+    # Expense Breakdown Report
+    expenses_parser = subparsers.add_parser("expenses", help="Expense breakdown report")
+    expenses_parser.add_argument("--from", dest="date_from", type=str, help="Start date (YYYY-MM-DD)")
+    expenses_parser.add_argument("--to", dest="date_to", type=str, help="End date (YYYY-MM-DD)")
+    expenses_parser.add_argument("--group-by", choices=["Vendor", "Category", "Month"], default="Category")
+    expenses_parser.add_argument("--output", choices=["whatsapp", "pdf", "both"], default="whatsapp")
+    
+    # Executive Summary Report
+    executive_parser = subparsers.add_parser("executive", help="Executive summary (one-page CFO snapshot)")
+    executive_parser.add_argument("--from", dest="date_from", type=str, help="Start date (YYYY-MM-DD)")
+    executive_parser.add_argument("--to", dest="date_to", type=str, help="End date (YYYY-MM-DD)")
+    executive_parser.add_argument("--output", choices=["whatsapp", "pdf", "both"], default="both")
+    
+    # Ad-hoc Custom Report
+    adhoc_parser = subparsers.add_parser("adhoc", help="Custom ad-hoc report builder")
+    adhoc_parser.add_argument("--from", dest="date_from", type=str, help="Start date (YYYY-MM-DD)")
+    adhoc_parser.add_argument("--to", dest="date_to", type=str, help="End date (YYYY-MM-DD)")
+    adhoc_parser.add_argument("--metric-a", type=str, help="First metric (e.g., 'revenue', 'expenses')")
+    adhoc_parser.add_argument("--metric-b", type=str, help="Second metric for comparison")
+    adhoc_parser.add_argument("--granularity", choices=["Day", "Week", "Month", "Quarter"], default="Month")
+    adhoc_parser.add_argument("--output", choices=["whatsapp", "pdf", "both"], default="whatsapp")
 
     args = parser.parse_args()
 
@@ -250,6 +299,100 @@ def main():
                 "method": method,
                 "backend": client.rpc_backend,
                 "result": result,
+            })
+
+        # === NEW REPORT HANDLERS (v2.0) ===
+        
+        elif args.command == "health":
+            reporter = FinancialHealthReporter(finance, intelligence)
+            date_from = args.date_from or (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
+            date_to = args.date_to or datetime.now().strftime("%Y-%m-%d")
+            result = reporter.generate(date_from=date_from, date_to=date_to, company_id=args.company_id)
+            _print_json({
+                "summary": result.summary,
+                "charts": result.charts,
+                "pdf": result.pdf_path,
+                "cards": result.whatsapp_cards,
+                "confidence": result.confidence
+            })
+
+        elif args.command == "revenue":
+            reporter = RevenueReporter(finance, intelligence)
+            date_from = args.date_from or (datetime.now() - timedelta(days=90)).strftime("%Y-%m-%d")
+            date_to = args.date_to or datetime.now().strftime("%Y-%m-%d")
+            result = reporter.generate(
+                date_from=date_from, 
+                date_to=date_to, 
+                breakdown=args.breakdown,
+                company_id=args.company_id
+            )
+            _print_json({
+                "summary": result.summary,
+                "charts": result.charts,
+                "pdf": result.pdf_path,
+                "cards": result.whatsapp_cards
+            })
+
+        elif args.command == "aging":
+            reporter = AgingReporter(finance, intelligence)
+            as_of = args.as_of_date or datetime.now().strftime("%Y-%m-%d")
+            buckets = [int(b.strip()) for b in args.buckets.split(",")]
+            result = reporter.generate(as_of_date=as_of, buckets=buckets, company_id=args.company_id)
+            _print_json({
+                "summary": result.summary,
+                "charts": result.charts,
+                "pdf": result.pdf_path,
+                "cards": result.whatsapp_cards
+            })
+
+        elif args.command == "expenses":
+            reporter = ExpenseReporter(finance, intelligence)
+            date_from = args.date_from or (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
+            date_to = args.date_to or datetime.now().strftime("%Y-%m-%d")
+            result = reporter.generate(
+                date_from=date_from,
+                date_to=date_to,
+                group_by=args.group_by,
+                company_id=args.company_id
+            )
+            _print_json({
+                "summary": result.summary,
+                "charts": result.charts,
+                "pdf": result.pdf_path,
+                "cards": result.whatsapp_cards
+            })
+
+        elif args.command == "executive":
+            reporter = ExecutiveReporter(finance, intelligence)
+            date_from = args.date_from or (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
+            date_to = args.date_to or datetime.now().strftime("%Y-%m-%d")
+            result = reporter.generate(date_from=date_from, date_to=date_to, company_id=args.company_id)
+            _print_json({
+                "summary": result.summary,
+                "kpis": result.data.get("kpis", {}),
+                "alerts": result.data.get("alerts", []),
+                "recommendations": result.data.get("recommendations", []),
+                "charts": result.charts,
+                "pdf": result.pdf_path,
+                "cards": result.whatsapp_cards
+            })
+
+        elif args.command == "adhoc":
+            reporter = AdHocReporter(finance, intelligence)
+            date_from = args.date_from or (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
+            date_to = args.date_to or datetime.now().strftime("%Y-%m-%d")
+            result = reporter.generate(
+                date_from=date_from,
+                date_to=date_to,
+                metric_a=args.metric_a,
+                metric_b=args.metric_b,
+                granularity=args.granularity,
+                company_id=args.company_id
+            )
+            _print_json({
+                "summary": result.summary,
+                "charts": result.charts,
+                "cards": result.whatsapp_cards
             })
 
         else:

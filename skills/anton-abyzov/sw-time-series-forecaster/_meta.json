@@ -1,0 +1,11 @@
+{
+  "owner": "anton-abyzov",
+  "slug": "sw-time-series-forecaster",
+  "displayName": "Time Series Forecaster",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770713813323,
+    "commit": "https://github.com/openclaw/skills/commit/3b5c6c5b416eb700ff889ed2c8ddc21bf9e57383"
+  },
+  "history": []
+}

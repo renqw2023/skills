@@ -1,6 +1,6 @@
 # Mac Reminders Agent
 
-**v1.1.0** | macOS Reminders app integration skill for OpenClaw/Claude agents.
+**v1.1.1** | macOS Reminders app integration skill for OpenClaw/Claude agents.
 
 ## Features
 

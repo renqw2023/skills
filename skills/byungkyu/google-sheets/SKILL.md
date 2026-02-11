@@ -6,6 +6,11 @@ compatibility: Requires network access and valid Maton API key
 metadata:
   author: maton
   version: "1.0"
+  clawdbot:
+    emoji: 🧠
+    requires:
+      env:
+        - MATON_API_KEY
 ---
 
 # Google Sheets
@@ -414,9 +419,7 @@ response = requests.put(
 | 429 | Rate limited (10 req/sec per account) |
 | 4xx/5xx | Passthrough error from Google Sheets API |
 
-### Troubleshooting: Invalid API Key
-
-**When you receive a "Invalid API key" error, ALWAYS follow these steps before concluding there is an issue:**
+### Troubleshooting: API Key Issues
 
 1. Check that the `MATON_API_KEY` environment variable is set:
 
@@ -435,6 +438,13 @@ print(json.dumps(json.load(urllib.request.urlopen(req)), indent=2))
 EOF
 ```
 
+### Troubleshooting: Invalid App Name
+
+1. Ensure your URL path starts with `google-sheets`. For example:
+
+- Correct: `https://gateway.maton.ai/google-sheets/v4/spreadsheets/SPREADSHEET_ID`
+- Incorrect: `https://gateway.maton.ai/v4/spreadsheets/SPREADSHEET_ID`
+
 ## Resources
 
 - [Sheets API Overview](https://developers.google.com/workspace/sheets/api/reference/rest)
@@ -447,3 +457,5 @@ EOF
 - [Append Values](https://developers.google.com/workspace/sheets/api/reference/rest/v4/spreadsheets.values/append)
 - [Batch Get Values](https://developers.google.com/workspace/sheets/api/reference/rest/v4/spreadsheets.values/batchGet)
 - [Batch Update Values](https://developers.google.com/workspace/sheets/api/reference/rest/v4/spreadsheets.values/batchUpdate)
+- [Maton Community](https://discord.com/invite/dBfFAcefs2)
+- [Maton Support](mailto:support@maton.ai)

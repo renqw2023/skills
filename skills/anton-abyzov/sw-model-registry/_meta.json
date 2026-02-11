@@ -1,0 +1,11 @@
+{
+  "owner": "anton-abyzov",
+  "slug": "sw-model-registry",
+  "displayName": "Model Registry",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770713806829,
+    "commit": "https://github.com/openclaw/skills/commit/6cbcd0c2fc79b38644fc2ac4ca514986db1a5b23"
+  },
+  "history": []
+}

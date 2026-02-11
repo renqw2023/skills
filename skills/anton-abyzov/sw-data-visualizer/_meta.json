@@ -1,0 +1,11 @@
+{
+  "owner": "anton-abyzov",
+  "slug": "sw-data-visualizer",
+  "displayName": "Data Visualizer",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770713775966,
+    "commit": "https://github.com/openclaw/skills/commit/0aa9a019f85b74ccd79c43cc3d99662b7ce4cdd9"
+  },
+  "history": []
+}

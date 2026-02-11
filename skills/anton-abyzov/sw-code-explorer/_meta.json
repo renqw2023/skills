@@ -1,0 +1,11 @@
+{
+  "owner": "anton-abyzov",
+  "slug": "sw-code-explorer",
+  "displayName": "Code Explorer",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770713623665,
+    "commit": "https://github.com/openclaw/skills/commit/fc864a418228d57f7e8826449f6ae3b3efc2bcc8"
+  },
+  "history": []
+}

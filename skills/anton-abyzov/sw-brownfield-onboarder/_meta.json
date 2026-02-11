@@ -1,0 +1,11 @@
+{
+  "owner": "anton-abyzov",
+  "slug": "sw-brownfield-onboarder",
+  "displayName": "Brownfield Onboarder",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770713935075,
+    "commit": "https://github.com/openclaw/skills/commit/8409bc1581bf36307c77f0b7d83d244e398d37f7"
+  },
+  "history": []
+}

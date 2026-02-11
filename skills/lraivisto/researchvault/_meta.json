@@ -3,11 +3,21 @@
   "slug": "researchvault",
   "displayName": "ResearchVault",
   "latest": {
-    "version": "2.5.2",
-    "publishedAt": 1770481538116,
-    "commit": "https://github.com/openclaw/skills/commit/16846e69cb9f67391506cf1a672d0b702fc7bc4b"
+    "version": "2.6.2",
+    "publishedAt": 1770755763783,
+    "commit": "https://github.com/openclaw/skills/commit/303d8b84c57625a970da42f054272478bf1482c6"
   },
   "history": [
+    {
+      "version": "2.6.1",
+      "publishedAt": 1770754933262,
+      "commit": "https://github.com/openclaw/skills/commit/6cc5b0482fdf84c56c9a20d55670f0c591b87d19"
+    },
+    {
+      "version": "2.5.2",
+      "publishedAt": 1770481538116,
+      "commit": "https://github.com/openclaw/skills/commit/16846e69cb9f67391506cf1a672d0b702fc7bc4b"
+    },
     {
       "version": "2.5.1",
       "publishedAt": 1770467661689,

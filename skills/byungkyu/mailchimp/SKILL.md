@@ -6,6 +6,11 @@ compatibility: Requires network access and valid Maton API key
 metadata:
   author: maton
   version: "1.0"
+  clawdbot:
+    emoji: 🧠
+    requires:
+      env:
+        - MATON_API_KEY
 ---
 
 # Mailchimp
@@ -1002,9 +1007,7 @@ Mailchimp error responses include detailed information:
 }
 ```
 
-### Troubleshooting: Invalid API Key
-
-**When you receive a "Invalid API key" error, ALWAYS follow these steps before concluding there is an issue:**
+### Troubleshooting: API Key Issues
 
 1. Check that the `MATON_API_KEY` environment variable is set:
 
@@ -1023,9 +1026,18 @@ print(json.dumps(json.load(urllib.request.urlopen(req)), indent=2))
 EOF
 ```
 
+### Troubleshooting: Invalid App Name
+
+1. Ensure your URL path starts with `mailchimp`. For example:
+
+- Correct: `https://gateway.maton.ai/mailchimp/3.0/lists`
+- Incorrect: `https://gateway.maton.ai/3.0/lists`
+
 ## Resources
 
 - [Mailchimp Marketing API Documentation](https://mailchimp.com/developer/marketing/)
 - [API Reference](https://mailchimp.com/developer/marketing/api/)
 - [Quick Start Guide](https://mailchimp.com/developer/marketing/guides/quick-start/)
 - [Release Notes](https://mailchimp.com/developer/release-notes/)
+- [Maton Community](https://discord.com/invite/dBfFAcefs2)
+- [Maton Support](mailto:support@maton.ai)

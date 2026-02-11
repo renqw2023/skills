@@ -4,15 +4,107 @@ const path = require('path');
 const os = require('os');
 const { program } = require('commander');
 const { execSync } = require('child_process');
-const { sendCard } = require('../feishu-card/send.js');
+const { sendCard } = require('./feishu-helper.js');
 const { fetchWithAuth } = require('../common/feishu-client.js');
+const crypto = require('crypto');
+
+// --- REPORT DEDUP ---
+const DEDUP_FILE = path.resolve(__dirname, '../../memory/report_dedup.json');
+const DEDUP_WINDOW_MS = 30 * 60 * 1000; // 30 minutes
+
+function isDuplicateReport(reportKey) {
+    if (process.env.EVOLVE_REPORT_DEDUP === '0') return false;
+    try {
+        var cache = {};
+        if (fs.existsSync(DEDUP_FILE)) {
+            cache = JSON.parse(fs.readFileSync(DEDUP_FILE, 'utf8'));
+        }
+        var now = Date.now();
+        // Prune old entries
+        for (var k in cache) {
+            if (now - cache[k] > DEDUP_WINDOW_MS) delete cache[k];
+        }
+        if (cache[reportKey]) {
+            console.log('[Wrapper] Report dedup: skipping duplicate report (' + reportKey.slice(0, 40) + '...)');
+            return true;
+        }
+        cache[reportKey] = now;
+        var tmpDedup = DEDUP_FILE + '.tmp.' + process.pid;
+        fs.writeFileSync(tmpDedup, JSON.stringify(cache, null, 2));
+        fs.renameSync(tmpDedup, DEDUP_FILE);
+        return false;
+    } catch (e) {
+        // On error, allow the report through
+        return false;
+    }
+}
+
+// --- DASHBOARD LOGIC START ---
+const EVENTS_FILE = path.resolve(__dirname, '../../assets/gep/events.jsonl');
+
+function getDashboardStats() {
+    if (!fs.existsSync(EVENTS_FILE)) return null;
+    
+    try {
+        const content = fs.readFileSync(EVENTS_FILE, 'utf8');
+        const lines = content.split('\n').filter(Boolean);
+        const events = lines.map(l => { try { return JSON.parse(l); } catch(e){ return null; } }).filter(e => e && e.type === 'EvolutionEvent');
+        
+        if (events.length === 0) return null;
+
+        const total = events.length;
+        const successful = events.filter(e => e.outcome && e.outcome.status === 'success').length;
+        const successRate = ((successful / total) * 100).toFixed(1);
+        
+        const intents = { innovate: 0, repair: 0, optimize: 0 };
+        events.forEach(e => {
+            if (intents[e.intent] !== undefined) intents[e.intent]++;
+        });
+
+        const recent = events.slice(-5).reverse().map(e => ({
+            id: e.id.replace('evt_', '').substring(0, 6),
+            intent: e.intent === 'innovate' ? '✨' : (e.intent === 'repair' ? '🔧' : '⚡'),
+            status: e.outcome && e.outcome.status === 'success' ? '✅' : '❌'
+        }));
+
+        return { total, successRate, intents, recent };
+    } catch (e) {
+        return null;
+    }
+}
+// --- DASHBOARD LOGIC END ---
+
+let runSkillsMonitor;
+try {
+    runSkillsMonitor = require('../evolver/src/ops/skills_monitor').run;
+} catch (e) {
+    try { runSkillsMonitor = require('./skills_monitor.js').run; } catch (e2) {
+        runSkillsMonitor = () => [];
+    }
+}
+
+// INNOVATION: Load dedicated System Monitor (Native Node) if available
+let sysMon;
+try {
+    // Try to load the optimized monitor first
+    sysMon = require('../common/system-monitor/index.js');
+} catch (e) {
+    // Fallback: minimal implementation using child_process (discouraged but functional)
+    sysMon = {
+        getProcessCount: () => { try { return execSync('ps -e | wc -l').toString().trim(); } catch(e){ return '?'; } },
+        getDiskUsage: () => { try { return execSync("df -h / | tail -1 | awk '{print $5}'").toString().trim(); } catch(e){ return '?'; } },
+        getLastLine: (f) => { try { return execSync(`tail -n 1 "${f}"`).toString().trim(); } catch(e){ return ''; } }
+    };
+}
 
 program
   .option('-s, --status <text>', 'Status text/markdown content')
   .option('-f, --file <path>', 'Path to markdown file content')
   .option('-c, --cycle <id>', 'Evolution Cycle ID')
   .option('--title <text>', 'Card Title override')
+  .option('--color <color>', 'Header color (blue/red/green/orange)', 'blue')
   .option('--target <id>', 'Target User/Chat ID')
+  .option('--lang <lang>', 'Language (en|cn)', 'en')
   .parse(process.argv);
 
 const options = program.opts();
@@ -77,7 +169,6 @@ function getCycleInfo() {
 async function findEvolutionGroup() {
     try {
         let pageToken = '';
-        // console.log('[Wrapper] Searching for Evolution Group (🧬)...');
         do {
             const url = `https://open.feishu.cn/open-apis/im/v1/chats?page_size=100${pageToken ? `&page_token=${pageToken}` : ''}`;
             const res = await fetchWithAuth(url, { method: 'GET' });
@@ -89,7 +180,6 @@ async function findEvolutionGroup() {
             }
 
             if (data.data && data.data.items) {
-                // Find group with '🧬' in name
                 const group = data.data.items.find(c => c.name && c.name.includes('🧬'));
                 if (group) {
                     console.log(`[Wrapper] Found Evolution Group: ${group.name} (${group.chat_id})`);
@@ -124,12 +214,20 @@ if (!content) {
 // Prepare Title
 const cycleInfo = options.cycle ? { id: options.cycle, duration: 'Manual' } : getCycleInfo();
 const cycleId = cycleInfo.id;
-const title = options.title || `🧬 Evolution #${cycleId} Log`;
+let title = options.title;
+
+if (!title) {
+    // Default title based on lang
+    if (options.lang === 'cn') {
+        title = `🧬 进化 #${cycleId} 日志`;
+    } else {
+        title = `🧬 Evolution #${cycleId} Log`;
+    }
+}
 
 // Resolve Target
-const MASTER_ID = process.env.OPENCLAW_MASTER_ID || ''; // Set via env var, no hardcoded fallback
+const MASTER_ID = process.env.OPENCLAW_MASTER_ID || '';
 
-// Execute direct integration
 (async () => {
     let target = options.target;
 
@@ -148,42 +246,42 @@ const MASTER_ID = process.env.OPENCLAW_MASTER_ID || ''; // Set via env var, no h
         process.exit(1);
     }
 
+    // --- DASHBOARD SNAPSHOT ---
+    let dashboardMd = '';
+    const stats = getDashboardStats();
+    if (stats) {
+        const trend = stats.recent.map(e => `${e.intent}${e.status}`).join(' ');
+        
+        dashboardMd = `\n\n---
+**📊 Dashboard Snapshot**
+- **Success Rate:** ${stats.successRate}% (${stats.total} Cycles)
+- **Breakdown:** ✨${stats.intents.innovate} 🔧${stats.intents.repair} ⚡${stats.intents.optimize}
+- **Recent:** ${trend}`;
+    }
+    // --- END SNAPSHOT ---
+
     try {
         console.log(`[Wrapper] Reporting Cycle #${cycleId} to ${target}...`);
         
-        // Direct call to feishu-card logic
-        // Bypasses shell escaping issues and temporary files
-        
-        // Monitor Process Count (Leak Detection)
-        const procCount = (() => { 
-            try { 
-                // Optimization: Use /proc on Linux to avoid spawning a shell
-                if (process.platform === 'linux' && fs.existsSync('/proc')) {
-                     // Filter only numeric directories (PIDs)
-                     return fs.readdirSync('/proc').filter(f => /^\d+$/.test(f)).length;
-                }
-                return execSync('ps -e | wc -l', { timeout: 1000 }).toString().trim(); 
-            } catch(e) { return '?'; } 
-        })();
-        
-        // System Health
-        const memUsage = Math.round(process.memoryUsage().rss / 1024 / 1024);
-        const uptime = Math.round(process.uptime());
-        
-        // Load Average
-        const loadAvg = os.loadavg()[0].toFixed(2);
-        
-        // Disk Usage (Root)
+        let procCount = '?';
+        let memUsage = '?';
+        let uptime = '?';
+        let loadAvg = '?';
         let diskUsage = '?';
+
         try {
-            const df = execSync('df -h / | tail -1 | awk \'{print $5}\'', { timeout: 1000 }).toString().trim();
-            diskUsage = df;
-        } catch (e) {}
+            procCount = sysMon.getProcessCount();
+            memUsage = Math.round(process.memoryUsage().rss / 1024 / 1024);
+            uptime = Math.round(process.uptime());
+            loadAvg = os.loadavg()[0].toFixed(2);
+            diskUsage = sysMon.getDiskUsage('/');
+        } catch(e) {
+            console.warn('[Wrapper] Stats collection failed:', e.message);
+        }
 
         // --- ERROR LOG CHECK ---
         let errorAlert = '';
         try {
-            // Dynamic Evolver Path Resolution
             const evolverDirName = ['private-evolver', 'evolver', 'capability-evolver'].find(d => fs.existsSync(path.resolve(__dirname, `../${d}/index.js`))) || 'private-evolver';
             const evolverDir = path.resolve(__dirname, `../${evolverDirName}`);
             const errorLogPath = path.join(evolverDir, 'evolution_error.log');
@@ -193,30 +291,97 @@ const MASTER_ID = process.env.OPENCLAW_MASTER_ID || ''; // Set via env var, no h
                 const now = new Date();
                 const diffMs = now - stats.mtime;
                 
-                // If error log was touched in the last 10 minutes, report it
                 if (diffMs < 10 * 60 * 1000) {
-                    // Optimized: Use tail to read only the last line, avoiding memory spike on large logs
-                    const lastLine = execSync(`tail -n 1 "${errorLogPath}"`, { timeout: 1000, encoding: 'utf8' }).trim().substring(0, 200);
+                    const lastLine = (sysMon.getLastLine(errorLogPath) || '').substring(0, 200);
                     errorAlert = `\n\n⚠️ **CRITICAL ALERT**: System reported a failure ${(diffMs/1000/60).toFixed(1)}m ago.\n> ${lastLine}`;
                 }
             }
+        } catch (e) {}
+
+        // --- SKILL HEALTH CHECK ---
+        let healthAlert = '';
+        try {
+            const issues = runSkillsMonitor();
+            if (issues && issues.length > 0) {
+                healthAlert = `\n\n🚨 **SKILL HEALTH WARNING**: ${issues.length} skill(s) broken.\n`;
+                issues.slice(0, 3).forEach(issue => {
+                    healthAlert += `> **${issue.name}**: ${issue.issues.join(', ')}\n`;
+                });
+                if (issues.length > 3) healthAlert += `> ...and ${issues.length - 3} more.`;
+            }
         } catch (e) {
-            // Ignore error checking failures
+            console.warn('[Wrapper] Skill monitor failed:', e.message);
         }
 
-        const finalContent = `${content}${errorAlert}\n\n*(Process Count: ${procCount} | Memory: ${memUsage}MB | Uptime: ${uptime}s | Load: ${loadAvg} | Disk: ${diskUsage} | Cycle Duration: ${cycleInfo.duration})*`;
+        const isChineseReport = options.lang === 'cn';
 
+        const labels = isChineseReport
+            ? {
+                proc: '进程',
+                mem: '内存',
+                up: '运行',
+                load: '负载',
+                disk: '磁盘',
+                loop: '循环',
+                skills: '技能',
+                ok: '正常',
+                loopOn: '运行中',
+                loopOff: '已停止'
+            }
+            : {
+                proc: 'Proc',
+                mem: 'Mem',
+                up: 'Up',
+                load: 'Load',
+                disk: 'Disk',
+                loop: 'Loop',
+                skills: 'Skills',
+                ok: 'OK',
+                loopOn: 'ON',
+                loopOff: 'OFF'
+            };
+
+        // --- LOOP STATUS CHECK ---
+        let loopStatus = 'UNKNOWN';
+        try {
+            const lifecycle = require('./lifecycle.js');
+            // Mock status call to avoid exec/logs spam if possible, or use status --json?
+            // Actually lifecycle.status() prints to console. We should export a helper.
+            // For now, assume if pid file exists, it's running.
+            const PID_FILE = path.resolve(__dirname, '../../memory/evolver_wrapper.pid');
+            if (fs.existsSync(PID_FILE)) {
+                 try { process.kill(parseInt(fs.readFileSync(PID_FILE, 'utf8').trim(), 10), 0); loopStatus = labels.loopOn; } 
+                 catch(e) { loopStatus = labels.loopOff; }
+            } else {
+                 loopStatus = labels.loopOff;
+            }
+        } catch (e) {
+            loopStatus = `${labels.loopOff} (?)`;
+        }
+
+        let footerStats = `${labels.proc}: ${procCount} | ${labels.mem}: ${memUsage}MB | ${labels.up}: ${uptime}s | ${labels.load}: ${loadAvg} | ${labels.disk}: ${diskUsage} | 🔁 ${labels.loop}: ${loopStatus}`;
+        if (!healthAlert) footerStats += ` | 🛡️ ${labels.skills}: ${labels.ok}`;
+
+        const finalContent = `${content}${errorAlert}${healthAlert}${dashboardMd}`;
+
+        // --- DEDUP CHECK ---
+        var statusHash = crypto.createHash('md5').update(options.status || '').digest('hex').slice(0, 12);
+        var reportKey = `${cycleId}:${target}:${title}:${statusHash}`;
+        if (isDuplicateReport(reportKey)) {
+            console.log('[Wrapper] Duplicate report suppressed.');
+            process.exit(0);
+        }
 
         await sendCard({
             target: target,
             title: title,
             text: finalContent,
-            color: 'blue'
+            note: footerStats,
+            color: options.color || 'blue'
         });
         
         console.log('[Wrapper] Report sent successfully.');
 
-        // 📝 Persistence: Log to local file for audit trail
         try {
             const LOG_FILE = path.resolve(__dirname, '../../logs/evolution_reports.log');
             if (!fs.existsSync(path.dirname(LOG_FILE))) {

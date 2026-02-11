@@ -18,11 +18,8 @@ BRIEFINGS_DIR="$(cfg output.folder)"
 DATE=$(date +%Y-%m-%d)
 OUTPUT_DIR="$BRIEFINGS_DIR/$DATE"
 
-# Colors
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m'
+# User-Agent for sites behind Cloudflare
+UA="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
 
 usage() {
     echo "Briefing Room — Helper Script"
@@ -33,6 +30,8 @@ usage() {
     echo "  setup       Check dependencies and show status"
     echo "  init        Create today's output folder"
     echo "  weather     Fetch weather data (JSON)"
+    echo "  trends      Fetch X/Twitter trends (US + UK + Worldwide)"
+    echo "  webtrends   Fetch Google Trends (US + UK + Worldwide)"
     echo "  crypto      Fetch crypto prices (JSON)"
     echo "  open        Open today's briefing folder"
     echo "  list        List all briefings"
@@ -71,6 +70,99 @@ cmd_weather() {
     echo "=== 7-Day Forecast ==="
     curl -s --max-time 10 "https://api.open-meteo.com/v1/forecast?latitude=$lat&longitude=$lon&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weather_code&timezone=$tz_encoded"
     echo ""
+}
+
+cmd_trends() {
+    echo "=== X/Twitter Trends ==="
+    # Configurable regions: comma-separated slugs in config, or default US+UK+Worldwide
+    local regions_cfg
+    regions_cfg="$(cfg trends.regions)"
+    if [ -z "$regions_cfg" ] || [ "$regions_cfg" = "None" ]; then
+        regions_cfg="united-states,united-kingdom,"
+    fi
+
+    IFS=',' read -ra slugs <<< "$regions_cfg"
+    for slug in "${slugs[@]}"; do
+        slug="$(echo "$slug" | xargs)"  # trim whitespace
+        local label url
+        if [ -z "$slug" ]; then
+            label="Worldwide"
+            url="https://getdaytrends.com/"
+        else
+            label="${slug//-/ }"
+            # Capitalize words
+            label="$(echo "$label" | awk '{for(i=1;i<=NF;i++) $i=toupper(substr($i,1,1)) substr($i,2)}1')"
+            url="https://getdaytrends.com/$slug/"
+        fi
+        echo ""
+        echo "--- $label ---"
+        local html
+        html="$(curl -s --max-time 15 -A "$UA" "$url" 2>/dev/null)" || true
+        if [ -z "$html" ]; then
+            echo "(failed to fetch)"
+            continue
+        fi
+        echo "$html" | python3 -c "
+import sys, urllib.parse, re
+html = sys.stdin.read()
+trends = re.findall(r'/trend/([^/]+)/', html)
+seen = set()
+for t in trends:
+    name = urllib.parse.unquote(t)
+    if name not in seen:
+        seen.add(name)
+        print(name)
+" | head -25
+    done
+}
+
+cmd_webtrends() {
+    echo "=== Google Trends (Web) ==="
+    # Configurable regions for Google Trends
+    local regions_cfg
+    regions_cfg="$(cfg webtrends.regions)"
+    if [ -z "$regions_cfg" ] || [ "$regions_cfg" = "None" ]; then
+        regions_cfg="US,GB,"
+    fi
+
+    IFS=',' read -ra geos <<< "$regions_cfg"
+    for geo in "${geos[@]}"; do
+        geo="$(echo "$geo" | xargs)"  # trim whitespace
+        local label url
+        if [ -z "$geo" ]; then
+            label="Worldwide"
+            url="https://trends.google.com/trending/rss?geo="
+        else
+            label="$geo"
+            url="https://trends.google.com/trending/rss?geo=$geo"
+        fi
+        echo ""
+        echo "--- $label ---"
+        local xml
+        xml="$(curl -s --max-time 15 "$url" 2>/dev/null)" || true
+        if [ -z "$xml" ]; then
+            echo "(failed to fetch)"
+            continue
+        fi
+        echo "$xml" | python3 -c "
+import sys, re, html as html_mod
+
+xml = sys.stdin.read()
+items = re.findall(r'<item>(.*?)</item>', xml, re.DOTALL)
+for item in items[:20]:
+    title = re.search(r'<title>(.*?)</title>', item)
+    traffic = re.search(r'<ht:approx_traffic>(.*?)</ht:approx_traffic>', item)
+    headlines = re.findall(r'<ht:news_item_title>(.*?)</ht:news_item_title>', item)
+
+    t = html_mod.unescape(title.group(1)) if title else '?'
+    tr = traffic.group(1) if traffic else '?'
+    h = html_mod.unescape(headlines[0]) if headlines else ''
+
+    print(f'{t} ({tr})')
+    if h:
+        print(f'  → {h}')
+"
+    done
 }
 
 cmd_crypto() {
@@ -138,6 +230,8 @@ case "${1:-}" in
     setup)  cmd_setup ;;
     init)   cmd_init ;;
     weather) cmd_weather ;;
+    trends) cmd_trends ;;
+    webtrends) cmd_webtrends ;;
     crypto) cmd_crypto ;;
     open)   cmd_open ;;
     list)   cmd_list ;;

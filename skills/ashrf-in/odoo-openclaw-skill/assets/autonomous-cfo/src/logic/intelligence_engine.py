@@ -2,19 +2,27 @@ from src.connectors.odoo_client import OdooClient
 from datetime import datetime, timedelta
 import collections
 from src.logic.openclaw_intelligence import OpenClawIntelligence
+import logging
+
+logger = logging.getLogger(__name__)
 
 class IntelligenceEngine:
     def __init__(self, client: OdooClient):
         self.client = client
+        self._ai_error = None
         try:
+            from src.logic.openclaw_intelligence import OpenClawIntelligence
             self.ai = OpenClawIntelligence()
-        except Exception:
+        except Exception as e:
             self.ai = None
+            self._ai_error = str(e)
+            logger.warning(f"OpenClawIntelligence not available: {e}")
 
     def get_ai_anomaly_report(self):
         """Use OpenClaw intelligence to perform advanced anomaly detection on recent moves."""
         if not self.ai:
-            return "OpenClaw intelligence not configured."
+            error_msg = f"OpenClaw intelligence not configured: {self._ai_error}" if self._ai_error else "OpenClaw intelligence not configured."
+            return {"error": error_msg, "fallback": "Use detect_anomalies() for rules-based analysis"}
         
         moves = self.client.search_read(
             'account.move',
@@ -30,7 +38,8 @@ class IntelligenceEngine:
     def ask(self, query: str):
         """Perform a natural language query using Odoo data as context."""
         if not self.ai:
-            return "OpenClaw intelligence not configured."
+            error_msg = f"OpenClaw intelligence not configured: {self._ai_error}" if self._ai_error else "OpenClaw intelligence not configured."
+            return {"error": error_msg, "fallback": "Use structured reports for deterministic analysis"}
 
         # Strategy: Fetch a broad set of recent data as context
         context = {

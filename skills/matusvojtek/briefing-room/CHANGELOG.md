@@ -1,5 +1,44 @@
 # Changelog
 
+## 1.0.3 - 2026-02-10
+
+### Security
+- **Path traversal fix** — `output.folder` config now validated against safe directories (~/Documents, ~/Desktop, ~/Downloads, ~/.briefing-room, /tmp). Rejects arbitrary paths like /etc or ~/.ssh.
+
+## 1.0.2 - 2026-02-10
+
+### Added
+- **Real-time X/Twitter trends** — `briefing.sh trends` fetches live trending topics from getdaytrends.com
+  - Default regions: US, UK, Worldwide (configurable via `trends.regions`)
+  - No API key or login required
+  - Sub-agent picks newsworthy trends, skips noise, searches for context
+- **Web Trends section** — `briefing.sh webtrends` fetches Google Trends RSS
+  - Trending searches with traffic volume + news headlines (context built-in!)
+  - Default regions: US, UK, Worldwide (configurable via `webtrends.regions`)
+  - No API key required (public RSS feed)
+- **This Day in History section** — 1-2 interesting events from today's date, no API needed
+- **Host personality** — `host.name` config sets the radio host name (default: auto-uses agent's own name)
+- **Configurable trend regions** — `trends.regions` and `webtrends.regions` in config
+- Auto-detect macOS voice for any language (prefers Enhanced/Premium variants)
+- Any language macOS supports now works out of the box
+- OpenClaw metadata (`requires.bins`, emoji)
+
+### Changed
+- Now 11 sections (was 9): split Social into "Trending on X" + "Web Trends", added "This Day in History"
+- X/Twitter section now uses real trend data instead of generic web searches
+- Description: "100% Free" — no misleading locality claims
+- Description: explicitly states macOS only
+- Clarified TTS is fully local (no keys needed)
+- Listed all external endpoints (Open-Meteo, Coinbase, Google Trends RSS)
+- Documented file paths read/written
+- Updated README: no pip packages required (stdlib only)
+- Removed unused color variables from briefing.sh
+- Full User-Agent string for Cloudflare compatibility
+- Trend fetch handles errors gracefully (shows "(failed to fetch)" per region)
+
+### Fixed
+- Trends command works on macOS (no `grep -P` dependency)
+
 ## 1.0.1
 
 ### Added

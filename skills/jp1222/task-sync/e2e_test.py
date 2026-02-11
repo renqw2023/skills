@@ -14,7 +14,7 @@ from datetime import datetime, timedelta
 
 # ── Setup paths ──
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-VENV_PYTHON = "/home/ubuntu/.openclaw/workspace/venv/bin/python3"
+PYTHON_BIN = os.environ.get("PYTHON_BIN", sys.executable or "python3")
 SYNC_SCRIPT = os.path.join(BASE_DIR, "sync.py")
 
 sys.path.insert(0, BASE_DIR)
@@ -29,11 +29,12 @@ google = GoogleAPI(cfg["google_token"])
 ticktick = TickTickAPI(cfg["ticktick_token"], cfg["ticktick_api_base"])
 
 TIMESTAMP = int(time.time())
+MY_TASKS_CN = "\u6211\u7684\u4efb\u52a1"
 
-# TickTick project ID for "我的任务"
-TT_PROJECT_ID = "69896b6a8f08b86b38c8e5a7"
+# TickTick project ID to test with. Override via TT_PROJECT_ID if needed.
+TT_PROJECT_ID = os.environ.get("TT_PROJECT_ID", "69896b6a8f08b86b38c8e5a7")
 
-# Google "我的任务" list ID (from sync_db: maps to TT_PROJECT_ID)
+# Google "My Tasks" list ID (from sync_db: maps to TT_PROJECT_ID)
 G_MY_TASKS_LIST_ID = None
 for gid, tid in json.load(open(cfg["sync_db"])).get("lists", {}).items():
     if tid == TT_PROJECT_ID:
@@ -43,13 +44,13 @@ for gid, tid in json.load(open(cfg["sync_db"])).get("lists", {}).items():
 if not G_MY_TASKS_LIST_ID:
     # Fallback: find by name
     for l in google.get_lists():
-        if "我的任务" in l.get("title", "") or l.get("title", "").lower() == "my tasks":
+        if MY_TASKS_CN in l.get("title", "") or l.get("title", "").lower() == "my tasks":
             G_MY_TASKS_LIST_ID = l["id"]
             break
 
-assert G_MY_TASKS_LIST_ID, "Could not find Google '我的任务' list ID"
+assert G_MY_TASKS_LIST_ID, "Could not find Google My Tasks list ID"
 
-print(f"Google 我的任务 list ID: {G_MY_TASKS_LIST_ID}")
+print(f"Google My Tasks list ID: {G_MY_TASKS_LIST_ID}")
 print(f"TickTick project ID: {TT_PROJECT_ID}")
 print(f"Timestamp: {TIMESTAMP}")
 print()
@@ -60,7 +61,7 @@ print()
 def run_sync():
     """Run sync.py and return output."""
     result = subprocess.run(
-        [VENV_PYTHON, SYNC_SCRIPT],
+        [PYTHON_BIN, SYNC_SCRIPT],
         capture_output=True, text=True, cwd=BASE_DIR, timeout=120,
     )
     if result.returncode != 0:

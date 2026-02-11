@@ -1,36 +1,36 @@
-中文 | [**English**](README.md)
+[English](README.md) | 中文
 
 # Task Sync
 
 **滴答清单** 与 **Google Tasks** 双向同步工具，支持智能列表。
 
-基于 [OpenClaw](https://openclaw.ai/) 技能构建 — 可通过 cron 自动运行或手动执行。
+基于 [OpenClaw](https://openclaw.ai/) 技能构建，可通过 cron 自动运行或手动执行。
 
 ## 功能特性
 
-- **双向列表同步** — Google 任务列表与滴答清单项目按名称自动匹配或创建
-- **双向任务同步** — 标题、完成状态、备注/内容
-- **优先级映射** — 滴答清单优先级显示为 Google 任务标题前缀（`[★]` 高优先级、`[!]` 中优先级）
-- **智能列表**（单向，滴答清单 → Google）：
-  - **Today** — 已过期 + 今日任务
-  - **Next 7 Days** — 未来一周
-  - **All** — 所有活跃任务（含日期）
-- **日期策略** — 防止 Google Calendar 出现重复任务（见下文）
-- **幂等运行** — 可重复执行，不会产生重复数据
+- **双向列表同步**：Google 任务列表与滴答清单项目按名称自动匹配或创建
+- **双向任务同步**：标题、完成状态、备注/内容
+- **优先级映射**：滴答清单优先级映射为 Google 任务标题前缀（`[★]` 高优先级、`[!]` 中优先级）
+- **智能列表**（单向，滴答清单 -> Google）：
+  - **Today**：已过期 + 今日任务
+  - **Next 7 Days**：未来一周任务
+  - **All**：所有活跃任务（含日期）
+- **日期策略**：防止 Google Calendar 出现重复任务
+- **幂等运行**：可重复执行，不会产生重复数据
 
 ## 日期策略
 
-Google Tasks 中带日期的任务会自动显示在 Google Calendar 中。为防止跨列表重复，日期的处理策略如下：
+Google Tasks 中带日期的任务会自动显示在 Google Calendar。为防止跨列表重复，日期处理如下：
 
-| 列表类型 | Google 中是否含日期 | 原因 |
-|----------|:-:|------|
+| 列表类型 | Google 中是否保留日期 | 原因 |
+|----------|:--------------------:|------|
 | 常规列表 | 否 | 日期转发到滴答清单后从 Google 清除 |
-| "All" 智能列表 | 是 | Calendar 唯一数据源 |
+| "All" 智能列表 | 是 | 作为 Calendar 唯一日期来源 |
 | "Today" / "Next 7 Days" | 否 | 仅作为过滤视图 |
 
 ## 架构
 
-```
+```text
 sync.py                        主同步脚本
 utils/
   google_api.py                Google Tasks API 封装（分页、Token 自动刷新）
@@ -38,32 +38,32 @@ utils/
 scripts/
   setup_google_tasks.py        Google OAuth 授权设置
   setup_ticktick.py            滴答清单 OAuth 授权设置
-config.json                    配置文件（Token 路径、数据文件路径）
-sync_db.json                   任务映射数据库（自动生成）
-sync_log.json                  同步统计日志（自动生成）
-e2e_test.py                    端到端测试（15 个测试用例）
+config.json                    配置文件（Token 与数据路径）
+data/sync_db.json              任务/列表映射数据库（自动生成）
+data/sync_log.json             同步统计日志（自动生成）
+e2e_test.py                    端到端测试（15 个用例）
 ```
 
 ### 同步流程
 
-```
+```text
 1. 列表同步（双向）
-   Google Lists <──────────> 滴答清单 Projects
+   Google Lists <----------> TickTick Projects
    - 按名称匹配（不区分大小写）
-   - "My Tasks" <-> "收集箱" (Inbox)（特殊映射）
-   - 未匹配的列表自动创建对应项
+   - "My Tasks" <-> "Inbox"（特殊映射）
+   - 未匹配列表自动创建对应项
 
-2. 任务同步（双向，按列表对同步）
-   Google Tasks <──────────> 滴答清单 Tasks
+2. 任务同步（双向，按列表对）
+   Google Tasks <----------> TickTick Tasks
    - 新任务双向同步
    - 完成状态双向传播
-   - 日期：Google → 滴答清单（转发后清除）
-   - 优先级：滴答清单 → Google（标题前缀）
+   - 日期：Google -> TickTick（转发后清除 Google 日期）
+   - 优先级：TickTick -> Google（标题前缀）
    - 备注/内容在创建时同步
 
-3. 智能列表（单向：滴答清单 → Google）
-   滴答清单 ──────────────> Google "Today" / "Next 7 Days" / "All"
-   - 不再匹配的任务自动移除
+3. 智能列表（单向：TickTick -> Google）
+   TickTick ---------------> Google "Today" / "Next 7 Days" / "All"
+   - 不再匹配的任务会自动移除
 ```
 
 ## 安装配置
@@ -72,7 +72,7 @@ e2e_test.py                    端到端测试（15 个测试用例）
 
 - Python 3.10+
 - 已启用 Tasks API 的 Google Cloud 项目
-- 滴答清单开发者应用（从 [developer.ticktick.com](https://developer.ticktick.com/) 创建）
+- 滴答清单开发者应用（[developer.ticktick.com](https://developer.ticktick.com/)）
 
 ### 1. 安装依赖
 
@@ -86,7 +86,9 @@ pip install google-auth google-auth-oauthlib google-api-python-client requests
 python scripts/setup_google_tasks.py
 ```
 
-按照 OAuth 流程授权，Token 会保存到 `config/` 或你配置的路径。
+将 Google OAuth desktop client JSON 放到 `config/google_credentials.json`
+（或设置 `GOOGLE_CREDENTIALS_FILE`），按提示完成授权。
+Token 会写入 `config.json` 的 `google_token` 路径；未配置时默认写入 `data/google_token.json`。
 
 ### 3. 配置滴答清单
 
@@ -94,7 +96,9 @@ python scripts/setup_google_tasks.py
 python scripts/setup_ticktick.py
 ```
 
-按照 OAuth 流程操作，需要你的滴答清单应用的 Client ID 和 Client Secret。
+先用 `config/ticktick_creds.json.example` 生成 `config/ticktick_creds.json`
+（或设置 `TICKTICK_CREDENTIALS_FILE`），按提示完成授权。
+Token 会写入 `config.json` 的 `ticktick_token` 路径；未配置时默认写入 `data/ticktick_token.json`。
 
 ### 4. 编辑 config.json
 
@@ -102,8 +106,8 @@ python scripts/setup_ticktick.py
 {
   "google_token": "/path/to/google/token.json",
   "ticktick_token": "/path/to/ticktick/token.json",
-  "sync_db": "/path/to/sync_db.json",
-  "sync_log": "/path/to/sync_log.json",
+  "sync_db": "/path/to/data/sync_db.json",
+  "sync_log": "/path/to/data/sync_log.json",
   "ticktick_api_base": "https://api.ticktick.com/open/v1"
 }
 ```
@@ -116,47 +120,27 @@ python sync.py
 
 ## 自动化
 
-设置 cron 定时同步：
+配置 cron 定时同步：
 
 ```bash
-# 每 10 分钟同步一次
+# 每 10 分钟执行一次
 */10 * * * * /path/to/python /path/to/sync.py >> /path/to/sync.log 2>&1
 ```
 
-或使用 OpenClaw 内置的 cron 系统进行托管调度。
+也可使用 OpenClaw 内置 cron 系统。
 
 ## 测试
 
-项目包含完整的端到端测试套件，基于真实 API 测试：
+项目包含基于真实 API 的端到端测试：
 
 ```bash
 python e2e_test.py
 ```
 
-### 测试覆盖（15 个测试）
-
-| # | 测试内容 | 方向 |
-|---|---------|------|
-| 1 | 新任务同步 | Google → 滴答清单 |
-| 2 | 新任务同步 | 滴答清单 → Google |
-| 3 | 完成状态同步 | Google → 滴答清单 |
-| 4 | 完成状态同步 | 滴答清单 → Google |
-| 5 | 日期转发并清除 | Google → 滴答清单 |
-| 6 | 日期仅出现在 "All" 列表 | 滴答清单 → Google |
-| 7 | "Today" 智能列表填充 | 滴答清单 → Google |
-| 8 | "Next 7 Days" 智能列表填充 | 滴答清单 → Google |
-| 9 | 高优先级 `[★]` 前缀 | 滴答清单 → Google |
-| 10 | 智能列表名称不泄漏到滴答清单 | 防护测试 |
-| 11 | 中优先级 `[!]` 前缀 | 滴答清单 → Google |
-| 12 | 备注/内容同步 | Google → 滴答清单 |
-| 13 | 幂等性（无重复） | 双向 |
-| 14 | 新列表 → 项目创建 | Google → 滴答清单 |
-| 15 | 过期智能列表任务移除 | 清理 |
-
 ## API 参考
 
 - [Google Tasks REST API](https://developers.google.com/workspace/tasks/reference/rest)
-- [滴答清单 Open API](https://developer.ticktick.com/)
+- [TickTick Open API](https://developer.ticktick.com/)
 
 ## 许可证
 

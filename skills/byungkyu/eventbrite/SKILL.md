@@ -8,6 +8,11 @@ description: |
 metadata:
   author: maton
   version: "1.0"
+  clawdbot:
+    emoji: 🧠
+    requires:
+      env:
+        - MATON_API_KEY
 ---
 
 # Eventbrite
@@ -559,9 +564,7 @@ user = response.json()
 ```
 Solution: Use `/organizations/{org_id}/events/` instead of `/users/me/owned_events/`
 
-### Troubleshooting: Invalid API Key
-
-**When you receive a "Invalid API key" error, ALWAYS follow these steps before concluding there is an issue:**
+### Troubleshooting: API Key Issues
 
 1. Check that the `MATON_API_KEY` environment variable is set:
 
@@ -580,8 +583,17 @@ print(json.dumps(json.load(urllib.request.urlopen(req)), indent=2))
 EOF
 ```
 
+### Troubleshooting: Invalid App Name
+
+1. Ensure your URL path starts with `eventbrite`. For example:
+
+- Correct: `https://gateway.maton.ai/eventbrite/v3/users/me/`
+- Incorrect: `https://gateway.maton.ai/v3/users/me/`
+
 ## Resources
 
 - [Eventbrite API Documentation](https://www.eventbrite.com/platform/api)
 - [API Basics](https://www.eventbrite.com/platform/docs/api-basics)
 - [API Explorer](https://www.eventbrite.com/platform/docs/api-explorer)
+- [Maton Community](https://discord.com/invite/dBfFAcefs2)
+- [Maton Support](mailto:support@maton.ai)

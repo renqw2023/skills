@@ -1,0 +1,11 @@
+{
+  "owner": "anton-abyzov",
+  "slug": "sw-stripe-connect",
+  "displayName": "Stripe Connect",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770713858235,
+    "commit": "https://github.com/openclaw/skills/commit/9b8791419e0989e6aa1d6b4372077782a778e8a0"
+  },
+  "history": []
+}

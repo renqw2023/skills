@@ -19,6 +19,8 @@ Persistent memory storage with semantic search for AI agents. Save text as seeds
 
 ## Prerequisites
 
+Get your API keys at: **https://openclaw.vanarchain.com/**
+
 API credentials via environment variables:
 ```bash
 export NEUTRON_API_KEY=your_key

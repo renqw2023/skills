@@ -1,9 +1,21 @@
 ---
-name: zotero-skill
+name: zotero
 description: Zotero integration for both personal and Group libraries. search items (title/author/tags/year/fulltext/combined queries), create/update/delete items and metadata, add/edit item-level notes, perform bulk operations, and sync attachments (upload PDF or link URL). Trigger when user asks to search their Zotero, add or modify an item/note, upload attachments, or manage group libraries.
+metadata:
+  clawdbot:
+    primaryEnv: ZOTERO_API_KEY
+    requires:
+      env:
+        - ZOTERO_API_KEY
+        - ZOTERO_USER_ID
+        - ZOTERO_GROUP_ID
+    config:
+      requiredEnv:
+        - ZOTERO_API_KEY
+      example: "config = { env = { ZOTERO_API_KEY = \"xxxx\"; ZOTERO_USER_ID = \"12345\"; }; };"
 ---
 
-# Zotero Skill (overview)
+# Zotero (overview)
 
 This skill enables safe, repeatable programmatic access to a user's Zotero account (personal and group libraries) using Zotero API keys. It provides example scripts, a small Python client wrapper around pyzotero, a CLI example, and guidance for secure configuration and packaging as an AgentSkill.
 
@@ -47,7 +59,6 @@ Activate this skill when the user asks things like: "search my Zotero for X", "a
 
 - assets/
   - config.example.json — example configuration (no keys): { api_key_env: "ZOTERO_API_KEY", user_id: null, group_ids: [] }
-  - sample_pdf.pdf — optional placeholder PDF for attachment testing (small dummy file).
 
 ## Design & implementation notes
 
@@ -81,16 +92,6 @@ When using the CLI without `ZOTERO_USER_ID` or `ZOTERO_GROUP_ID` set, you can ov
 
 - Do not commit real keys to source control. Prefer OS keyrings or secret managers for long-term storage.
 - Once these environment variables are set, the skill will use them automatically without requiring user input.
-
-## Packaging
-
-Recommended initialization and packaging commands:
-
-- Initialize skill template:
-  scripts/init_skill.py zotero --path skills/public --resources scripts,references,assets --examples
-
-- Package skill (after validation and edits):
-  scripts/package_skill.py <path/to/skills/public/zotero>
 
 ## Notes for integrators
 

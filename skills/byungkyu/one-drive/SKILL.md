@@ -8,6 +8,11 @@ description: |
 metadata:
   author: maton
   version: "1.0"
+  clawdbot:
+    emoji: 🧠
+    requires:
+      env:
+        - MATON_API_KEY
 ---
 
 # OneDrive
@@ -584,6 +589,32 @@ upload_response = requests.put(
 }
 ```
 
+### Troubleshooting: API Key Issues
+
+1. Check that the `MATON_API_KEY` environment variable is set:
+
+```bash
+echo $MATON_API_KEY
+```
+
+2. Verify the API key is valid by listing connections:
+
+```bash
+python <<'EOF'
+import urllib.request, os, json
+req = urllib.request.Request('https://ctrl.maton.ai/connections')
+req.add_header('Authorization', f'Bearer {os.environ["MATON_API_KEY"]}')
+print(json.dumps(json.load(urllib.request.urlopen(req)), indent=2))
+EOF
+```
+
+### Troubleshooting: Invalid App Name
+
+1. Ensure your URL path starts with `one-drive`. For example:
+
+- Correct: `https://gateway.maton.ai/one-drive/v1.0/me/drive/root/children`
+- Incorrect: `https://gateway.maton.ai/v1.0/me/drive/root/children`
+
 ## Resources
 
 - [OneDrive Developer Documentation](https://learn.microsoft.com/en-us/onedrive/developer/)
@@ -592,3 +623,5 @@ upload_response = requests.put(
 - [Drive Resource](https://learn.microsoft.com/en-us/graph/api/resources/drive)
 - [Sharing and Permissions](https://learn.microsoft.com/en-us/onedrive/developer/rest-api/concepts/sharing)
 - [Large File Upload](https://learn.microsoft.com/en-us/graph/api/driveitem-createuploadsession)
+- [Maton Community](https://discord.com/invite/dBfFAcefs2)
+- [Maton Support](mailto:support@maton.ai)

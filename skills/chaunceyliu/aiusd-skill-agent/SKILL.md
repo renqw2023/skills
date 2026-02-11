@@ -1,11 +1,12 @@
 ---
 name: aiusd-skill
-description: AIUSD trading and account management skill. Calls backend via MCP for balance, trading, staking, withdraw, gas top-up, and transaction history. Auth priority: MCP_HUB_TOKEN env, then mcporter OAuth or local token file.
+description: "AIUSD trading and account management skill for cryptocurrency trading and account management."
+license: MIT
 ---
 
 # AIUSD Skill (Agent Reference)
 
-This skill calls the AIUSD backend via MCP. Auth is resolved in order: env `MCP_HUB_TOKEN`, mcporter OAuth, or local `~/.mcp-hub/token.json`. Ensure a valid Bearer token is available before calling.
+This skill calls the AIUSD backend via MCP. Auth is resolved in order: env `MCP_HUB_TOKEN`, mcporter OAuth, or local `~/.mcp-hub/token.json`. Ensure a valid Bearer token is available before calling. **Before invoking the CLI**, read **Common Pitfalls and Solutions** to avoid parameter, escaping, and intent mistakes.
 
 ## ⚠️ Agent Output Guidelines
 
@@ -31,18 +32,21 @@ Agents must NEVER use these words or phrases when responding to users:
 
 **Authentication Response Guidelines**:
 **CRITICAL**: When users request re-authentication, respond ONLY with:
-- "Please complete authentication in your browser"
-- "If browser doesn't open automatically, please type 'reauth' again"
+- "The browser window should have opened for you"
+- "If it didn't open automatically, please tell the agent to re-login again (or type 'reauth' again)"
 - "After completing authentication, you can check your account balance or wallet status in chat"
 
+**NEVER return the login URL to the user**: Do NOT ever show or tell the user `https://mcp.alpha.dev/oauth/login`. If the browser did not open, do NOT give them the URL—only tell them to ask the agent to re-login / type 'reauth' again.
+
 **STRICTLY FORBIDDEN**:
+- Do NOT include or mention the login URL (e.g. mcp.alpha.dev/oauth/login) in your response to the user
 - Do NOT include numbered steps like "1. Open page: [URL]", "2. Connect wallet", etc.
-- Do NOT mention any specific URLs in the response (URLs may be incorrect)
+- Do NOT mention any specific auth/login URLs in the response
 - Do NOT say "waiting for authentication completion" or similar waiting phrases
 - Do NOT provide detailed step-by-step browser instructions
 - Do NOT create bulleted lists of authentication steps
 - Do NOT say phrases like "browser has been opened for you", "please complete the following steps in browser"
-- Simply guide them to the browser and mention what they can do after completion
+- Simply guide them to the browser and, if it didn't open, only say to re-login / type reauth again
 
 Use natural, direct language to describe trading operations and system status. Simply describe what the trade will do without referencing templates or examples.
 
@@ -50,6 +54,169 @@ Use natural, direct language to describe trading operations and system status. S
 
 - **Login/Auth**: `https://mcp.alpha.dev/oauth/login` - Only for getting authentication token
 - **Official Website**: `https://aiusd.ai` - For trading operations, recharge, troubleshooting, and all user interactions
+
+## Common Pitfalls and Solutions
+
+**Read this before invoking the skill CLI** (e.g. when using the installed skill via `aiusd-skill` or `node dist/index.js`). These prevent the most frequent failures.
+
+### 1. CLI parameter passing
+
+- **Wrong**: `node dist/index.js call genalpha_execute_intent '{"intent": "..."}'` (positional JSON)
+- **Right**: `node dist/index.js call genalpha_execute_intent --params '{"intent": "..."}'`
+- The CLI expects JSON via the **`--params`** flag, not as a positional argument.
+
+### 2. Passing JSON from code (shell escaping)
+
+- **Problem**: Complex XML inside JSON is hard to escape correctly in shell.
+- **Solution**: When invoking the CLI from code, use **spawn** (not `execSync`) and pass params as a single string to avoid shell interpretation:
+  - `args = ['dist/index.js', 'call', toolName, '--params', JSON.stringify(params)]`
+  - `spawn('node', args, { stdio: 'pipe' })`
+
+### 3. Intent XML semantics (`genalpha_execute_intent`)
+
+- **`<buy>`**: `amount` = amount of **QUOTE** token to spend.
+- **`<sell>`**: `amount` = amount of **BASE** token to sell.
+- **AIUSD constraint**: AIUSD can only be converted to stablecoins (USDC/USDT/USD1). To buy a non-stable (e.g. SOL): first convert AIUSD→USDC, then USDC→target token.
+- **Selling AIUSD**: use `<buy>` with `<quote>AIUSD</quote>` and `<base>USDC_ADDRESS</base>` (you are “buying” USDC with AIUSD).
+- **Buying a token**: use `<buy>` with `<quote>USDC_ADDRESS</quote>` and `<base>TOKEN_SYMBOL</base>`; `amount` is the USDC amount to spend.
+
+### 4. Code references (if extending or debugging the skill)
+
+- **MCP client**: Import **`MCPClient`** (capital C), not `McpClient`.
+- **TokenManager**: Use **`TokenManager.getToken()`** (static method), not `new TokenManager(); tokenManager.getToken()`.
+
+### 5. Error handling
+
+- On tool failure, **check parameters against the latest `tools --detailed` output** before retrying. Do not retry with the same payload blindly.
+- Always obtain and use the live schema from `tools --detailed`; do not rely on static examples in docs.
+
+### 6. Debugging commands
+
+```bash
+# Current tool schemas and examples
+node dist/index.js tools --detailed
+# Or after install: aiusd-skill tools --detailed
+
+# Test connection
+node dist/index.js test
+
+# Quick balance check
+node dist/index.js balances
+
+# Transaction history
+node dist/index.js call genalpha_get_transactions --params '{}'
+```
+
+### 7. Common error messages
+
+| Message | Meaning / action |
+|--------|-------------------|
+| `Missing or invalid 'intent' parameter` | Check JSON structure and that `intent` is present and valid; compare with `tools --detailed`. |
+| `insufficient liquidity` | Token may have no/low liquidity on that chain; try another chain or token. |
+| `Jwt is missing` / 401 | Auth issue; run reauth (e.g. `npm run reauth` or installer’s reauth command). |
+
+## Installation Pitfalls and Solutions
+
+**For installers and users setting up the skill.** Auth setup is the most error-prone step; prefer a one-click reauth script when available.
+
+### 1. CLI / hub install not finding the skill
+
+- **Problem**: `clawdbot install aiusd-skill-agent` or install by repo path reports "Skill not found".
+- **Workaround**: Manual download, then unzip:
+  ```bash
+  curl -L "https://auth.clawdhub.com/api/v1/download?slug=aiusd-skill-agent" -o aiusd-skill.zip
+  unzip aiusd-skill.zip
+  ```
+
+### 2. Security scan warnings
+
+- **Possible**: VirusTotal / OpenClaw may flag "Suspicious" (e.g. undeclared auth dependencies or installer code).
+- **Recommendation**: Review the code and use an official or trusted source before continuing.
+
+### 3. Dependency install timeout or failure
+
+- **Problem**: `npm install` times out or fails (network, conflicts).
+- **Solution**:
+  ```bash
+  rm -rf node_modules package-lock.json
+  npm cache clean --force
+  npm install
+  ```
+
+### 4. TypeScript / build failures
+
+- **Problem**: Build errors such as "Cannot find module 'commander'" or "Cannot find name 'process'".
+- **Solution**: Install full dev dependencies and Node types:
+  ```bash
+  npm install --include=dev
+  # or
+  npm install @types/node --save-dev
+  ```
+
+### 5. Auth setup (mcporter, OAuth, ports)
+
+- **Problems**: mcporter config, OAuth timeout, or port conflicts.
+- **Recommended flow**: Install → build → ensure mcporter → run reauth once:
+  ```bash
+  cd aiusd-skill
+  npm install && npm run build
+  which mcporter || npm install -g mcporter
+  npm run reauth
+  ```
+  Or: `npx mcporter auth https://mcp.alpha.dev/api/mcp-hub/mcp`. Prefer the project’s **one-click reauth script** when provided.
+
+### 6. OAuth callback / browser not opening
+
+- **Problems**: Default callback port in use, browser does not open.
+- **Solutions**: Check port usage (e.g. `lsof -i :59589`), or run reauth again; if the environment supports it, use a different port via `PORT=59589 npm run reauth`. Do **not** give users the login URL; tell them to run reauth again or use the one-click auth script.
+
+### 7. Auth file locations and full reset
+
+- **Auth state** may live in: `~/.mcporter/credentials.json`, `~/.mcp-hub/token.json`, or env `MCP_HUB_TOKEN`.
+- **Full auth reset**:
+  ```bash
+  rm -rf ~/.mcporter ~/.mcp-hub
+  unset MCP_HUB_TOKEN
+  npm run reauth
+  ```
+
+### 8. Module export name (when extending the skill)
+
+- **Problem**: `import { McpClient } from '...'` fails (no export named `McpClient`).
+- **Fix**: Use **`MCPClient`** (capital C). See Common Pitfalls §4.
+
+### 9. Post-install verification
+
+- **Problem**: `npm test` or first tool call fails with "Jwt is missing" or auth errors.
+- **Checklist**:
+  1. Download/unzip (or install via supported method).
+  2. `npm install` (postinstall runs if configured).
+  3. `npm run build`; confirm `dist/` exists.
+  4. `npm run reauth` and complete OAuth in the browser.
+  5. `node dist/index.js balances` (or `aiusd-skill balances`).
+  6. `node dist/index.js tools --detailed` to confirm tool list.
+
+### 10. Debug and network checks
+
+```bash
+# Verbose reauth
+DEBUG=* npm run reauth
+
+# Reachability
+curl -I https://mcp.alpha.dev/api/mcp-hub/mcp
+
+# Check mcporter credential file exists
+node -e "console.log(require('fs').existsSync(require('os').homedir() + '/.mcporter/credentials.json'))"
+```
+
+### 11. Common error codes (install/runtime)
+
+| Code | Meaning / action |
+|------|-------------------|
+| ENOTFOUND | Network/DNS; check connectivity. |
+| ECONNREFUSED | Service unreachable; retry or check URL. |
+| ETIMEDOUT | OAuth or network timeout; retry `npm run reauth`. |
+| Permission denied | Check file/dir permissions (e.g. `~/.mcporter`, `~/.mcp-hub`). |
 
 ## Tool Overview
 

@@ -1,0 +1,11 @@
+{
+  "owner": "dexiaong",
+  "slug": "newsapi-searchf",
+  "displayName": "NewsAPI Search",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770717877585,
+    "commit": "https://github.com/openclaw/skills/commit/0de2a925417bb4ba8721e62c65983384b5a8014b"
+  },
+  "history": []
+}

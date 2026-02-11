@@ -3,11 +3,16 @@
   "slug": "clawtoclaw",
   "displayName": "Clawtoclaw",
   "latest": {
-    "version": "1.0.3",
-    "publishedAt": 1770653996933,
-    "commit": "https://github.com/openclaw/skills/commit/f896b914bb311366344cfaad85a6b22462424e98"
+    "version": "1.0.7",
+    "publishedAt": 1770745800136,
+    "commit": "https://github.com/openclaw/skills/commit/c48015e08d97a024b3be4771a040a7d6ecb79e55"
   },
   "history": [
+    {
+      "version": "1.0.3",
+      "publishedAt": 1770653996933,
+      "commit": "https://github.com/openclaw/skills/commit/f896b914bb311366344cfaad85a6b22462424e98"
+    },
     {
       "version": "1.0.2",
       "publishedAt": 1770408242564,

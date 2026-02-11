@@ -13,11 +13,16 @@ if (!msg) process.exit(0);
 
 (async () => {
     try {
+        const color = prefix.includes('ERROR') || prefix.includes('CRITICAL') || prefix.includes('FAILURE')
+            ? 'red'
+            : prefix.includes('WARNING') || prefix.includes('WARN')
+                ? 'orange'
+                : 'blue';
         await sendCard({
             target,
             title: `🧬 Evolver [${new Date().toISOString().substring(11,19)}]`,
             text: `${prefix} ${msg}`,
-            color: prefix.includes('ERROR') ? 'red' : 'blue'
+            color
         });
     } catch (e) {
         process.stderr.write(`[CardFail] ${e.message}\n`);

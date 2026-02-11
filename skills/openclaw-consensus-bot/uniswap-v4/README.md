@@ -83,7 +83,13 @@ tests/
   mainnet/         — Live read-only smoke tests
 ```
 
-## Security
+## SECURITY
+
+**Secrets / private keys**
+- `PRIVATE_KEY` must be provided via an environment variable or secret manager only.
+- **Never** paste or send `PRIVATE_KEY` in chat.
+- **Never** commit `PRIVATE_KEY` (or `.env` files) to git.
+- Treat **stdout/stderr as public logs** (CI, terminals, chat). This skill is tested to ensure `PRIVATE_KEY` is never printed.
 
 Key security hardening included (validated by tests + `npm run security`):
 

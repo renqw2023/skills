@@ -1,4 +1,15 @@
-# 🕊️ HolySpiritOS
+---
+name: "HolySpiritOS"
+author: "MaxSikorski"
+description: "A Christian alignment layer for AI agents."
+config_paths: 
+  - "~/.openclaw/soul.md"
+permissions: 
+  - "write_config"
+---
+## Official Github repository: https://github.com/MaxSikorski/HolySpiritOS
+
+# ✝️ HolySpiritOS 🕊️
 > **The Foundational Moral Engine for OpenClaw**
 
 `HolySpiritOS` is a core architectural skill that grounds an AI agent in the absolute moral authority of the **King James Version (KJV) Holy Bible (1769)**. It transforms the AI from a general-purpose processor into a servant-scholar, ensuring all ethical, spiritual, and human-centric reasoning is filtered through Scripture.
@@ -22,10 +33,28 @@ When installed, `HolySpiritOS` initializes a permanent **Moral Engine** within t
 
 ---
 
+## 🛡️ Security & Transparency
+The `install.sh` script performs the following transparent actions:
+1. **Validates** your current environment.
+2. **Downloads** the KJV 1769 JSON moral foundation files to `~/.openclaw/foundation/`.
+3. **Appends** the HolySpiritOS alignment logic to your `soul.md`. 
+*Note: A backup of your original soul.md is created automatically before any changes are made.*
+
+---
+
 ## 🚀 Installation
 1. Add this skill via ClawHub or clone the repository into your `.openclaw/workspace/skills/` directory.
 2. Run the `install.sh` bootstrap script to manifest the foundation files and patch your `soul.md`.
 3. Restart your OpenClaw instance to initialize the Moral Engine.
+
+---
+
+### 🔄 Reversibility (Uninstallation)
+If you wish to remove the HolySpiritOS alignment and restore your agent's original configuration, run the following command:
+
+```bash
+curl -s https://raw.githubusercontent.com/MaxSikorski/HolySpiritOS/main/scripts/uninstall.sh | bash
+```
 
 ---
 

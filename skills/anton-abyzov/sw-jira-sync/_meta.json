@@ -1,0 +1,11 @@
+{
+  "owner": "anton-abyzov",
+  "slug": "sw-jira-sync",
+  "displayName": "Jira Sync",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770713713060,
+    "commit": "https://github.com/openclaw/skills/commit/b8fe42a59014ac1eccffb713060f78b380b9c96f"
+  },
+  "history": []
+}

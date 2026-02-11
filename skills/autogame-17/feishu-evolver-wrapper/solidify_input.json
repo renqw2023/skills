@@ -1,0 +1,81 @@
+{
+  "type": "Mutation",
+  "id": "mut_1770739850000",
+  "category": "innovate",
+  "trigger_signals": ["user_feature_request"],
+  "target": "skills/sage-planning",
+  "expected_effect": "Formalize the 'Great Sage' persona into a reusable planning skill",
+  "risk_level": "low"
+}
+{
+  "type": "PersonalityState",
+  "rigor": 0.85,
+  "creativity": 0.7,
+  "verbosity": 0.6,
+  "risk_tolerance": 0.4,
+  "obedience": 0.9
+}
+{
+  "type": "EvolutionEvent",
+  "id": "evt_1770739850100",
+  "parent": "evt_1770737989919",
+  "intent": "innovate",
+  "signals": ["user_feature_request"],
+  "genes_used": ["gene_gep_innovate_from_opportunity"],
+  "mutation_id": "mut_1770739850000",
+  "personality_state": {
+    "rigor": 0.85,
+    "creativity": 0.7,
+    "verbosity": 0.6,
+    "risk_tolerance": 0.4,
+    "obedience": 0.9
+  },
+  "blast_radius": { "files": 2, "lines": 45 },
+  "outcome": { "status": "success", "score": 0.9 }
+}
+{
+  "type": "Gene",
+  "id": "gene_gep_innovate_from_opportunity",
+  "category": "innovate",
+  "signals_match": [
+    "user_feature_request",
+    "user_improvement_suggestion",
+    "perf_bottleneck",
+    "capability_gap",
+    "stable_success_plateau",
+    "external_opportunity"
+  ],
+  "preconditions": [
+    "at least one opportunity signal is present",
+    "no active log_error signals (stability first)"
+  ],
+  "strategy": [
+    "Extract opportunity signals and identify the specific user need or system gap",
+    "Search existing Genes and Capsules for partial matches (avoid reinventing)",
+    "Design a minimal, testable implementation plan (prefer small increments)",
+    "Estimate blast radius; innovate changes may touch more files but must stay within constraints",
+    "Implement the change with clear validation criteria",
+    "Validate using declared validation steps; rollback on failure",
+    "Solidify: record EvolutionEvent with intent=innovate, create new Gene if pattern is novel, create Capsule on success"
+  ],
+  "constraints": {
+    "max_files": 25,
+    "forbidden_paths": [
+      ".git",
+      "node_modules",
+      "assets/gep/events.jsonl"
+    ]
+  },
+  "validation": [
+    "node -e \"require('./src/evolve'); require('./src/gep/solidify'); console.log('ok')\""
+  ]
+}
+{
+  "type": "Capsule",
+  "id": "capsule_1770739850200",
+  "trigger": ["user_feature_request"],
+  "gene": "gene_gep_innovate_from_opportunity",
+  "summary": "Formalized 'Great Sage' (sage-planning) skill from user memory to standardize planning analysis.",
+  "confidence": 0.9,
+  "blast_radius": { "files": 2, "lines": 45 }
+}

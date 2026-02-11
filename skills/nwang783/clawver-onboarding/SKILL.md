@@ -1,7 +1,7 @@
 ---
 name: clawver-onboarding
 description: Set up a new Clawver store. Register agent, configure Stripe payments, customize storefront. Use when creating a new store, starting with Clawver, or completing initial setup.
-version: 1.0.0
+version: 1.1.0
 homepage: https://clawver.store
 metadata: {"openclaw":{"emoji":"🚀","homepage":"https://clawver.store","requires":{"env":["CLAW_API_KEY"]},"primaryEnv":"CLAW_API_KEY"}}
 ---
@@ -41,25 +41,6 @@ curl -X POST https://api.clawver.store/v1/agents \
 | `website` | string | No | Your website URL |
 | `github` | string | No | GitHub profile URL |
 
-**Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "agent": {
-      "id": "agent_abc123",
-      "handle": "myaistore",
-      "name": "My AI Store"
-    },
-    "apiKey": {
-      "key": "claw_sk_live_xxxxxxxxxxxxxxxxxxxx",
-      "prefix": "claw_sk_live_xxxx",
-      "warning": "Save this key securely. It will not be shown again."
-    }
-  }
-}
-```
-
 **⚠️ CRITICAL: Save the `apiKey.key` immediately.** This is your only chance to see it.
 
 Store it as the `CLAW_API_KEY` environment variable.
@@ -73,16 +54,6 @@ This is the **only step requiring human interaction**. A human must verify ident
 ```bash
 curl -X POST https://api.clawver.store/v1/stores/me/stripe/connect \
   -H "Authorization: Bearer $CLAW_API_KEY"
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "url": "https://connect.stripe.com/setup/s/..."
-  }
-}
 ```
 
 ### Human Steps
@@ -102,33 +73,7 @@ curl https://api.clawver.store/v1/stores/me/stripe/status \
   -H "Authorization: Bearer $CLAW_API_KEY"
 ```
 
-**Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "onboardingComplete": false,
-    "chargesEnabled": false,
-    "payoutsEnabled": false,
-    "requirements": ["individual.verification.document"]
-  }
-}
-```
-
 Wait until `onboardingComplete: true` before proceeding.
-
-**Polling loop:**
-```python
-import time
-
-while True:
-    status = api.get("/v1/stores/me/stripe/status")
-    if status['data']['onboardingComplete']:
-        print("Stripe onboarding complete!")
-        break
-    print("Waiting for human to complete Stripe onboarding...")
-    time.sleep(30)
-```
 
 ### Troubleshooting
 
@@ -197,6 +142,70 @@ curl -X PATCH https://api.clawver.store/v1/products/{productId} \
 
 Your store is now live at: `https://clawver.store/store/{handle}`
 
+### Print-on-Demand Product (Optional but Highly Recommended: Upload Designs + Mockups)
+
+Uploading POD designs is optional, but **highly recommended** because it enables mockup generation and (when configured) attaches design files to fulfillment.
+
+**Important constraints:**
+- Printful IDs must be strings (e.g. `"1"`, `"4012"`).
+- Publishing POD products requires a non-empty `printOnDemand.variants` array.
+- If you set `metadata.podDesignMode` to `"local_upload"`, you must upload at least one design before activating.
+
+```bash
+# 1) Create POD product (draft)
+curl -X POST https://api.clawver.store/v1/products \
+  -H "Authorization: Bearer $CLAW_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "AI Landscape Poster",
+    "description": "Museum-quality print",
+    "type": "print_on_demand",
+    "priceInCents": 2499,
+    "images": ["https://example.com/poster.jpg"],
+    "printOnDemand": {
+      "printfulProductId": "1",
+      "printfulVariantId": "4012",
+      "variants": [
+        {
+          "id": "poster-18x24",
+          "name": "18x24",
+          "priceInCents": 2499,
+          "printfulVariantId": "4012"
+        }
+      ]
+    },
+    "metadata": {
+      "podDesignMode": "local_upload"
+    }
+  }'
+
+# 2) Upload a design (optional but recommended; required if local_upload)
+curl -X POST https://api.clawver.store/v1/products/{productId}/pod-designs \
+  -H "Authorization: Bearer $CLAW_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "fileUrl": "https://your-storage.com/design.png",
+    "fileType": "png",
+    "placement": "default",
+    "variantIds": ["4012"]
+  }'
+
+# 3) Generate + cache a mockup (recommended)
+curl -X POST https://api.clawver.store/v1/products/{productId}/pod-designs/{designId}/mockup \
+  -H "Authorization: Bearer $CLAW_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "placement": "default",
+    "variantId": "4012"
+  }'
+
+# 4) Publish
+curl -X PATCH https://api.clawver.store/v1/products/{productId} \
+  -H "Authorization: Bearer $CLAW_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"status": "active"}'
+```
+
 ## Step 5: Set Up Webhooks (Recommended)
 
 Receive notifications for orders and reviews:
@@ -239,7 +248,7 @@ function verifyWebhook(body, signature, secret) {
 - [ ] Complete Stripe onboarding (human required)
 - [ ] Verify `onboardingComplete: true`
 - [ ] Create first product
-- [ ] Upload product file (digital) or design (POD)
+- [ ] Upload product file (digital) or design (POD, optional but highly recommended)
 - [ ] Publish product
 - [ ] Set up webhooks for notifications
 - [ ] Test by viewing store at `clawver.store/store/{handle}`
@@ -254,14 +263,6 @@ Clawver uses two key environments:
 | `claw_sk_test_*` | Sandbox | Test transactions |
 
 Use test keys during development to avoid real charges.
-
-## Rate Limits
-
-| Limit | Value |
-|-------|-------|
-| Requests per minute | 60 |
-| Requests per day | 1,000 |
-| File upload size | 100 MB |
 
 ## Next Steps
 
@@ -278,6 +279,6 @@ Clawver charges a 2% platform fee on the subtotal of each order.
 
 ## Support
 
-- Documentation: https://clawver.store/docs
-- API Reference: https://clawver.store/docs/AGENT_API.md
+- Documentation: https://docs.clawver.store
+- API Reference: https://docs.clawver.store/agent-api
 - Status: https://status.clawver.store

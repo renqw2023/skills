@@ -6,6 +6,11 @@ compatibility: Requires network access and valid Maton API key
 metadata:
   author: maton
   version: "1.0"
+  clawdbot:
+    emoji: 🧠
+    requires:
+      env:
+        - MATON_API_KEY
 ---
 
 # Google Calendar
@@ -332,9 +337,7 @@ response = requests.post(
 | 429 | Rate limited (10 req/sec per account) |
 | 4xx/5xx | Passthrough error from Google Calendar API |
 
-### Troubleshooting: Invalid API Key
-
-**When you receive a "Invalid API key" error, ALWAYS follow these steps before concluding there is an issue:**
+### Troubleshooting: API Key Issues
 
 1. Check that the `MATON_API_KEY` environment variable is set:
 
@@ -353,6 +356,13 @@ print(json.dumps(json.load(urllib.request.urlopen(req)), indent=2))
 EOF
 ```
 
+### Troubleshooting: Invalid App Name
+
+1. Ensure your URL path starts with `google-calendar`. For example:
+
+- Correct: `https://gateway.maton.ai/google-calendar/calendar/v3/calendars/primary/events`
+- Incorrect: `https://gateway.maton.ai/calendar/v3/calendars/primary/events`
+
 ## Resources
 
 - [Calendar API Overview](https://developers.google.com/calendar/api/v3/reference)
@@ -364,3 +374,5 @@ EOF
 - [Delete Event](https://developers.google.com/workspace/calendar/api/v3/reference/events/delete)
 - [Quick Add Event](https://developers.google.com/workspace/calendar/api/v3/reference/events/quickAdd)
 - [Free/Busy Query](https://developers.google.com/workspace/calendar/api/v3/reference/freebusy/query)
+- [Maton Community](https://discord.com/invite/dBfFAcefs2)
+- [Maton Support](mailto:support@maton.ai)

@@ -8,6 +8,11 @@ description: |
 metadata:
   author: maton
   version: "1.0"
+  clawdbot:
+    emoji: 🧠
+    requires:
+      env:
+        - MATON_API_KEY
 ---
 
 # Google Merchant Center
@@ -494,6 +499,32 @@ data = response.json()
 
 **"GCP project is not registered"**: The v1 stable API requires GCP project registration. Use v1beta or register your project.
 
+### Troubleshooting: API Key Issues
+
+1. Check that the `MATON_API_KEY` environment variable is set:
+
+```bash
+echo $MATON_API_KEY
+```
+
+2. Verify the API key is valid by listing connections:
+
+```bash
+python <<'EOF'
+import urllib.request, os, json
+req = urllib.request.Request('https://ctrl.maton.ai/connections')
+req.add_header('Authorization', f'Bearer {os.environ["MATON_API_KEY"]}')
+print(json.dumps(json.load(urllib.request.urlopen(req)), indent=2))
+EOF
+```
+
+### Troubleshooting: Invalid App Name
+
+1. Ensure your URL path starts with `google-merchant`. For example:
+
+- Correct: `https://gateway.maton.ai/google-merchant/products/v1/accounts/{accountId}/products`
+- Incorrect: `https://gateway.maton.ai/products/v1/accounts/{accountId}/products`
+
 ## Resources
 
 - [Merchant API Overview](https://developers.google.com/merchant/api/overview)
@@ -502,3 +533,5 @@ data = response.json()
 - [Data Sources Guide](https://developers.google.com/merchant/api/guides/datasources)
 - [Reports Guide](https://developers.google.com/merchant/api/guides/reports)
 - [Product Data Specification](https://support.google.com/merchants/answer/7052112)
+- [Maton Community](https://discord.com/invite/dBfFAcefs2)
+- [Maton Support](mailto:support@maton.ai)

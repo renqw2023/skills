@@ -3,11 +3,16 @@
   "slug": "google-calendar-api",
   "displayName": "Google Calendar",
   "latest": {
-    "version": "1.0.3",
-    "publishedAt": 1770344177028,
-    "commit": "https://github.com/openclaw/skills/commit/dca48271e321ed2fcd7958bcf09871ae7eba4532"
+    "version": "1.0.5",
+    "publishedAt": 1770755788343,
+    "commit": "https://github.com/openclaw/skills/commit/07a95cd08d29d9d0af2828c230c00f0ea27c2b14"
   },
   "history": [
+    {
+      "version": "1.0.3",
+      "publishedAt": 1770344177028,
+      "commit": "https://github.com/openclaw/skills/commit/dca48271e321ed2fcd7958bcf09871ae7eba4532"
+    },
     {
       "version": "1.0.2",
       "publishedAt": 1770255477168,

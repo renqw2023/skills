@@ -8,6 +8,11 @@ description: |
 metadata:
   author: maton
   version: "1.0"
+  clawdbot:
+    emoji: 🧠
+    requires:
+      env:
+        - MATON_API_KEY
 ---
 
 # Zoho Bigin
@@ -589,9 +594,7 @@ data = response.json()
 | `INVALID_DATA` | Data type mismatch or format error |
 | `DUPLICATE_DATA` | Record violates unique field constraint |
 
-### Troubleshooting: Invalid API Key
-
-**When you receive a "Invalid API key" error, ALWAYS follow these steps before concluding there is an issue:**
+### Troubleshooting: API Key Issues
 
 1. Check that the `MATON_API_KEY` environment variable is set:
 
@@ -610,8 +613,17 @@ print(json.dumps(json.load(urllib.request.urlopen(req)), indent=2))
 EOF
 ```
 
+### Troubleshooting: Invalid App Name
+
+1. Ensure your URL path starts with `zoho-bigin`. For example:
+
+- Correct: `https://gateway.maton.ai/zoho-bigin/bigin/v2/Contacts`
+- Incorrect: `https://gateway.maton.ai/bigin/v2/Contacts`
+
 ## Resources
 
 - [Bigin API Overview](https://www.bigin.com/developer/docs/apis/v2/)
 - [Bigin REST API Documentation](https://www.bigin.com/developer/docs/apis/)
 - [Modules API](https://www.bigin.com/developer/docs/apis/modules-api.html)
+- [Maton Community](https://discord.com/invite/dBfFAcefs2)
+- [Maton Support](mailto:support@maton.ai)

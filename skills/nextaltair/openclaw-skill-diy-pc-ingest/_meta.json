@@ -3,9 +3,15 @@
   "slug": "openclaw-skill-diy-pc-ingest",
   "displayName": "Diy Pc Ingest",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1770688602200,
-    "commit": "https://github.com/openclaw/skills/commit/c0f0bf06128ec017c87b04d3578ea455e6892d84"
+    "version": "2.0.0",
+    "publishedAt": 1770711389531,
+    "commit": "https://github.com/openclaw/skills/commit/2921ecea5f6241e780a7df2b3789f40af203e1ab"
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1770688602200,
+      "commit": "https://github.com/openclaw/skills/commit/c0f0bf06128ec017c87b04d3578ea455e6892d84"
+    }
+  ]
 }

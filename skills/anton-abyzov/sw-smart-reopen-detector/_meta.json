@@ -1,0 +1,11 @@
+{
+  "owner": "anton-abyzov",
+  "slug": "sw-smart-reopen-detector",
+  "displayName": "Smart Reopen Detector",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770714094472,
+    "commit": "https://github.com/openclaw/skills/commit/c3378e8508c2be226d5bfde67b8363c616a50361"
+  },
+  "history": []
+}

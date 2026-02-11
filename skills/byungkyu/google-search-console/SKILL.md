@@ -6,6 +6,11 @@ compatibility: Requires network access and valid Maton API key
 metadata:
   author: maton
   version: "1.0"
+  clawdbot:
+    emoji: 🧠
+    requires:
+      env:
+        - MATON_API_KEY
 ---
 
 # Google Search Console
@@ -309,9 +314,7 @@ response = requests.post(
 | 429 | Rate limited (10 req/sec per account) |
 | 4xx/5xx | Passthrough error from Search Console API |
 
-### Troubleshooting: Invalid API Key
-
-**When you receive a "Invalid API key" error, ALWAYS follow these steps before concluding there is an issue:**
+### Troubleshooting: API Key Issues
 
 1. Check that the `MATON_API_KEY` environment variable is set:
 
@@ -330,9 +333,18 @@ print(json.dumps(json.load(urllib.request.urlopen(req)), indent=2))
 EOF
 ```
 
+### Troubleshooting: Invalid App Name
+
+1. Ensure your URL path starts with `google-search-console`. For example:
+
+- Correct: `https://gateway.maton.ai/google-search-console/webmasters/v3/sites`
+- Incorrect: `https://gateway.maton.ai/webmasters/v3/sites`
+
 ## Resources
 
 - [Search Console API Reference](https://developers.google.com/webmaster-tools/v1/api_reference_index)
 - [List Sites](https://developers.google.com/webmaster-tools/v1/sites/list)
 - [Search Analytics](https://developers.google.com/webmaster-tools/v1/searchanalytics/query)
 - [Sitemaps](https://developers.google.com/webmaster-tools/v1/sitemaps)
+- [Maton Community](https://discord.com/invite/dBfFAcefs2)
+- [Maton Support](mailto:support@maton.ai)

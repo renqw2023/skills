@@ -1,134 +1,150 @@
-#!/home/ubuntu/.openclaw/workspace/venv/bin/python3
+#!/usr/bin/env python3
 """
-TickTick OAuth 设置脚本
-首次运行需要手动授权
+Set up or refresh TickTick OAuth credentials.
 """
 
+from datetime import datetime, timezone
 import json
 import os
+from pathlib import Path
+
 import requests
-from http.server import HTTPServer, BaseHTTPRequestHandler
-from urllib.parse import urlparse, parse_qs
-import webbrowser
+from urllib.parse import urlencode
 
-CREDENTIALS_FILE = os.path.expanduser("~/.openclaw/workspace/ticktick_creds.json")
-TOKEN_FILE = os.path.expanduser("~/.openclaw/workspace/ticktick_token.json")
+BASE_DIR = Path(__file__).resolve().parent.parent
+DEFAULT_CONFIG_FILE = BASE_DIR / "config.json"
+DEFAULT_CREDENTIALS_FILE = BASE_DIR / "config" / "ticktick_creds.json"
+DEFAULT_TOKEN_FILE = BASE_DIR / "data" / "ticktick_token.json"
 
-def load_credentials():
-    """加载凭证"""
-    with open(CREDENTIALS_FILE) as f:
+
+def to_abs_path(path_value):
+    path = Path(path_value).expanduser()
+    if path.is_absolute():
+        return path
+    return (BASE_DIR / path).resolve()
+
+
+def load_repo_config():
+    if not DEFAULT_CONFIG_FILE.exists():
+        return {}
+    try:
+        with open(DEFAULT_CONFIG_FILE) as f:
+            return json.load(f)
+    except (json.JSONDecodeError, OSError):
+        return {}
+
+
+def resolve_paths():
+    config = load_repo_config()
+    credentials_raw = os.environ.get(
+        "TICKTICK_CREDENTIALS_FILE", str(DEFAULT_CREDENTIALS_FILE)
+    )
+    token_raw = os.environ.get("TICKTICK_TOKEN_FILE", config.get("ticktick_token", ""))
+    if not token_raw:
+        token_raw = str(DEFAULT_TOKEN_FILE)
+    return to_abs_path(credentials_raw), to_abs_path(token_raw)
+
+
+def load_credentials(credentials_file):
+    with open(credentials_file) as f:
         return json.load(f)
 
-def save_token(token_data):
-    """保存 token"""
-    with open(TOKEN_FILE, 'w') as f:
+
+def save_token(token_data, token_file):
+    token_file.parent.mkdir(parents=True, exist_ok=True)
+    with open(token_file, "w") as f:
         json.dump(token_data, f, indent=2)
-    print(f"✅ Token 已保存到: {TOKEN_FILE}")
+    print(f"Token saved to: {token_file}")
+
 
 def get_authorization_code(creds):
-    """获取授权码 - 需要用户手动授权"""
     auth_url = "https://ticktick.com/oauth/authorize"
     params = {
-        "client_id": creds['client_id'],
+        "client_id": creds["client_id"],
         "response_type": "code",
         "scope": "tasks:read tasks:write",
-        "redirect_uri": creds['redirect_uri']
+        "redirect_uri": creds["redirect_uri"],
     }
-    
-    # 构建完整 URL
-    full_url = f"{auth_url}?client_id={params['client_id']}&response_type=code&scope={params['scope']}&redirect_uri={params['redirect_uri']}"
-    
-    print("\n" + "="*60)
-    print("🔗 请访问以下 URL 进行授权：")
-    print("="*60)
+
+    full_url = f"{auth_url}?{urlencode(params)}"
+
+    print("\n" + "=" * 80)
+    print("Open this URL in your browser and approve access:")
+    print("=" * 80)
     print(full_url)
-    print("="*60)
-    print("\n授权后，浏览器会跳转到一个 URL，类似：")
-    print(f"{creds['redirect_uri']}?code=XXXXXX")
-    print("\n请复制 'code=' 后面的授权码")
-    print("="*60 + "\n")
-    
-    # 等待用户输入授权码
-    auth_code = input("请输入授权码 (code 参数的值): ").strip()
+    print("=" * 80)
+    print("\nAfter authorization, copy the value of `code` from the redirect URL.")
+    print(f"Example: {creds['redirect_uri']}?code=YOUR_CODE\n")
+
+    auth_code = input("Paste authorization code: ").strip()
     return auth_code
 
+
 def exchange_code_for_token(creds, auth_code):
-    """用授权码换取 access token"""
     token_url = "https://ticktick.com/oauth/token"
-    
+
     data = {
-        "client_id": creds['client_id'],
-        "client_secret": creds['client_secret'],
+        "client_id": creds["client_id"],
+        "client_secret": creds["client_secret"],
         "code": auth_code,
         "grant_type": "authorization_code",
-        "redirect_uri": creds['redirect_uri'],
-        "scope": "tasks:read tasks:write"
+        "redirect_uri": creds["redirect_uri"],
+        "scope": "tasks:read tasks:write",
     }
-    
-    print("\n🔄 正在获取 Access Token...")
-    
-    response = requests.post(token_url, data=data)
-    
+
+    print("\nRequesting access token...")
+    response = requests.post(token_url, data=data, timeout=30)
+
     if response.status_code == 200:
         token_data = response.json()
-        print("✅ 成功获取 Token!")
+        print("Access token received.")
         return token_data
-    else:
-        print(f"❌ 获取 Token 失败: {response.status_code}")
-        print(f"响应: {response.text}")
-        return None
 
-def refresh_token(creds, refresh_token_value):
-    """刷新 access token"""
-    token_url = "https://ticktick.com/oauth/token"
-    
-    data = {
-        "client_id": creds['client_id'],
-        "client_secret": creds['client_secret'],
-        "refresh_token": refresh_token_value,
-        "grant_type": "refresh_token"
-    }
-    
-    response = requests.post(token_url, data=data)
-    
-    if response.status_code == 200:
-        return response.json()
-    else:
-        print(f"❌ 刷新 Token 失败: {response.status_code}")
-        return None
+    print(f"Failed to get token ({response.status_code}): {response.text}")
+    return None
+
 
 def main():
-    print("\n🚀 TickTick OAuth 设置向导\n")
-    
-    # 加载凭证
-    creds = load_credentials()
-    print(f"📋 Client ID: {creds['client_id'][:10]}...")
-    
-    # 检查是否已有 token
-    if os.path.exists(TOKEN_FILE):
-        print("\n⚠️ 发现已有的 Token 文件")
-        choice = input("是否重新授权? (y/n): ").strip().lower()
-        if choice != 'y':
-            print("保持现有 Token，退出。")
-            return
-    
-    # 获取授权码
-    auth_code = get_authorization_code(creds)
-    
-    if not auth_code:
-        print("❌ 未获取到授权码")
+    credentials_file, token_file = resolve_paths()
+
+    print("\nTickTick OAuth setup\n")
+    print(f"Credentials file: {credentials_file}")
+    print(f"Token output:     {token_file}\n")
+
+    if not credentials_file.exists():
+        print("Credentials file was not found.")
+        print(
+            "Create config/ticktick_creds.json from the example file, "
+            "or set TICKTICK_CREDENTIALS_FILE."
+        )
         return
-    
-    # 换取 token
+
+    creds = load_credentials(credentials_file)
+    required = {"client_id", "client_secret", "redirect_uri"}
+    missing = sorted(required - set(creds))
+    if missing:
+        print(f"Credentials file is missing fields: {', '.join(missing)}")
+        return
+
+    if token_file.exists():
+        choice = input("Existing token found. Re-authorize? (y/N): ").strip().lower()
+        if choice != "y":
+            print("Keeping existing token file.")
+            return
+
+    auth_code = get_authorization_code(creds)
+    if not auth_code:
+        print("No authorization code provided.")
+        return
+
     token_data = exchange_code_for_token(creds, auth_code)
-    
     if token_data:
-        # 添加时间戳
-        token_data['created_at'] = os.popen('date -Iseconds').read().strip()
-        save_token(token_data)
-        print("\n🎉 设置完成！现在可以运行 sync_tasks.py 了")
-    else:
-        print("\n❌ 设置失败，请检查凭证和网络连接")
+        token_data["created_at"] = datetime.now(timezone.utc).isoformat()
+        save_token(token_data, token_file)
+        print("\nSetup completed. You can run `python sync.py` now.")
+        return
+    print("\nSetup failed. Check credentials and network access.")
+
 
 if __name__ == "__main__":
     main()

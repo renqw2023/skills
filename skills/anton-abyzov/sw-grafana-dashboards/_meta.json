@@ -1,0 +1,11 @@
+{
+  "owner": "anton-abyzov",
+  "slug": "sw-grafana-dashboards",
+  "displayName": "Grafana Dashboards",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770713670694,
+    "commit": "https://github.com/openclaw/skills/commit/69f9a8277ea50df7a921bea3da020fe541773872"
+  },
+  "history": []
+}

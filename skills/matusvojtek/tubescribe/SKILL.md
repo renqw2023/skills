@@ -1,6 +1,14 @@
 ---
 name: TubeScribe
-description: "YouTube video summarizer with speaker detection, formatted documents, and audio output. Use when user sends a YouTube URL or asks to summarize/transcribe a YouTube video."
+description: "YouTube video summarizer with speaker detection, formatted documents, and audio output. Works out of the box with macOS built-in TTS. Optional recommended tools (pandoc, ffmpeg, mlx-audio) enhance quality. Requires internet for YouTube access. No paid APIs or subscriptions. Use when user sends a YouTube URL or asks to summarize/transcribe a YouTube video."
+metadata:
+  {
+    "openclaw":
+      {
+        "emoji": "🎬",
+        "requires": { "bins": ["summarize"] }
+      }
+  }
 ---
 
 # TubeScribe 🎬
@@ -9,11 +17,13 @@ description: "YouTube video summarizer with speaker detection, formatted documen
 
 Drop a YouTube link → get a beautiful transcript with speaker labels, key quotes, timestamps that link back to the video, and an audio summary you can listen to on the go.
 
-### 💸 100% Free & Local
+### 💸 Free & No Paid APIs
 
-- **No subscription** — runs entirely on your machine
-- **No API keys required** — works out of the box
-- **No data leaves your computer** — your content stays private
+- **No subscriptions or API keys** — works out of the box
+- **Local processing** — transcription, speaker detection, and TTS run on your machine
+- **Network access** — fetching from YouTube (captions, metadata, comments) requires internet
+- **No data uploaded** — nothing is sent to external services; all processing stays on your machine
+- **Safe sub-agent** — spawned sub-agent has strict instructions: no software installation, no network calls beyond YouTube
 
 ### ✨ Features
 
@@ -72,7 +82,7 @@ Run the COMPLETE pipeline — do not stop until all steps are done.
 ```bash
 python3 skills/tubescribe/scripts/tubescribe.py "{youtube_url}"
 ```
-Note the **Source** and **Output** paths from the script output. The temp directory varies by OS (e.g., `/var/folders/.../tubescribe-501/` on macOS, `/tmp/tubescribe-1000/` on Linux).
+Note the **Source** and **Output** paths printed by the script. Use those exact paths in subsequent steps.
 
 ### Step 2: Read source JSON
 Read the Source path from Step 1 output and note:
