@@ -1,6 +1,6 @@
 ---
 name: mac-reminders-agent
-version: 1.1.0
+version: 1.1.2
 author: swancho
 license: CC-BY-NC-4.0
 description: |
@@ -8,6 +8,15 @@ description: |
   Supports native recurrence (매주/weekly/毎週/每周) via Swift EventKit - creates single reminder with repeat rule.
   Supports multiple languages (en, ko, ja, zh) for trigger detection and response formatting.
   When users request recurring reminders, MUST use --repeat option (daily|weekly|monthly|yearly).
+requirements:
+  runtime:
+    - node >= 18.0.0
+    - npm
+    - macOS with Xcode Command Line Tools (includes Swift compiler)
+  permissions:
+    - macOS Reminders access (system prompt on first use)
+install: |
+  cd $SKILL_DIR && npm install
 ---
 
 # Mac Reminders Agent
@@ -243,12 +252,37 @@ When automatic integration fails, offer alternatives in user's language.
 
 ---
 
-## Environment Constraints
+## Requirements & Installation
 
-- **macOS only**: Uses AppleScript + Swift EventKit
-- **Dependencies**:
-  - `applescript` npm module
-  - Swift (included with Xcode Command Line Tools)
+### System Requirements
+
+| Requirement | Details |
+|-------------|---------|
+| **OS** | macOS only (tested on macOS 13+) |
+| **Node.js** | v18.0.0 or higher |
+| **npm** | Included with Node.js |
+| **Swift** | Included with Xcode Command Line Tools |
+
+### Installation
+
+```bash
+# 1. Install Xcode Command Line Tools (if not already installed)
+xcode-select --install
+
+# 2. Install npm dependencies
+cd $SKILL_DIR
+npm install
+```
+
+### macOS Permissions
+
+This skill requires access to the **Reminders** app. On first use:
+
+1. macOS will display a permission dialog asking to allow access to Reminders
+2. Click **"OK"** or **"Allow"** to grant access
+3. If denied, go to **System Settings > Privacy & Security > Reminders** and enable access for Terminal/your IDE
+
+> **Note**: The Swift EventKit bridge (`eventkit-bridge.swift`) is compiled on-the-fly when needed. No manual compilation required.
 
 ---
 
