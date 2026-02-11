@@ -3,11 +3,16 @@
   "slug": "relay-for-telegram",
   "displayName": "Relay for Telegram",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1770665987113,
-    "commit": "https://github.com/openclaw/skills/commit/ce1ba455e20679e3d09b66e7941007f37fafa8ec"
+    "version": "1.0.4",
+    "publishedAt": 1770748589439,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1770665987113,
+      "commit": "https://github.com/openclaw/skills/commit/ce1ba455e20679e3d09b66e7941007f37fafa8ec"
+    },
     {
       "version": "1.0.1",
       "publishedAt": 1770623056491,
