@@ -1,120 +1,100 @@
 ---
-name: frontend-design
-description: Create distinctive, production-grade frontend interfaces that avoid generic "AI slop" aesthetics. Use when building UI components, pages, applications, or interfaces. Focus on bold aesthetic direction, exceptional attention to detail, and creative choices. Implement real working code with typography, color, motion, spatial composition, and visual details that are memorable and context-specific.
+name: anthropic-frontend-design
+description: Create distinctive, production-grade frontend interfaces that avoid generic "AI slop" aesthetics. Combines the design intelligence of UI/UX Pro Max with Anthropic's anti-slop philosophy. Use for building UI components, pages, applications, or interfaces with exceptional attention to detail and bold creative choices.
 ---
 
-# Frontend Design
+# Anthropic Frontend Design
 
-This skill guides creation of distinctive, production-grade frontend interfaces that avoid generic "AI slop" aesthetics. Implement real working code with exceptional attention to aesthetic details and creative choices.
+This skill guides the creation of distinctive, production-grade frontend interfaces that avoid generic "AI slop" aesthetics. It integrates structured design intelligence (accessibility, UX rules, stack guidelines) with a bold, intentional aesthetic philosophy.
+
+## Core Philosophy: Anti-AI Slop
+
+Claude (and all AI agents) are capable of extraordinary creative work, yet often default to safe, generic patterns. This skill MANDATES breaking those patterns.
+
+- **AVOID**: Inter, Roboto, Arial, system fonts, purple-on-white gradients, cookie-cutter SaaS layouts, emojis as icons.
+- **MANDATE**: Unique typography, context-specific color schemes, intentional motion, unexpected spatial composition, and production-grade functional code.
+
+---
 
 ## Design Thinking Process
 
 Before coding, understand the context and commit to a BOLD aesthetic direction:
 
-1. **Purpose**: What problem does this interface solve? Who uses it?
-2. **Tone**: Pick an extreme direction—brutally minimal, maximalist chaos, retro-futuristic, organic/natural, luxury/refined, playful/toy-like, editorial/magazine, brutalist/raw, art deco/geometric, soft/pastel, industrial/utilitarian, etc.
-3. **Constraints**: Technical requirements (framework, performance, accessibility)
-4. **Differentiation**: What makes this UNFORGETTABLE? What's the one thing someone will remember?
+1. **Purpose**: What problem does this solve? Who is it for?
+2. **Tone**: Pick an extreme direction—brutally minimal, maximalist chaos, retro-futuristic, organic, luxury, playful, editorial, etc.
+3. **Intelligence (Reference)**: Use the internal design tool to gather data (see below).
+4. **Differentiation**: What makes this UNFORGETTABLE?
 
-**CRITICAL**: Choose a clear conceptual direction and execute it with precision. Bold maximalism and refined minimalism both work—the key is intentionality, not intensity.
+---
+
+## Design Intelligence Tool
+
+Use the internal search tool to gather palettes, font pairings, and UX guidelines. **CRITICAL: You MUST filter the results through the Anti-AI Slop lens.** If the tool suggests "Inter" or "Roboto", you are REQUIRED to ignore it and pick a distinctive alternative.
+
+```bash
+# Generate a complete design system
+python scripts/search.py "<product_type> <industry> <keywords>" --design-system
+
+# Search specific domains (style, typography, color, ux, chart, landing)
+python scripts/search.py "<keyword>" --domain <domain>
+
+# Get stack-specific guidelines (html-tailwind, react, nextjs, shadcn, etc.)
+python scripts/search.py "<keyword>" --stack <stack_name>
+```
+
+---
 
 ## Implementation Standards
 
-Implement working code (HTML/CSS/JS, React, Vue, etc.) that is:
+### 1. Professional UI Rules
 
-- Production-grade and functional
-- Visually striking and memorable
-- Cohesive with a clear aesthetic point-of-view
-- Meticulously refined in every detail
+| Rule | Do | Don't |
+|------|----|----- |
+| **Icons** | Use SVG (Heroicons, Lucide, Simple Icons) | Use emojis like 🎨 🚀 ⚙️ as UI icons |
+| **Typography** | Beautiful, unique Google/Custom fonts | Inter, Roboto, Arial, System fonts |
+| **Hover** | Stable transitions (color/opacity/shadow) | Scale transforms that shift layout |
+| **Cursor** | Add `cursor-pointer` to all interactive items | Leave default cursor on buttons/cards |
+| **Contrast** | Minimum 4.5:1 for accessibility | Low-contrast "vibes" that are unreadable |
 
-## Aesthetic Guidelines
+### 2. Motion & Animation
+- Prioritize CSS-only solutions where possible.
+- Focus on high-impact moments (staggered reveals on page load).
+- Use duration 150-300ms for micro-interactions.
 
-### Typography
+### 3. Spatial Composition
+- Use asymmetry, overlap, or diagonal flow to break standard grids.
+- Balance generous negative space OR intentional density.
 
-- Choose fonts that are beautiful, unique, and interesting
-- **AVOID**: Arial, Inter, Roboto, system fonts (generic AI slop)
-- **USE**: Unexpected, characterful font choices
-- Pair a distinctive display font with a refined body font
-- Example sources: Google Fonts (avoid overused ones), Adobe Fonts, custom fonts
+---
 
-### Color & Theme
+## Pre-Delivery Checklist
 
-- Commit to a cohesive aesthetic
-- Use CSS variables for consistency
-- Dominant colors with sharp accents outperform timid, evenly-distributed palettes
-- **AVOID**: Purple gradients on white (cliched AI aesthetic)
-- **USE**: Context-specific color schemes that match the tone
+Before delivering code, verify every item:
 
-### Motion & Animation
+### Visual Quality
+- [ ] No emojis used as icons (SVG only).
+- [ ] Typography is characterful and NOT "AI standard".
+- [ ] Color scheme is unique to the context (no generic gradients).
+- [ ] Hover states provide clear, stable visual feedback.
 
-- Use animations for effects and micro-interactions
-- Prioritize CSS-only solutions for HTML
-- Use Motion library for React when available
-- Focus on high-impact moments: one well-orchestrated page load with staggered reveals (animation-delay) creates more delight than scattered micro-interactions
-- Use scroll-triggering and hover states that surprise
+### UX & Accessibility
+- [ ] All interactive elements have `cursor-pointer`.
+- [ ] Form inputs have labels; images have alt text.
+- [ ] Text contrast meets 4.5:1 minimum (test Light/Dark modes).
+- [ ] Responsive at all breakpoints (375px, 768px, 1024px, 1440px).
+- [ ] No horizontal scroll on mobile.
 
-### Spatial Composition
+---
 
-- Create unexpected layouts
-- Use asymmetry, overlap, diagonal flow
-- Include grid-breaking elements
-- Balance generous negative space OR controlled density (intentional choice)
+## Aesthetic Directions (Reference)
 
-### Backgrounds & Visual Details
+- **Brutally Minimal**: Monochrome, extreme white space, sparse typography.
+- **Maximalist Chaos**: Overlapping elements, dense information, pattern mixing.
+- **Retro-Futuristic**: Chrome effects, neon accents, 80s-inspired.
+- **Luxury/Refined**: Gold/Dark accents, serif fonts, generous spacing.
+- **Playful/Toy-like**: Rounded corners, bright pastels, bouncy animations.
+- **Editorial/Magazine**: Grid-based, bold headlines, clean hierarchy.
+- **Brutalist/Raw**: Monospace fonts, harsh contrasts, industrial.
+- **Art Deco**: Sharp angles, metallic accents, ornate borders.
 
-Create atmosphere and depth rather than defaulting to solid colors. Add contextual effects and textures that match the overall aesthetic:
-
-- Gradient meshes
-- Noise textures
-- Geometric patterns
-- Layered transparencies
-- Dramatic shadows
-- Decorative borders
-- Custom cursors
-- Grain overlays
-
-## Critical Rules
-
-### NEVER Use Generic AI Aesthetics
-
-- ❌ Overused font families (Inter, Roboto, Arial, system fonts)
-- ❌ Cliched color schemes (particularly purple gradients on white backgrounds)
-- ❌ Predictable layouts and component patterns
-- ❌ Cookie-cutter design that lacks context-specific character
-
-### ALWAYS Vary Across Generations
-
-Interpret creatively and make unexpected choices that feel genuinely designed for the context. No design should be the same. Vary between:
-
-- Light and dark themes
-- Different fonts
-- Different aesthetics
-- NEVER converge on common choices (e.g., Space Grotesk) across generations
-
-### Match Implementation Complexity to Vision
-
-**Maximalist designs**: Need elaborate code with extensive animations and effects
-
-**Minimalist/refined designs**: Need restraint, precision, and careful attention to spacing, typography, and subtle details
-
-**Remember**: Elegance comes from executing the vision well, regardless of complexity level.
-
-## Philosophy
-
-Claude (and all AI agents) are capable of extraordinary creative work. Don't hold back—show what can truly be created when thinking outside the box and committing fully to a distinctive vision.
-
-## Examples of Aesthetic Directions
-
-- **Brutally Minimal**: Monochrome, extreme white space, sparse typography, single focal point
-- **Maximalist Chaos**: Overlapping elements, dense information, vibrant colors, pattern mixing
-- **Retro-Futuristic**: Chrome effects, neon accents, geometric shapes, 80s-inspired gradients
-- **Organic/Natural**: Earth tones, flowing shapes, texture overlays, handwritten fonts
-- **Luxury/Refined**: Gold accents, serif fonts, generous spacing, subtle animations
-- **Playful/Toy-like**: Rounded corners, bright pastels, bouncy animations, fun icons
-- **Editorial/Magazine**: Grid-based, bold headlines, photo-heavy, clean hierarchy
-- **Brutalist/Raw**: Exposed structure, monospace fonts, harsh contrasts, intentional "ugly"
-- **Art Deco/Geometric**: Sharp angles, metallic accents, symmetry, ornate borders
-- **Soft/Pastel**: Muted colors, soft shadows, gentle curves, calm atmosphere
-- **Industrial/Utilitarian**: Concrete textures, stencil fonts, functional aesthetics, raw materials
-
-Each project should commit to ONE direction and execute it fully—no half measures.
+*Commit to ONE direction and execute it fully—no half measures.*
