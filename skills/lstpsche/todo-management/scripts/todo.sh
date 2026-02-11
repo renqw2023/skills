@@ -343,6 +343,7 @@ main() {
   case "$top" in
     group) cmd_group "$@" ;;
     entry) cmd_entry "$@" ;;
+    list)  cmd_entry "list" "$@" ;;
     *) usage; exit 2 ;;
   esac
 }
